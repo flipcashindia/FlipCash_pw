@@ -284,8 +284,8 @@ const AppRoutes: React.FC = () => {
         <Route index element={<Navigate to="dashboard" replace />} />
         
         {/* Dashboards */}
-        <Route path="dashboard" element={<PartnerDashboardPage />} /> {/* OLD */}
-        <Route path="dashboard-new" element={<DashboardPage />} /> {/* NEW */}
+        <Route path="dashboard-new" element={<PartnerDashboardPage />} /> {/* OLD */}
+        <Route path="dashboard" element={<DashboardPage />} /> {/* NEW */}
         
         {/* My Leads */}
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 
