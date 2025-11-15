@@ -1,13 +1,14 @@
 // src/components/layout/MainNavbar.tsx
 import React, { useState } from "react";
 import { Search, User, Menu, X, LogOut } from "lucide-react";
-import flipcashLogo from "../../assets/logo.png";
+import flipcashLogo from '../../../public/flipcash_header_logo.jpeg';
 import { motion, AnimatePresence } from "framer-motion";
 import SearchModal from "../misc/SearchModal";
 import AuthModal from "../auth/AuthModal";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { useModalStore } from "../../stores/useModalStore";
+
 
 const Logo = () => (
   <div className="flex items-center shrink-0">
