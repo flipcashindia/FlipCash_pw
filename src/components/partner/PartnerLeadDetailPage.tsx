@@ -6,7 +6,7 @@ import { leadsService } from '../../api/services/leadsService';
 import { visitsService } from '../../api/services/visitsService';
 import { Loader2, Phone, MapPin, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { type LeadDetails, type VisitChecklistUpdatePayload } from '../../api/types/api';
+import { type LeadDetails } from '../../api/types/api';
 import { handleApiError } from '../../utils/handleApiError';
 
 // --- Main Page Component ---
@@ -176,7 +176,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
 const InspectionWorkspace: React.FC<{ lead: LeadDetails, onRefresh: () => void }> = ({ lead, onRefresh }) => {
   const visitId = lead.visit?.id;
   const toast = useToast();
-  const queryClient = useQueryClient(); // Added queryClient for invalidation
+//   const queryClient = useQueryClient(); // Added queryClient for invalidation
   const [code, setCode] = useState('');
   const [notes, setNotes] = useState('');
   // Initialize price state with the estimated price
@@ -198,14 +198,15 @@ const InspectionWorkspace: React.FC<{ lead: LeadDetails, onRefresh: () => void }
   
   // FIX: Added the missing updateItemMutation
   const updateItemMutation = useMutation({
-    mutationFn: ({ itemId, payload }: {  itemId: string, payload: VisitChecklistUpdatePayload }) => 
-      visitsService.updateChecklistItem(visitId!, itemId, payload),
-    onSuccess: () => {
-      // Invalidate the checklist query to force a refetch and update the UI
-      queryClient.invalidateQueries({ queryKey: ['visitChecklist', visitId] }); 
-      toast.success("Checklist updated.");
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
+//     mutationFn: ({ itemId, payload }: {  itemId: string, payload: VisitChecklistUpdatePayload }) => 
+//       visitsService.updateChecklistItem(visitId!, itemId, payload),
+//     onSuccess: () => {
+//       // Invalidate the checklist query to force a refetch and update the UI
+//       queryClient.invalidateQueries({ queryKey: ['visitChecklist', visitId] }); 
+//       toast.success("Checklist updated.");
+//     },
+//     onError: (error: any) => toast.error(handleApiError(error)),
+  
   });
 
 
@@ -361,13 +362,13 @@ const InspectionWorkspace: React.FC<{ lead: LeadDetails, onRefresh: () => void }
               <div className="flex gap-2 mt-2">
                 <button
                   // FIX: Call the defined updateItemMutation
-                  onClick={() => updateItemMutation.mutate({ itemId: item.id, payload: { status: 'pass', notes: 'OK' }})}
+//                   onClick={() => updateItemMutation.mutate({ itemId: item.id, payload: { status: 'pass', notes: 'OK' }})}
                   disabled={updateItemMutation.isPending}
                   className={`px-3 py-1 rounded-full text-sm ${item.status === 'pass' ? 'bg-brand-green text-white' : 'bg-gray-200 hover:bg-gray-300'} transition`}
                 >Pass</button>
                 <button
                   // FIX: Call the defined updateItemMutation
-                  onClick={() => updateItemMutation.mutate({ itemId: item.id, payload: { status: 'fail', notes: 'Issue found' }})}
+//                   onClick={() => updateItemMutation.mutate({ itemId: item.id, payload: { status: 'fail', notes: 'Issue found' }})}
                   disabled={updateItemMutation.isPending}
                   className={`px-3 py-1 rounded-full text-sm ${item.status === 'fail' ? 'bg-brand-red text-white' : 'bg-gray-200 hover:bg-gray-300'} transition`}
                 >Fail</button>

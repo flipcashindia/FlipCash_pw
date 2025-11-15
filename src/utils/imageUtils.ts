@@ -1,4 +1,4 @@
-export const compressImage = async (file: File, maxSizeMB: number = 1): Promise<File> => {
+export const compressImage = async (file: File, _maxSizeMB: number = 1): Promise<File> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);

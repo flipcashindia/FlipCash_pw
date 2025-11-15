@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  CheckCircle, AlertTriangle as AlertTriangleIcon, Info, X,
+  CheckCircle, AlertTriangle as AlertTriangleIcon, X,
   LayoutDashboard, ListOrdered, Wallet, MapPin, User, 
   MessageSquare, AlertTriangle, Star, LogOut 
 } from 'lucide-react';

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import KYCVerification from "./KYCVerification";
+// import KYCVerification from "./KYCVerification";
 import { Loader2 } from "lucide-react";
 import PartnerDashboard from "./PartnerDashboard"; 
 
 // Mock partner data (still needed for KYCVerification prop)
-const mockPartner = {
-  name: "Rohan", // Make sure this matches
-  email: "rohan@example.com",
-  mobile: "9876543210",
-};
+// const mockPartner = {
+//   name: "Rohan", // Make sure this matches
+//   email: "rohan@example.com",
+//   mobile: "9876543210",
+// };
 
 const MyAccount: React.FC = () => {
   const [kycStatus, setKycStatus] = useState<"pending" | "approved" | "loading">(
@@ -38,14 +38,15 @@ const MyAccount: React.FC = () => {
   if (kycStatus === "pending") {
     // If pending, show the full KYC verification component
     return (
-      <KYCVerification
-        partnerData={{
-          name: mockPartner.name,
-          email: mockPartner.email,
-          mobile: mockPartner.mobile,
-        }}
-        onKycComplete={() => setKycStatus("approved")} // Simulates submission
-      />
+      // <KYCVerification
+      //   partnerData={{
+      //     name: mockPartner.name,
+      //     email: mockPartner.email,
+      //     mobile: mockPartner.mobile,
+      //   }}
+      //   onKycComplete={() => setKycStatus("approved")} // Simulates submission
+      // />
+      <p>kyc</p>
     );
   }
 

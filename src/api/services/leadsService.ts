@@ -69,7 +69,7 @@ const getLeadDetails = async (leadId: string): Promise<LeadDetails> => {
 const claimLead = async (leadId: string): Promise<any> => {
     const payload = { notes: "I am claiming this lead" }; 
     // Corrected URL: /partner/leads/{leadId}/claim/
-    const { data } = await privateApiClient.post(`/partner/leads/${leadId}/claim/`, payload);
+    const { data } = await privateApiClient.post(`/leads/partner/leads/${leadId}/claim/`, payload);
     console.log('claimed leads : ', data)
     return data;
 };

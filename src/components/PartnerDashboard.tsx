@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Import all our flow and tab components
 import NewLeadsFlow from "./NewLeadsFlow";
-import MyLeadsFlow from "./MyLeadsFlow";
+// import MyLeadsFlow from "./MyLeadsFlow";
 import MyWalletFlow from "./MyWalletFlow";
 import AccountDetails from "./AccountDetails";
 import Helpdesk from "./Helpdesk";
@@ -381,7 +381,7 @@ const PartnerDashboard: React.FC = () => {
       case "new-leads":
         return <NewLeadsFlow onSwitchTab={handleTabClick} initialCategoryFilter={initialFilter} />;
       case "my-leads":
-        return <MyLeadsFlow onSwitchTab={handleTabClick} />;
+        // return <MyLeadsFlow onSwitchTab={handleTabClick} />;
       case "wallet":
         return <MyWalletFlow />;
       case "account-details":

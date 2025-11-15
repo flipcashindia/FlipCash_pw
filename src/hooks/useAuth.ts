@@ -4,18 +4,18 @@ import { authService } from '../api/services/authService';
 import { isAuthenticated } from '../api/client';
 
 export const useAuth = () => {
-  const { user, isAuthenticated: authenticated, isLoading, setUser, setAuthenticated, setLoading, logout } = useAuthStore();
+  const { user, isAuthenticated: authenticated, isLoading, setUser, setLoading, logout } = useAuthStore();
 
   useEffect(() => {
     const checkAuth = async () => {
       if (isAuthenticated()) {
-        setAuthenticated(true);
+        // setAuthenticated(true);
       }
       setLoading(false);
     };
 
     checkAuth();
-  }, [setAuthenticated, setLoading]);
+  }, [ setLoading]);
 
   const handleLogout = async () => {
     try {

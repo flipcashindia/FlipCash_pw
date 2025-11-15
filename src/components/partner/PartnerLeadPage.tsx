@@ -36,12 +36,21 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => (
         <p className="text-sm text-gray-600">
             **Pickup Date:** {lead.preferred_date} ({lead.preferred_time_slot})
         </p>
-        <Link 
+        
+        {(lead.status === 'booked')&&
+        (<Link 
             to={`/partner/lead/${lead.id}`} 
             className="mt-4 block w-full text-center px-4 py-2 bg-brand-yellow text-brand-black font-bold rounded-lg hover:bg-yellow-400 transition"
         >
             View Details & Claim
-        </Link>
+        </Link>)}
+        {(lead.status === 'partner_assigned')&&
+        (<div 
+            
+            className="mt-4 block w-full text-center px-4 py-2 bg-brand-green text-brand-black font-bold rounded-lg hover:bg-yellow-400 transition"
+        >
+            Already Claimed
+        </div>)}
     </div>
 );
 
@@ -214,7 +223,7 @@ export const PartnerLeadsPage: React.FC = () => {
                             }
                         </p>
                     ) : (
-                        currentData?.map(lead => (
+                        currentData?.results?.map((lead: AvailableLead | MyLead) => (
                             tab === 'new' 
                                 ? <AvailableLeadCard key={lead.id} lead={lead as AvailableLead} /> 
                                 : <MyLeadCard key={lead.id} lead={lead as MyLead} />

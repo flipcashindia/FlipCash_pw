@@ -1,72 +1,95 @@
 // src/pages/partner/PartnerWalletPage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { usePartnerStore } from '../../stores/usePartnerStore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wallet } from 'lucide-react'; // Added Wallet icon
 import { useAuthStore } from '../../stores/authStore';
 import { useQuery } from '@tanstack/react-query';
-import { financeService } from '../../api/services/financeService'; 
+import { financeService } from '../../api/services/financeService';
+import { TopUpModal } from './TopUpModal'; // <-- Import new modal
+import { AnimatePresence } from 'framer-motion'; // <-- Import AnimatePresence
 
 export const PartnerWalletPage: React.FC = () => {
   const { partner, isLoading: isPartnerLoading } = usePartnerStore();
   const { isLoading: isAuthLoading } = useAuthStore();
+  
+  // State for the new Top-Up Modal
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
 
   // Fetch transaction history
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: ['partnerTransactions'],
-    queryFn: () => financeService.getPartnerTransactions({ limit: 20 }), // [cite: 12]
+    queryFn: () => financeService.getPartnerTransactions({ limit: 20 }),
     enabled: !!partner,
   });
 
   const isLoading = isPartnerLoading || isAuthLoading;
   
-  const wallet = partner?.wallet; // [cite: 1.1]
+  const wallet = partner?.wallet;
 
   if (isLoading) {
     return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-yellow" /></div>;
   }
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-brand-black mb-6 pb-4 border-b">My Wallet</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gradient-to-r from-brand-green to-green-700 text-white p-6 rounded-lg shadow-lg">
-            <p className="text-sm opacity-80">Current Balance</p>
-            <p className="text-4xl font-bold">₹{wallet?.balance || '0.00'}</p>
+    <>
+      <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg space-y-8">
+        <div>
+          {/* Header with Top Up Button */}
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 pb-4 border-b">
+            <h2 className="text-2xl font-bold text-brand-black">My Wallet</h2>
+            <button
+              onClick={() => setIsTopUpModalOpen(true)}
+              className="mt-3 sm:mt-0 flex items-center justify-center gap-2 bg-brand-green text-white px-5 py-2.5 rounded-lg font-semibold shadow-md hover:bg-green-700 transition-all"
+            >
+              <Wallet size={18} />
+              Top Up Wallet
+            </button>
           </div>
-          <div className="bg-brand-gray-light p-6 rounded-lg">
-           <p className="text-sm text-gray-600">Status</p>
-           <p className="text-2xl font-bold text-brand-black capitalize">{wallet?.status || 'N/A'}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-r from-brand-green to-green-700 text-white p-6 rounded-lg shadow-lg">
+              <p className="text-sm opacity-80">Current Balance</p>
+              <p className="text-4xl font-bold">₹{wallet?.balance || '0.00'}</p>
+            </div>
+            <div className="bg-brand-gray-light p-6 rounded-lg">
+              <p className="text-sm text-gray-600">Status</p>
+              <p className="text-2xl font-bold text-brand-black capitalize">{wallet?.status || 'N/A'}</p>
+            </div>
           </div>
         </div>
-      </div>
-      
-      {/* Transaction History */}
-      <div className="mt-8">
-        <h3 className="text-xl font-semibold text-brand-black mb-4">Transaction History</h3>
-        {isLoadingTransactions ? (
-          <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>
-        ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {transactions?.results.length === 0 && (
-              <p className="text-gray-500 text-center py-10">No transactions found.</p>
-            )}
-            {transactions?.results.map(tx => (
-              <div key={tx.id} className="flex justify-between items-center p-3 bg-brand-gray-light/50 rounded-lg">
-                <div>
-                  <p className="font-semibold capitalize">{tx.category}: {tx.description}</p>
-                  <p className="text-xs text-gray-500">{new Date(tx.created_at).toLocaleString()}</p>
+        
+        {/* Transaction History */}
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold text-brand-black mb-4">Transaction History</h3>
+          {isLoadingTransactions ? (
+            <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {transactions?.results.length === 0 && (
+                <p className="text-gray-500 text-center py-10">No transactions found.</p>
+              )}
+              {transactions?.results.map(tx => (
+                <div key={tx.id} className="flex justify-between items-center p-3 bg-brand-gray-light/50 rounded-lg">
+                  <div>
+                    <p className="font-semibold capitalize">{tx.category}: {tx.description}</p>
+                    <p className="text-xs text-gray-500">{new Date(tx.created_at).toLocaleString()}</p>
+                  </div>
+                  <p className={`text-lg font-bold ${tx.transaction_type === 'credit' ? 'text-brand-green' : 'text-brand-red'}`}>
+                    {tx.transaction_type === 'credit' ? '+' : '-'} ₹{tx.amount}
+                  </p>
                 </div>
-                <p className={`text-lg font-bold ${tx.transaction_type === 'credit' ? 'text-brand-green' : 'text-brand-red'}`}>
-                  {tx.transaction_type === 'credit' ? '+' : '-'} ₹{tx.amount}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      Wallet page
-    </div>
+      {/* Render the modal */}
+      <AnimatePresence>
+        {isTopUpModalOpen && (
+          <TopUpModal onClose={() => setIsTopUpModalOpen(false)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 };

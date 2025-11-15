@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Briefcase, MapPin, Users, Rocket, Award, X, Upload, 
+  Briefcase, MapPin, Users, Rocket, Award, X, 
   CheckCircle, AlertTriangle as AlertTriangleIcon 
 } from 'lucide-react';
 

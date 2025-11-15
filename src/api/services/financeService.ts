@@ -14,7 +14,21 @@ const getPartnerTransactions = async (filters: { [key: string]: any }): Promise<
   return data;
 };
 
+
+const submitTopUpRequest = async (formData: FormData) => {
+  // Use 'privateApiClient' or your named axios instance
+  const { data } = await privateApiClient.post('/finance/topup-request/', formData, {
+    headers: {
+      // This header is crucial for file uploads
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data;
+};
+
+
 export const financeService = {
   getPartnerTransactions,
+  submitTopUpRequest
   // ... (add other functions like createTopupOrder, etc. later)
 };

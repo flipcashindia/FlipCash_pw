@@ -18,6 +18,7 @@ import {
   type PartnerBankAccount,
   type AddBankAccountRequest,
   type PartnerDocument,
+  type PartnerMetrics,
   // type PartnerDocumentType,
   type ServiceArea,
   type CreateServiceAreaRequest
@@ -55,6 +56,13 @@ const completeSignup = async (
 const getMe = async (): Promise<PartnerProfile> => {
   const { data } = await privateApiClient.get('/partners/me/'); 
   // console.log('Fetched partner profile: ', data);
+  return data;
+};
+
+// --- 2. PARTNER maetrics ---
+const getMyMatrics = async (): Promise<PartnerMetrics> => {
+  const { data } = await privateApiClient.get('/partners/me/matrics'); 
+  console.log('Fetched partner metrics : ', data);
   return data;
 };
 
@@ -148,6 +156,8 @@ const deleteServiceArea = async (areaId: string): Promise<void> => {
 };
 
 
+
+
 export const partnerService = {
   // Public
   signupSendOtp,
@@ -157,6 +167,7 @@ export const partnerService = {
   // Private (Authenticated)
   completeSignup,
   getMe,
+  getMyMatrics,
   updateMe,
   toggleAvailability,
   getDocuments,

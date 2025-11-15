@@ -7,7 +7,7 @@ import SearchModal from "../misc/SearchModal";
 import AuthModal from "../auth/AuthModal";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
-import { useModalStore } from "../../stores/useModalStore"; // <-- Import the new store
+import { useModalStore } from "../../stores/useModalStore";
 
 const Logo = () => (
   <div className="flex items-center shrink-0">
@@ -17,7 +17,8 @@ const Logo = () => (
   </div>
 );
 
-const navItems = [
+// 1. Renamed to baseNavItems
+const baseNavItems = [
   { name: "Home", href: "/" },
   { name: "Become Partner", href: "/partner-signup" },
   { name: "About Us", href: "/about" },
@@ -29,7 +30,7 @@ const MainNavbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   
-  // --- UPGRADE: Use global state for modals ---
+  // --- Use global state for modals ---
   const { isAuthModalOpen, openAuthModal, closeAuthModal } = useModalStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -44,6 +45,20 @@ const MainNavbar: React.FC = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // 2. Create dynamic navItems list based on auth state
+  const navItems = React.useMemo(() => {
+    const isPartner = isAuthenticated() && user?.role === 'partner';
+
+    if (isPartner) {
+      // If user is a partner, filter out the "Become Partner" link
+      return baseNavItems.filter(item => item.name !== "Become Partner");
+    }
+    
+    // Otherwise, return the full list
+    return baseNavItems;
+  }, [isAuthenticated, user]); // Recalculates when auth state changes
+
 
   const openSearchModal = () => {
     setIsMobileMenuOpen(false);
@@ -83,6 +98,8 @@ const MainNavbar: React.FC = () => {
             <Menu size={28} className="text-brand-black" />
           </button>
         </div>
+        
+        {/* 3. This .map now uses the dynamic navItems list */}
         <ul className="hidden md:flex items-center h-full space-x-8">
           {navItems.map((item) => (
             <li key={item.name} className="h-full flex items-center">
@@ -92,6 +109,7 @@ const MainNavbar: React.FC = () => {
             </li>
           ))}
         </ul>
+        
         <div className="hidden md:flex items-center space-x-6">
           <button type="button" onClick={() => setIsSearchOpen(true)} aria-label="Search" className="text-brand-black hover:text-brand-red transition-colors">
             <Search size={24} />
@@ -102,8 +120,8 @@ const MainNavbar: React.FC = () => {
           
           {isAuthenticated() && (
              <button type="button" onClick={handleLogout} aria-label="Logout" className="text-brand-black hover:text-brand-red transition-colors">
-              <LogOut size={24} />
-            </button>
+               <LogOut size={24} />
+             </button>
           )}
         </div>
       </nav>
@@ -118,6 +136,8 @@ const MainNavbar: React.FC = () => {
                 <X size={28} className="text-brand-black" />
               </button>
             </div>
+            
+            {/* 4. This .map also uses the dynamic navItems list */}
             <ul className="space-y-4">
               {navItems.map((item) => (
                 <li key={item.name}>
@@ -125,6 +145,7 @@ const MainNavbar: React.FC = () => {
                 </li>
               ))}
             </ul>
+            
             <div className="border-t mt-8 pt-6 flex items-center space-x-6">
               <button type="button" onClick={openSearchModal} aria-label="Search" className="text-brand-black hover:text-brand-red transition-colors">
                 <Search size={24} />
@@ -146,7 +167,6 @@ const MainNavbar: React.FC = () => {
         {isSearchOpen && <SearchModal onClose={() => setIsSearchOpen(false)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {/* --- UPGRADE: Now controlled by global state --- */}
         {isAuthModalOpen && (
           <AuthModal 
             isOpen={isAuthModalOpen} 

@@ -3,45 +3,45 @@ import { useLeadsStore } from '../stores/leadsStore';
 import { useWalletStore } from '../stores/walletStore';
 import { leadsService } from '../api/services/leadsService';
 import { handleApiError } from '../utils/errorHandler';
-import { type LeadFilters } from '../types/lead.types';
+// import { type LeadFilters } from '../types/lead.types';
 
 export const useLeads = () => {
-  const { availableLeads, myLeads, stats, isLoading, setAvailableLeads, setMyLeads, setStats, setLoading, setError, removeAvailableLead, addMyLead } = useLeadsStore();
+  const { availableLeads, myLeads, stats, isLoading, removeAvailableLead, addMyLead } = useLeadsStore();  // , setAvailableLeads, setMyLeads, setStats, setLoading, setError,
   const { updateBalance } = useWalletStore();
   const [claimLoading, setClaimLoading] = useState(false);
 
-  const loadAvailableLeads = async (filters?: LeadFilters) => {
-    try {
-      setLoading(true);
-      const response = await leadsService.getAvailableLeads(filters);
-      setAvailableLeads(response.results);
-    } catch (err) {
-      setError(handleApiError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadAvailableLeads = async (filters?: LeadFilters) => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await leadsService.getAvailableLeads(filters);
+  //     setAvailableLeads(response.results);
+  //   } catch (err) {
+  //     setError(handleApiError(err));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const loadMyLeads = async (filters?: LeadFilters) => {
-    try {
-      setLoading(true);
-      const response = await leadsService.getMyLeads(filters);
-      setMyLeads(response.results);
-    } catch (err) {
-      setError(handleApiError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadMyLeads = async (filters?: LeadFilters) => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await leadsService.getMyLeads(filters);
+  //     setMyLeads(response.results);
+  //   } catch (err) {
+  //     setError(handleApiError(err));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const loadStats = async () => {
-    try {
-      const data = await leadsService.getStats();
-      setStats(data);
-    } catch (err) {
-      setError(handleApiError(err));
-    }
-  };
+  // const loadStats = async () => {
+  //   try {
+  //     const data = await leadsService.getStats();
+  //     setStats(data);
+  //   } catch (err) {
+  //     setError(handleApiError(err));
+  //   }
+  // };
 
   const claimLead = async (leadId: string) => {
     try {
@@ -58,11 +58,11 @@ export const useLeads = () => {
     }
   };
 
-  const unclaimLead = async (leadId: string) => {
+  const unclaimLead = async (_leadId: string) => {
     try {
-      await leadsService.unclaimLead(leadId);
-      await loadMyLeads();
-      await loadAvailableLeads();
+      // await leadsService.unclaimLead(leadId);
+      // await loadMyLeads();
+      // await loadAvailableLeads();
     } catch (err) {
       throw new Error(handleApiError(err));
     }
@@ -74,9 +74,9 @@ export const useLeads = () => {
     stats,
     isLoading,
     claimLoading,
-    loadAvailableLeads,
-    loadMyLeads,
-    loadStats,
+    // loadAvailableLeads,
+    // loadMyLeads,
+    // loadStats,
     claimLead,
     unclaimLead,
   };

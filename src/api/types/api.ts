@@ -92,6 +92,7 @@ export interface User {
   id: string; //
   phone: string; //
   name: string | null; //
+  full_name: string;
   email: string | null; //
   role: 'consumer' | 'partner' | 'super_admin' | 'admin' | 'sales' | 'support' | 'finance' | 'compliance'; //
   is_phone_verified: boolean; //
@@ -178,6 +179,7 @@ export interface PartnerProfile {
     id: string; //
     phone: string; //
     name: string; //
+    full_name: string;
   };
   status: 'pending' | 'under_review' | 'approved' | 'suspended' | 'rejected'; //
   business_name: string; //
@@ -200,7 +202,55 @@ export interface PartnerProfile {
   };
   created_at: string; //
   updated_at: string; //
+  // phone: string;
+  // full_name: string;
+  // email: string;
+  // business_type: 'individual' | 'company';
+  // pan_number: string;
+  // gstin?: string;
+  // is_active: boolean;
+  // kyc_status: 'pending' | 'submitted' | 'under_review' | 'verified' | 'rejected';
+  // kyc_verified_at?: string;
+  // kyc_rejection_reason?: string;
+  // rating: number;
+  // wallet_balance: number;
+  // city: string;
+  // state: string;
+  // pincode: string;
+  // business_address: ServiceArea;
+
 }
+
+
+export interface IPartnerMetricDetails {
+  leads_claimed: number;
+  leads_completed: number;
+  leads_rejected: number;
+  completion_rate: string;
+  average_rating: string;
+  response_time_minutes: string;
+  earnings: string;
+  fees_paid: string;
+}
+
+/**
+ * Interface for the nested 'date_range' object.
+ */
+export interface IMetricDateRange {
+  from: string; // This will be a date-string or the literal "all_time"
+  to: string;   // This will be a date-string or the literal "now"
+}
+
+/**
+ * Main interface for the API response from getMyMatrics
+ * This matches the shape of the JSON returned by MyMetricsView.
+ */
+export interface PartnerMetrics {
+  partner_id: string;
+  date_range: IMetricDateRange;
+  metrics: IPartnerMetricDetails;
+}
+
 
 /**
  * API 1.2: Update Partner Profile (Request)
@@ -325,7 +375,7 @@ export interface UserKYC {
 // === PARTNER PROFILE APIS (From Partners API) ===
 export interface PartnerProfile {
   id: string; 
-  user: { id: string; phone: string; name: string; }; 
+  user: { id: string; phone: string; name: string; full_name: string; }; 
   status: 'pending' | 'under_review' | 'approved' | 'suspended' | 'rejected'; 
   business_name: string; 
   service_radius_km: string; 
@@ -441,6 +491,9 @@ export interface Paginated<T> {
     next: string | null;
     previous: string | null;
     results: T[];
+    // page_size?: number; // Optional based on API design
+    // num_pages?: number; // Optional based on API design
+    length:number;
 }
 
 
@@ -488,6 +541,7 @@ export interface AvailableLead {
   preferred_time_slot: string; 
   created_at: string; 
   age_hours: number; 
+  status: string;
 }
 export interface MyLead {
   id: string; 
