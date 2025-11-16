@@ -92,7 +92,7 @@ const LeadsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <div className="flex items-center space-x-2 text-sm flex-wrap">
+      {/* <div className="flex items-center space-x-2 text-sm flex-wrap">
         <Link to="/partner/catalog" className="text-gray-500 hover:text-gray-700 transition-colors">
           Categories
         </Link>
@@ -114,7 +114,34 @@ const LeadsPage: React.FC = () => {
         </Link>
         <ChevronRight size={16} className="text-gray-400" />
         <span className="text-gray-900 font-medium">{model?.name || 'Leads'}</span>
+      </div> */}
+
+      
+      <div className="flex items-center space-x-2 text-sm flex-wrap">
+        <Link to="/partner/catalog" className="text-gray-500 hover:text-gray-700 transition-colors">
+          Categories
+        </Link>
+        <ChevronRight size={16} className="text-gray-400" />
+        <Link
+          to={`/partner/catalog/categories/${category?.id}/brands`}
+          state={{ category }}
+          className="text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          {category?.name}
+        </Link>
+        <ChevronRight size={16} className="text-gray-400" />
+        <Link
+          to={`/partner/catalog/categories/${category?.id}/brands/${brand?.id}/models`}
+          state={{ category, brand }}
+          className="text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          {brand?.name}
+        </Link>
+        <ChevronRight size={16} className="text-gray-400" />
+        <span className="text-gray-900 font-medium">{model?.name || 'Leads'}</span>
       </div>
+
+
 
       {/* Header */}
       <div className="flex items-center justify-between">

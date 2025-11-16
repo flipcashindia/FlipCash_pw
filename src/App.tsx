@@ -297,7 +297,8 @@ const AppRoutes: React.FC = () => {
         {/* Catalog - Browse New Leads */}
         <Route path="catalog" element={<CategoriesPage />} />
         <Route path="catalog/categories/:categoryId/brands" element={<BrandsPage />} />
-        <Route path="catalog/brands/:brandId/models" element={<ModelsPage />} />
+        {/* <Route path="catalog/brands/:brandId/models" element={<ModelsPage />} /> */}
+        <Route path="catalog/categories/:categoryId/brands/:brandId/models" element={<ModelsPage />} />
         <Route path="catalog/models/:modelId/leads" element={<LeadsPage />} />
         <Route path="catalog/leads/:leadId" element={<LeadDetailPage />} />
       </Route>

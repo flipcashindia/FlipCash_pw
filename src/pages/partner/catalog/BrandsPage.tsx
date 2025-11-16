@@ -20,7 +20,7 @@ const BrandsPage: React.FC = () => {
   });
 
   const handleSelectBrand = (brand: Brand) => {
-    navigate(`/partner/catalog/brands/${brand.id}/models`, {
+    navigate(`/partner/catalog/categories/${categoryId}/brands/${brand.id}/models`, {
       state: { category, brand },
     });
   };
