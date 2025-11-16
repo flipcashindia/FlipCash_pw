@@ -1,7 +1,7 @@
 // src/pages/partner/catalog/LeadDetailPage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Loader2,
   AlertCircle,
@@ -17,23 +17,162 @@ import {
   Phone,
   Clock,
   Package as PackageIcon,
+  Wallet,
+  X,
 } from 'lucide-react';
 import {
   catalogService,
   type Category,
   type Brand,
   type Model,
-  // type Lead,
+  type LeadDetail,
 } from '../../../api/services/catalogService';
+import { privateApiClient } from '../../../api/client/apiClient';
+import { useToast } from '../../../contexts/ToastContext';
+import { handleApiError } from '../../../utils/handleApiError';
+
+// --- Claim Confirmation Modal Component ---
+const ClaimConfirmationModal: React.FC<{
+  lead: LeadDetail;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}> = ({ lead, onConfirm, onCancel, isLoading }) => {
+  const claimFee = parseFloat(lead.pricing.claim_fee);
+  const estimatedPrice = parseFloat(lead.pricing.estimated_price);
+  const totalDeduction = claimFee + estimatedPrice;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        {/* Close Button */}
+        <button
+          onClick={onCancel}
+          disabled={isLoading}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <X size={24} />
+        </button>
+
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-[#1C1C1B] mb-2">Claim Lead</h2>
+          <p className="text-gray-600">Review the details before claiming this lead</p>
+        </div>
+
+        {/* Device Info */}
+        <div className="bg-[#F5F5F5] rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <img
+              src={
+                lead.device.images.find((i) => i.is_primary)?.image ||
+                lead.device.images[0]?.image ||
+                'https://placehold.co/48x48/f5f5f5/cccccc?text=?'
+              }
+              alt={lead.device.model_name}
+              className="w-12 h-12 rounded-lg object-cover"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/48x48/f5f5f5/cccccc?text=?';
+              }}
+            />
+            <div>
+              <h3 className="font-semibold text-[#1C1C1B]">{lead.device.model_name}</h3>
+              <p className="text-sm text-gray-600">Lead #{lead.lead_number}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Wallet Breakdown */}
+        <div className="bg-yellow-50 border-2 border-[#FEC925] rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="w-5 h-5 text-[#1C1C1B]" />
+            <h3 className="font-semibold text-[#1C1C1B]">Wallet Deductions</h3>
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-700">Claim Fee (non-refundable)</span>
+              <span className="font-semibold text-red-600">-₹{claimFee.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-700">Amount Blocked (refundable)</span>
+              <span className="font-semibold text-[#FEC925]">-₹{estimatedPrice.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="border-t border-gray-300 pt-2 flex justify-between">
+              <span className="font-semibold text-gray-900">Total Deduction</span>
+              <span className="font-bold text-[#1C1C1B]">₹{totalDeduction.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Important Notes */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-900">
+              <p className="font-semibold mb-1">Important:</p>
+              <ul className="list-disc list-inside space-y-1 text-blue-800">
+                <li>₹{claimFee} claim fee is non-refundable</li>
+                <li>₹{estimatedPrice.toLocaleString('en-IN')} will be blocked until visit completion</li>
+                <li>Customer details will be revealed after claiming</li>
+                <li>You can start the visit after claiming</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Pickup Details */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-4 h-4 text-green-700" />
+            <span className="text-sm font-semibold text-green-900">Pickup Schedule</span>
+          </div>
+          <div className="text-sm text-green-800">
+            <p>{lead.pickup.preferred_date} • {lead.pickup.preferred_time_slot}</p>
+            <p className="text-xs mt-1">{lead.pickup.address.city}, {lead.pickup.address.state}</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex-1 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Claiming...</span>
+              </>
+            ) : (
+              'Confirm & Claim'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const LeadDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { leadId } = useParams<{ leadId: string }>();
   const location = useLocation();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  
   const category = location.state?.category as Category | undefined;
   const brand = location.state?.brand as Brand | undefined;
   const model = location.state?.model as Model | undefined;
-  // const leadPreview = location.state?.lead as Lead | undefined;
 
   const { data: lead, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['catalog', 'leadDetail', leadId],
@@ -43,15 +182,46 @@ const LeadDetailPage: React.FC = () => {
     gcTime: 10 * 60 * 1000,
   });
 
+  // Claim Mutation
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const response = await privateApiClient.post(`partner/claim/leads/${leadId}/claim/`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setShowClaimModal(false);
+      toast.success(data.message || 'Lead claimed successfully!');
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['catalog', 'leads'] });
+      queryClient.invalidateQueries({ queryKey: ['partner-visits'] });
+      queryClient.invalidateQueries({ queryKey: ['myLeads'] });
+      
+      // Navigate to claimed lead detail
+      setTimeout(() => {
+        if (data.visit_number) {
+          navigate(`/partner/my-leads/${data.visit_number}`, {
+            state: { leadId: leadId }
+          });
+        } else {
+          navigate('/partner/my-leads');
+        }
+      }, 1500);
+    },
+    onError: (error: any) => {
+      setShowClaimModal(false);
+      toast.error(handleApiError(error));
+    }
+  });
+
   const handleClaim = () => {
-    // Navigate to claim flow (to be implemented)
-    alert('Claim functionality will be implemented next. Lead ID: ' + lead?.id);
+    setShowClaimModal(true);
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 size={48} className="animate-spin text-yellow-500 mb-4" />
+        <Loader2 size={48} className="animate-spin text-[#FEC925] mb-4" />
         <p className="text-gray-600">Loading lead details...</p>
       </div>
     );
@@ -67,7 +237,7 @@ const LeadDetailPage: React.FC = () => {
         </p>
         <button
           onClick={() => refetch()}
-          className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors"
+          className="px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] font-semibold rounded-lg transition-colors"
         >
           Try Again
         </button>
@@ -79,22 +249,22 @@ const LeadDetailPage: React.FC = () => {
     <div className="space-y-6 pb-24">
       {/* Breadcrumb */}
       <div className="flex items-center space-x-2 text-sm flex-wrap">
-        <Link to="/partner/catalog" className="text-gray-500 hover:text-gray-700">
+        <Link to="/partner/catalog" className="text-gray-500 hover:text-gray-700 transition-colors">
           Categories
         </Link>
         <ChevronRight size={16} className="text-gray-400" />
         <Link
           to={`/partner/catalog/categories/${category?.id}/brands`}
           state={{ category }}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-500 hover:text-gray-700 transition-colors"
         >
           {category?.name}
         </Link>
         <ChevronRight size={16} className="text-gray-400" />
         <Link
-          to={`/partner/catalog/brands/${brand?.id}/models`}
+          to={`/partner/catalog/categories/${category?.id}/brands/${brand?.id}/models`}
           state={{ category, brand }}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-500 hover:text-gray-700 transition-colors"
         >
           {brand?.name}
         </Link>
@@ -102,7 +272,7 @@ const LeadDetailPage: React.FC = () => {
         <Link
           to={`/partner/catalog/models/${model?.id}/leads`}
           state={{ category, brand, model }}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-500 hover:text-gray-700 transition-colors"
         >
           {model?.name}
         </Link>
@@ -324,7 +494,7 @@ const LeadDetailPage: React.FC = () => {
           {/* Claim Fee Info */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center space-x-2 mb-4">
-              <IndianRupee size={20} className="text-yellow-600" />
+              <IndianRupee size={20} className="text-[#FEC925]" />
               <h3 className="text-lg font-semibold text-gray-900">Claim Fee</h3>
             </div>
 
@@ -379,12 +549,22 @@ const LeadDetailPage: React.FC = () => {
           <button
             onClick={handleClaim}
             disabled={!lead.can_claim}
-            className="w-full py-4 bg-yellow-400 text-black font-bold text-lg rounded-xl hover:bg-yellow-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+            className="w-full py-4 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] font-bold text-lg rounded-xl transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
           >
             {lead.can_claim ? 'Claim This Lead →' : 'Lead Not Available'}
           </button>
         </div>
       </div>
+
+      {/* Claim Confirmation Modal */}
+      {showClaimModal && (
+        <ClaimConfirmationModal
+          lead={lead}
+          onConfirm={() => claimMutation.mutate()}
+          onCancel={() => setShowClaimModal(false)}
+          isLoading={claimMutation.isPending}
+        />
+      )}
     </div>
   );
 };

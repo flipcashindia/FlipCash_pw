@@ -1,81 +1,408 @@
-// src/api/services/visitsService.ts
+// // src/api/services/visitsService.ts
+// import { privateApiClient } from '../client/apiClient';
+// import { type VisitDetails, type VisitChecklistItem } from '../types/api';
+
+// /**
+//  * API 1.2 (Visits): Get Visit Details
+//  * GET /visits/{visit_id}/
+//  */
+// const getVisitDetails = async (visitId: string): Promise<VisitDetails> => {
+//   const { data } = await privateApiClient.get(`/visits/${visitId}/`); // [cite: 1.2]
+//   return data;
+// };
+
+// /**
+//  * API 2.4 (Leads): Check-in at Customer Location (Partner)
+//  * This is used to create the Visit object and get its ID.
+//  */
+// const checkIn = async (leadId: string): Promise<any> => {
+//   // We send 0,0 for lat/lon as this is a manual flow
+//   const payload = { latitude: "0.0", longitude: "0.0", notes: "Manual Check-in" }; // [cite: 2.4]
+//   const { data } = await privateApiClient.post(`/leads/partner/leads/${leadId}/checkin/`, payload); // [cite: 2.4]
+//   return data; // This response includes the visit object [cite: 2.4]
+// };
+
+// /**
+//  * API 1.5 (Visits): Verify Code (Partner)
+//  * POST /visits/{visit_id}/verify_code/
+//  */
+// const verifyVisitCode = async (visitId: string, code: string): Promise<any> => {
+//   // We send 0,0 for lat/lon as this is a manual flow
+//   const payload = { verification_code: code, latitude: "0.0", longitude: "0.0" }; // [cite: 1.5]
+//   const { data } = await privateApiClient.post(`/visits/${visitId}/verify_code/`, payload); // [cite: 1.5]
+//   return data;
+// };
+
+// /**
+//  * API 1.8 (Visits): Start Inspection (Partner)
+//  * POST /visits/{visit_id}/start_inspection/
+//  */
+// const startInspection = async (visitId: string): Promise<any> => {
+//   const payload = { customer_present: true, initial_notes: "Starting inspection" }; // [cite: 1.8]
+//   const { data } = await privateApiClient.post(`/visits/${visitId}/start_inspection/`, payload); // [cite: 1.8]
+//   return data;
+// };
+
+// /**
+//  * API 2.1 (Visits): Get Visit Checklist
+//  * GET /visits/{visit_id}/checklist/
+//  */
+// const getChecklist = async (visitId: string): Promise<VisitChecklistItem[]> => {
+//   const { data } = await privateApiClient.get(`/visits/${visitId}/checklist/`); // [cite: 2.1]
+//   return data.results; 
+// };
+
+// /**
+//  * API 2.2 (Visits): Update Checklist Item (Partner)
+//  * POST /visits/checklist/{item_id}/update/
+//  */
+// const updateChecklistItem = async (itemId: string, payload: { status: 'pass' | 'fail' | 'na', value?: string, notes: string }): Promise<VisitChecklistItem> => {
+//   const { data } = await privateApiClient.post(`/visits/checklist/${itemId}/update/`, payload); // [cite: 2.2]
+//   return data;
+// };
+
+// /**
+//  * API 1.9 (Visits): Complete Inspection (Partner)
+//  * POST /visits/{visit_id}/complete_inspection/
+//  */
+// const completeInspection = async (visitId: string, payload: { inspection_notes: string, partner_recommended_price: string }): Promise<any> => {
+//   const { data } = await privateApiClient.post(`/visits/${visitId}/complete_inspection/`, payload); // [cite: 1.9]
+//   return data;
+// };
+
+// export const visitsService = {
+//   getVisitDetails,
+//   checkIn,
+//   verifyVisitCode,
+//   startInspection,
+//   getChecklist,
+//   updateChecklistItem,
+//   completeInspection,
+// };
+
+
+
+// src/api/services/visitService.ts
+/**
+ * Visit Management Service
+ * Handles visit workflow from start to completion
+ * 
+ * USES: privateApiClient with Zustand auth store
+ */
+
 import { privateApiClient } from '../client/apiClient';
-import { type VisitDetails, type VisitChecklistItem } from '../types/api';
+import type { AxiosResponse } from 'axios';
 
-/**
- * API 1.2 (Visits): Get Visit Details
- * GET /visits/{visit_id}/
- */
-const getVisitDetails = async (visitId: string): Promise<VisitDetails> => {
-  const { data } = await privateApiClient.get(`/visits/${visitId}/`); // [cite: 1.2]
-  return data;
-};
+// ============================================================================
+// TYPES
+// ============================================================================
 
-/**
- * API 2.4 (Leads): Check-in at Customer Location (Partner)
- * This is used to create the Visit object and get its ID.
- */
-const checkIn = async (leadId: string): Promise<any> => {
-  // We send 0,0 for lat/lon as this is a manual flow
-  const payload = { latitude: "0.0", longitude: "0.0", notes: "Manual Check-in" }; // [cite: 2.4]
-  const { data } = await privateApiClient.post(`/leads/partner/leads/${leadId}/checkin/`, payload); // [cite: 2.4]
-  return data; // This response includes the visit object [cite: 2.4]
-};
+export const VisitStatus = {
+  SCHEDULED: 'scheduled',
+  EN_ROUTE: 'en_route',
+  ARRIVED: 'arrived',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  NO_SHOW: 'no_show',
+} as const;
 
-/**
- * API 1.5 (Visits): Verify Code (Partner)
- * POST /visits/{visit_id}/verify_code/
- */
-const verifyVisitCode = async (visitId: string, code: string): Promise<any> => {
-  // We send 0,0 for lat/lon as this is a manual flow
-  const payload = { verification_code: code, latitude: "0.0", longitude: "0.0" }; // [cite: 1.5]
-  const { data } = await privateApiClient.post(`/visits/${visitId}/verify_code/`, payload); // [cite: 1.5]
-  return data;
-};
+export type VisitStatus = typeof VisitStatus[keyof typeof VisitStatus];
 
-/**
- * API 1.8 (Visits): Start Inspection (Partner)
- * POST /visits/{visit_id}/start_inspection/
- */
-const startInspection = async (visitId: string): Promise<any> => {
-  const payload = { customer_present: true, initial_notes: "Starting inspection" }; // [cite: 1.8]
-  const { data } = await privateApiClient.post(`/visits/${visitId}/start_inspection/`, payload); // [cite: 1.8]
-  return data;
-};
+export interface Visit {
+  id: string;
+  visit_number: string;
+  lead_number: string;
+  customer_name: string;
+  customer_phone: string;
+  device_name: string;
+  partner_name: string;
+  scheduled_date: string;
+  scheduled_time_slot: string;
+  status: VisitStatus;
+  status_display: string;
+  is_code_verified: boolean;
+  can_verify: boolean;
+  created_at: string;
+}
 
-/**
- * API 2.1 (Visits): Get Visit Checklist
- * GET /visits/{visit_id}/checklist/
- */
-const getChecklist = async (visitId: string): Promise<VisitChecklistItem[]> => {
-  const { data } = await privateApiClient.get(`/visits/${visitId}/checklist/`); // [cite: 2.1]
-  return data.results; 
-};
 
-/**
- * API 2.2 (Visits): Update Checklist Item (Partner)
- * POST /visits/checklist/{item_id}/update/
- */
-const updateChecklistItem = async (itemId: string, payload: { status: 'pass' | 'fail' | 'na', value?: string, notes: string }): Promise<VisitChecklistItem> => {
-  const { data } = await privateApiClient.post(`/visits/checklist/${itemId}/update/`, payload); // [cite: 2.2]
-  return data;
-};
+export interface VerificationCodeResponse {
+  verification_code: string;
+  expires_at: string;
+  is_expired: boolean;
+  can_verify: boolean;
+  visit_number: string;
+  partner_name: string;
+  scheduled_date: string;
+  scheduled_time_slot: string;
+}
 
-/**
- * API 1.9 (Visits): Complete Inspection (Partner)
- * POST /visits/{visit_id}/complete_inspection/
- */
-const completeInspection = async (visitId: string, payload: { inspection_notes: string, partner_recommended_price: string }): Promise<any> => {
-  const { data } = await privateApiClient.post(`/visits/${visitId}/complete_inspection/`, payload); // [cite: 1.9]
-  return data;
-};
+export interface VerifyCodeRequest {
+  code: string;
+}
 
-export const visitsService = {
-  getVisitDetails,
-  checkIn,
-  verifyVisitCode,
-  startInspection,
-  getChecklist,
-  updateChecklistItem,
-  completeInspection,
-};
+export interface VerifyCodeResponse {
+  success: boolean;
+  message: string;
+  verified_at?: string;
+  can_start_inspection?: boolean;
+  attempts_remaining?: number;
+}
+
+export interface StartVisitRequest {
+  notes?: string;
+}
+
+export interface StartVisitResponse {
+  message: string;
+  status: string;
+  started_at: string;
+}
+
+export interface ChecklistItem {
+  item_name: string;
+  category: string;
+  status: 'pass' | 'fail' | 'na';
+  notes?: string;
+  photo_url?: string;
+  details?: Record<string, any>;
+}
+
+export interface CompleteInspectionRequest {
+  inspection_notes: string;
+  inspection_photos: string[];
+  verified_imei: string;
+  imei_matches: boolean;
+  device_powers_on: boolean;
+  partner_assessment: Record<string, any>;
+  partner_recommended_price: string;
+  checklist_items?: ChecklistItem[];
+}
+
+export interface CompleteInspectionResponse {
+  message: string;
+  inspection_completed_at: string;
+  partner_recommended_price: string;
+}
+
+export interface CancelVisitRequest {
+  reason: string;
+}
+
+export interface CancelVisitResponse {
+  message: string;
+  cancelled_at: string;
+}
+
+export interface VisitTimeline {
+  id: string;
+  old_status: string;
+  old_status_display: string;
+  new_status: string;
+  new_status_display: string;
+  changed_by: string | null;
+  changed_by_name: string | null;
+  reason: string;
+  metadata: Record<string, any>;
+  timestamp: string;
+}
+
+export interface ChecklistSummary {
+  total: number;
+  pass: number;
+  fail: number;
+  na: number;
+}
+
+export interface VisitDetail extends Visit {
+  lead: any; // Full lead object
+  partner: any; // Full partner object
+  verification_code_masked: string;
+  verification_code_expires_at: string;
+  verified_at: string | null;
+  verification_attempts: number;
+  max_verification_attempts: number;
+  is_code_expired: boolean;
+  partner_started_at: string | null;
+  arrived_at: string | null;
+  inspection_started_at: string | null;
+  inspection_completed_at: string | null;
+  actual_end_time: string | null;
+  travel_time_minutes: number | null;
+  inspection_duration_minutes: number | null;
+  total_visit_duration_minutes: number | null;
+  inspection_notes: string;
+  inspection_photos: string[];
+  verified_imei: string;
+  imei_matches: boolean | null;
+  device_powers_on: boolean | null;
+  partner_assessment: Record<string, any>;
+  partner_recommended_price: string | null;
+  customer_present: boolean;
+  customer_signature_url: string;
+  checklist_summary: ChecklistSummary;
+  updated_at: string;
+}
+
+// ============================================================================
+// SERVICE
+// ============================================================================
+
+export class VisitService {
+  private readonly baseUrl = '/visits';
+
+  /**
+   * List all visits (filtered by user role)
+   */
+  async listVisits(params?: Record<string, any>): Promise<Visit[]> {
+    const response: AxiosResponse<Visit[]> = await privateApiClient.get(this.baseUrl, {
+      params,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get visit details
+   */
+  async getVisit(visitId: string): Promise<VisitDetail> {
+    const response: AxiosResponse<VisitDetail> = await privateApiClient.get(
+      `${this.baseUrl}/${visitId}/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get verification code (customer only)
+   */
+  async getVerificationCode(
+    visitId: string
+  ): Promise<VerificationCodeResponse> {
+    const response: AxiosResponse<VerificationCodeResponse> = await privateApiClient.get(
+      `${this.baseUrl}/${visitId}/verification_code/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Verify arrival code (partner only)
+   */
+  async verifyCode(
+    visitId: string,
+    data: VerifyCodeRequest
+  ): Promise<VerifyCodeResponse> {
+    const response: AxiosResponse<VerifyCodeResponse> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/verify_code/`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Regenerate verification code (customer only)
+   */
+  async regenerateCode(
+    visitId: string,
+    reason?: string
+  ): Promise<VerificationCodeResponse> {
+    const response: AxiosResponse<VerificationCodeResponse> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/regenerate_code/`,
+      { reason: reason || '' }
+    );
+    return response.data;
+  }
+
+  /**
+   * Start visit (partner marks en route)
+   */
+  async startVisit(
+    visitId: string,
+    data?: StartVisitRequest
+  ): Promise<StartVisitResponse> {
+    const response: AxiosResponse<StartVisitResponse> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/start/`,
+      data || {}
+    );
+    return response.data;
+  }
+
+  /**
+   * Start inspection (after arrival verification)
+   */
+  async startInspection(visitId: string): Promise<{ message: string }> {
+    const response: AxiosResponse<{ message: string }> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/start_inspection/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Complete inspection and submit results
+   */
+  async completeInspection(
+    visitId: string,
+    data: CompleteInspectionRequest
+  ): Promise<CompleteInspectionResponse> {
+    const response: AxiosResponse<CompleteInspectionResponse> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/complete_inspection/`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Cancel visit
+   */
+  async cancelVisit(
+    visitId: string,
+    data: CancelVisitRequest
+  ): Promise<CancelVisitResponse> {
+    const response: AxiosResponse<CancelVisitResponse> = await privateApiClient.post(
+      `${this.baseUrl}/${visitId}/cancel/`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Get visit timeline (status logs)
+   */
+  async getTimeline(visitId: string): Promise<VisitTimeline[]> {
+    const response: AxiosResponse<VisitTimeline[]> = await privateApiClient.get(
+      `${this.baseUrl}/${visitId}/timeline/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get verification checklist
+   */
+  async getChecklist(visitId: string): Promise<ChecklistItem[]> {
+    const response: AxiosResponse<ChecklistItem[]> = await privateApiClient.get(
+      `${this.baseUrl}/${visitId}/checklist/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get upcoming visits
+   */
+  async getUpcomingVisits(): Promise<Visit[]> {
+    const response: AxiosResponse<Visit[]> = await privateApiClient.get(
+      `${this.baseUrl}/upcoming/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get visit statistics
+   */
+  async getStats(): Promise<Record<string, any>> {
+    const response: AxiosResponse<Record<string, any>> = await privateApiClient.get(
+      `${this.baseUrl}/stats/`
+    );
+    return response.data;
+  }
+}
+
+export const visitService = new VisitService();

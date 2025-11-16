@@ -181,10 +181,11 @@ export const catalogService = {
     return data;
   },
 
-  async getModels(brandId: string): Promise<PaginatedResponse<Model>> {
+  async getModels(categoryId: string, brandId: string): Promise<PaginatedResponse<Model>> {
     const { data } = await privateApiClient.get(
-      `/partner/browse/brands/${brandId}/models/`
+      `/partner/browse/categories/${categoryId}/brands/${brandId}/models/`
     );
+    console.log("brand's models data : ", data);
     console.log('models data : ', data);
 
     return data;
@@ -194,6 +195,7 @@ export const catalogService = {
     const { data } = await privateApiClient.get(
       `/partner/browse/models/${modelId}/leads/`
     );
+    console.log('Models leads data : ', data);
     console.log('Leads data : ', data);
 
     return data;

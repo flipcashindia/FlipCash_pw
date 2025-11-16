@@ -4,7 +4,7 @@ import { usePartnerStore } from '../stores/partnerStore';
 // import { handleApiError } from '../utils/errorHandler';
 
 export const usePartner = () => {
-  const { partner, metrics, isLoading, error,  } = usePartnerStore();  //setPartner, setMetrics, setLoading, setError
+  const { partner, metrics, isLoading, error,  } = usePartnerStore();  //
 
   // const loadProfile = async () => {
   //   try {

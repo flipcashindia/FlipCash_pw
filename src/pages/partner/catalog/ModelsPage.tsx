@@ -14,15 +14,17 @@ import { catalogService, type Model, type Category, type Brand } from '../../../
 
 const ModelsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { brandId } = useParams<{ brandId: string }>();
+  // UPDATED: Get both categoryId and brandId from params
+  const { categoryId, brandId } = useParams<{ categoryId: string; brandId: string }>();
   const location = useLocation();
   const category = location.state?.category as Category | undefined;
   const brand = location.state?.brand as Brand | undefined;
 
+  // UPDATED: Pass both IDs to the query
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['catalog', 'models', brandId],
-    queryFn: () => catalogService.getModels(brandId!),
-    enabled: !!brandId,
+    queryKey: ['catalog', 'models', categoryId, brandId],
+    queryFn: () => catalogService.getModels(categoryId!, brandId!),
+    enabled: !!(categoryId && brandId),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -33,6 +35,7 @@ const ModelsPage: React.FC = () => {
     });
   };
 
+  // ... rest of the component remains the same
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
