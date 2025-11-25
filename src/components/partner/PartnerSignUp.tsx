@@ -7,10 +7,10 @@ import { Loader2, ArrowRight, CheckCircle, UserCheck, Building, ShieldCheck } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { useModalStore } from '../../stores/useModalStore';
 import { useAuthStore } from '../../stores/authStore';
-import { authService } from '../../api/services/authService2'; // <-- 2. Import Auth Service (for login)
-import { partnerService } from '../../api/services/partnerService'; // <-- 3. Import Partner Service (for signup)
-import {  type PartnerSignupCompleteRequest } from '../../api/types/api';
-import { handleApiError } from '../../utils/handleApiError'; // <-- Import the error handler
+import { authService } from '../../api/services/authService2';
+import { partnerService } from '../../api/services/partnerService';
+import { type PartnerSignupCompleteRequest } from '../../api/types/api';
+import { handleApiError } from '../../utils/handleApiError';
 
 // --- Helper: Get Device ID ---
 const getOrCreateDeviceID = (): string => {
@@ -161,6 +161,7 @@ const PartnerSignUp: React.FC = () => {
 
   const [step, setStep] = useState<'phone' | 'otp' | 'details' | 'success'>('phone');
   const [loading, setLoading] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -174,9 +175,9 @@ const PartnerSignUp: React.FC = () => {
     pincode: '',
   });
 
-  // This hook auto-skips steps if logged in
+  // This hook only handles INITIAL load - check if user is already logged in
   useEffect(() => {
-    if (isAuthLoading) return; 
+    if (isAuthLoading || initialCheckDone) return;
 
     if (isAuthenticated() && user) {
       if (user.role === 'partner') {
@@ -192,13 +193,12 @@ const PartnerSignUp: React.FC = () => {
         }));
         setStep('details');
       }
-    } else {
-      // Not logged in, start at step 1
-      setStep('phone');
     }
-  }, [isAuthenticated, user, isAuthLoading, navigate, toast]);
+    
+    setInitialCheckDone(true);
+  }, [isAuthenticated, user, isAuthLoading, navigate, toast, initialCheckDone]);
 
-
+  
   // Centralized handler
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -219,10 +219,9 @@ const PartnerSignUp: React.FC = () => {
     }
     setLoading(true);
     try {
-      // Call the main login OTP service
       const response = await authService.sendLoginOtp({ phone: formData.phone, purpose: 'login' }); 
-      setStep('otp');
       toast.success(response.detail);
+      setStep('otp'); // Explicitly move to OTP step
     } catch (err: any) {
       toast.error(handleApiError(err));
     } finally {
@@ -244,12 +243,30 @@ const PartnerSignUp: React.FC = () => {
       // This calls the login function from useAuthStore
       await login(formData.phone, formData.otp, deviceId); 
 
+      // After successful login, get the updated user from the store
+      const currentUser = useAuthStore.getState().user;
+      
+      if (currentUser) {
+        // Auto-fill form with user data
+        setFormData(prev => ({
+          ...prev,
+          full_name: currentUser.name || '',
+          email: currentUser.email || '',
+        }));
+
+        // Check if user is already a partner
+        if (currentUser.role === 'partner') {
+          toast.info("You are already a partner. Redirecting to dashboard...");
+          navigate('/partner/dashboard');
+          return;
+        }
+      }
+
       toast.success("Phone Verified! Please complete your details.");
-      // The useEffect will now detect the user is logged in
-      // and automatically move to step 'details'.
+      setStep('details'); // Explicitly move to details step
       
     } catch (err: any) {
-      toast.error(handleApiError(err)); //
+      toast.error(handleApiError(err));
     } finally {
       setLoading(false);
     }
@@ -267,20 +284,16 @@ const PartnerSignUp: React.FC = () => {
 
     setLoading(true);
     try {
-      // Payload for the new authenticated endpoint
-      // We don't send 'phone' as the backend gets it from the auth token
       const payload: Omit<PartnerSignupCompleteRequest, 'phone'> = {
         full_name: formData.full_name,
         email: formData.email || undefined,
         business_name: formData.business_name,
-        // Send business_type if it's in your form/model
         business_type: formData.business_type as PartnerSignupCompleteRequest['business_type'],
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
       };
 
-      // Call the new, private API
       const response = await partnerService.completeSignup(payload);
       
       // Manually update the auth store with the NEW user object and tokens
@@ -288,7 +301,7 @@ const PartnerSignUp: React.FC = () => {
       setUser(response.data.user);
 
       toast.success(response.message);
-      setStep('success'); // Go to the final success step
+      setStep('success'); // Explicitly move to success step
       
     } catch (err: any) {
       toast.error(handleApiError(err));
@@ -298,10 +311,10 @@ const PartnerSignUp: React.FC = () => {
   };
 
   const renderStep = () => {
-    if (isAuthLoading) {
+    if (isAuthLoading && !initialCheckDone) {
       return (
         <div className="flex justify-center py-20">
-          <Loader2 className="w-12 h-12 animate-spin text-brand-yellow" />
+          <Loader2 className="w-12 h-12 animate-spin text-[#FEC925]" />
         </div>
       );
     }
@@ -314,6 +327,7 @@ const PartnerSignUp: React.FC = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.3 }}
             onSubmit={handleRequestOTP}
             className="space-y-6"
           >
@@ -335,6 +349,7 @@ const PartnerSignUp: React.FC = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.3 }}
             onSubmit={handleVerifyOTP}
             className="space-y-6"
           >
@@ -359,6 +374,7 @@ const PartnerSignUp: React.FC = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.3 }}
             onSubmit={handleRegister}
             className="space-y-6"
           >
@@ -373,7 +389,7 @@ const PartnerSignUp: React.FC = () => {
             />
             <FormInput
               label="Email Address"
-              type="email" name="email" // Email is optional
+              type="email" name="email"
               value={formData.email} onChange={handleChange}
               placeholder="e.g., ramesh@example.com"
             />
@@ -388,7 +404,6 @@ const PartnerSignUp: React.FC = () => {
               isRequired name="business_type"
               value={formData.business_type} onChange={handleChange}
             >
-              {/* These values now match your backend view/serializer */}
               <option value="individual">Individual</option>
               <option value="proprietorship">Proprietorship</option>
               <option value="partnership">Partnership</option>
@@ -431,7 +446,7 @@ const PartnerSignUp: React.FC = () => {
           {/* --- Promo Column --- */}
           <div className="hidden md:flex flex-col justify-center p-12 bg-gradient-to-br from-[#1C1C1B] to-[#3a3a3a]">
             <h2 className="text-3xl font-bold text-white mb-6">
-              Join the <span className="text-[#FEC925]">Flip Cash</span> Partner Network
+              Join the <span className="text-[#FEC925]">FlipCash</span> Partner Network
             </h2>
             <p className="text-gray-300 mb-8">
               Get access to hundreds of leads in your area, manage your pickups, and grow your business—all in one place.

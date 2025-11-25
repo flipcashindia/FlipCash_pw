@@ -54,7 +54,7 @@ const PartnerPaymentCallbackPage: React.FC = () => {
 
     try {
       const result = await paymentApi.verifyPayment(orderId);
-      
+      console.log('payment success result : ', result)
       if (IS_LOCALHOST) {
         console.log('📋 Verify Payment API Response:', result);
         console.log('📋 Response keys:', Object.keys(result || {}));
@@ -63,7 +63,7 @@ const PartnerPaymentCallbackPage: React.FC = () => {
       if (!result) {
         throw new Error('Empty response from payment verification');
       }
-
+      console.log('payment success result : ', result)
       setPaymentData(result);
 
       // Get status from various possible field names

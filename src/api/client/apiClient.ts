@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../../stores/authStore';
 
 // Get API base URL from environment variables
-const API_BASE_URL = 'http://localhost:8000/api/v1' //|| import.meta.env.VITE_API_BASE_URL || 'https://api.flipcash.in/api/v1';
+const API_BASE_URL =  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1' // 'https://api.flipcash.in/api/v1';
 
 /**
  * Public Client
