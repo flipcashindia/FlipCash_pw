@@ -134,7 +134,7 @@ export interface WalletStats {
 // ============================================================================
 
 class WalletService {
-  private readonly baseUrl = '/wallet';
+  private readonly baseUrl = '/finance';
 
   /**
    * Get wallet details
@@ -143,6 +143,7 @@ class WalletService {
     const response: AxiosResponse<Wallet> = await privateApiClient.get(
       `${this.baseUrl}/`
     );
+    console.log('wallet balance : ', response)
     return response.data;
   }
 
@@ -151,7 +152,7 @@ class WalletService {
    */
   async getBalance(): Promise<{ balance: string; available_balance: string }> {
     const response: AxiosResponse<{ balance: string; available_balance: string }> = 
-      await privateApiClient.get(`${this.baseUrl}/balance/`);
+      await privateApiClient.get(`${this.baseUrl}/wallet/balance/`);
     return response.data;
   }
 

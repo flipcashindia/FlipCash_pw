@@ -1,12 +1,12 @@
 // src/pages/partner/PartnerWalletPage.tsx
 import React, { useState } from 'react';
 import { usePartnerStore } from '../../stores/usePartnerStore';
-import { Loader2, Wallet } from 'lucide-react'; // Added Wallet icon
+import { Loader2, Wallet } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { financeService } from '../../api/services/financeService';
-import { TopUpModal } from './TopUpModal'; // <-- Import new modal
-import { AnimatePresence } from 'framer-motion'; // <-- Import AnimatePresence
+import { TopUpModal } from './TopUpModal';
+import { AnimatePresence } from 'framer-motion';
 
 export const PartnerWalletPage: React.FC = () => {
   const { partner, isLoading: isPartnerLoading } = usePartnerStore();
@@ -25,6 +25,9 @@ export const PartnerWalletPage: React.FC = () => {
   const isLoading = isPartnerLoading || isAuthLoading;
   
   const wallet = partner?.wallet;
+
+  // Safe access to transactions results
+  const transactionResults = transactions?.results || [];
 
   if (isLoading) {
     return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-yellow" /></div>;
@@ -65,10 +68,12 @@ export const PartnerWalletPage: React.FC = () => {
             <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {transactions?.results.length === 0 && (
+              {/* ✅ FIXED: Safe length check */}
+              {transactionResults.length === 0 && (
                 <p className="text-gray-500 text-center py-10">No transactions found.</p>
               )}
-              {transactions?.results.map(tx => (
+              {/* ✅ FIXED: Safe map over array */}
+              {transactionResults.map(tx => (
                 <div key={tx.id} className="flex justify-between items-center p-3 bg-brand-gray-light/50 rounded-lg">
                   <div>
                     <p className="font-semibold capitalize">{tx.category}: {tx.description}</p>

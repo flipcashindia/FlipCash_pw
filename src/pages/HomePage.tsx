@@ -6,8 +6,8 @@ import React from 'react';
 // import CustomerReviews from '../components/misc/CustomerReviews';
 // import TopBrands from '../components/misc/TopBrands';
 // import BlogSlider from '../components/misc/BlogSlider';
-import FAQSection from '../components/misc/FAQSection';
-import HeroBanner from '../components/HeroBanner';
+import FAQSection from './FAQPage'
+import HeroBanner from '../components/HeroBanner'
 import PartnerBenefitsSection from '../components/PartnerBenefitsSection';
 import BlogSlider from '../components/BlogSlider';
 import DownloadAppBanner from '../components/DownloadAppBanner';

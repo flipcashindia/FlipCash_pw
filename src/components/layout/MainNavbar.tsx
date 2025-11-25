@@ -1,7 +1,7 @@
 // src/components/layout/MainNavbar.tsx
 import React, { useState } from "react";
 import { Search, User, Menu, X, LogOut } from "lucide-react";
-import flipcashLogo from '../../../public/flipcash_header_logo.jpeg';
+import flipcashLogo from '../../../public/flipcash_header_logo.png';
 import { motion, AnimatePresence } from "framer-motion";
 import SearchModal from "../misc/SearchModal";
 import AuthModal from "../auth/AuthModal";
@@ -13,7 +13,7 @@ import { useModalStore } from "../../stores/useModalStore";
 const Logo = () => (
   <div className="flex items-center shrink-0">
     <Link to="/" className="flex items-center space-x-2">
-      <img src={flipcashLogo} alt="Flipcash Logo" className="w-34 h-20 rounded-lg" />
+      <img src={flipcashLogo} alt="Flipcash Logo" className="h-20 p-3 rounded-lg" />
     </Link>
   </div>
 );
