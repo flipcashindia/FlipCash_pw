@@ -63,21 +63,21 @@ export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile 
   const [isRefetching, setIsRefetching] = useState(false);
 
   // 1. Get User KYC Status
-  const kycStatus = user.kyc_status; //
+  const kycStatus = user.kyc_status || 'pending'; //
   const isKycDone = kycStatus === 'verified';
   const kycStatusText = {
     pending: 'Pending',
     in_review: 'In Review',
     verified: 'Verified',
     rejected: 'Rejected',
-  }[kycStatus] || 'Pending';
+  }[kycStatus];
   
   const kycStatusColor = {
     pending: 'text-brand-yellow', //
     in_review: 'text-blue-500',
     verified: 'text-brand-green', //
     rejected: 'text-brand-red', //
-  }[kycStatus] || 'text-brand-yellow';
+  }[kycStatus];
 
   const allDone = isKycDone && checklist.bank.isDone && checklist.docs.isDone && checklist.area.isDone;
 

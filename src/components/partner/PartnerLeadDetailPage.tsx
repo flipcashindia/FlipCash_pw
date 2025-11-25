@@ -1,610 +1,1313 @@
-// src/pages/partner/PartnerLeadDetailPage.tsx
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { leadsService } from '../../api/services/leadsService';
-import { visitService } from '../../api/services/visitsService';
-import { Loader2, Phone, MapPin, CheckCircle, ArrowLeft, Wallet, AlertCircle, X } from 'lucide-react';
-import { useToast } from '../../contexts/ToastContext';
-import { type LeadDetails } from '../../api/types/api';
-import { handleApiError } from '../../utils/handleApiError';
-import { privateApiClient } from '../../api/client/apiClient';
+// src/pages/partner/PartnerLeadDetailPage.tsx - Complete Partner Lead Detail with Chat & Disputes
+// Follows backend API structure exactly - uses correct field names (line1, line2, postal_code)
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { 
+  ArrowLeft, Loader2, AlertTriangle, X, Wallet, MapPin, User, CheckCircle,
+  Tag, MessageSquare, Activity, Phone, Clock, Navigation, Eye, EyeOff,
+  Smartphone, DollarSign, Send, Play, ChevronRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../../stores/authStore';
 
-// --- Claim Confirmation Modal Component ---
-const ClaimConfirmationModal: React.FC<{
-  lead: LeadDetails;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}> = ({ lead, onConfirm, onCancel, isLoading }) => {
-  const claimFee = 50; // ₹50 claim fee
-  const estimatedPrice = parseFloat(lead.estimated_price || '0');
-  const totalDeduction = claimFee + estimatedPrice;
+// Import components
+import PartnerLeadChat from '../../components/leads/PartnerLeadChat';
+import PartnerRaiseDisputeModal from '../dispute/PartneRaiseDisputeModal'
+import PartnerLeadDisputesSection from '../../components/leads/PartnerLeadDisputesSection';
+import LeadStatusHistory from '../../components/leads/LeadStatusHistory';
+// import { leadsService } from '../../api/services/leadsService';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
-        {/* Close Button */}
-        <button
-          onClick={onCancel}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-        >
-          <X size={24} />
-        </button>
+// FlipCash Color Theme
+// const COLORS = {
+//   primary: '#FEC925',
+//   success: '#1B8A05',
+//   error: '#FF0000',
+//   black: '#1C1C1B',
+//   greyLight: '#F5F5F5'
+// };
 
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-[#1C1C1B] mb-2">Claim Lead</h2>
-          <p className="text-gray-600">Review the details before claiming this lead</p>
-        </div>
+// ============ Interfaces ============
+interface LeadUser {
+  id: string;
+  phone: string;
+  name: string;
+  email: string;
+}
 
-        {/* Device Info */}
-        <div className="bg-[#F5F5F5] rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-[#1C1C1B] mb-2">{lead.device_model.name}</h3>
-          <p className="text-sm text-gray-600">Lead #{lead.lead_number}</p>
-        </div>
+interface DeviceModel {
+  id: string;
+  name: string;
+  brand_name?: string;
+}
 
-        {/* Wallet Breakdown */}
-        <div className="bg-yellow-50 border-2 border-[#FEC925] rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Wallet className="w-5 h-5 text-[#1C1C1B]" />
-            <h3 className="font-semibold text-[#1C1C1B]">Wallet Deductions</h3>
-          </div>
-          
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-700">Claim Fee (non-refundable)</span>
-              <span className="font-semibold text-red-600">-₹{claimFee}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-700">Amount Blocked (refundable)</span>
-              <span className="font-semibold text-[#FEC925]">-₹{estimatedPrice.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="border-t border-gray-300 pt-2 flex justify-between">
-              <span className="font-semibold text-gray-900">Total Deduction</span>
-              <span className="font-bold text-[#1C1C1B]">₹{totalDeduction.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-        </div>
+interface PickupAddress {
+  id: string;
+  line1: string;        // ✅ Correct field name from backend
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;  // ✅ Correct field name from backend
+  landmark?: string;
+}
 
-        {/* Important Notes */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-            <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-1">Important:</p>
-              <ul className="list-disc list-inside space-y-1 text-blue-800">
-                <li>₹50 claim fee is non-refundable</li>
-                <li>₹{estimatedPrice.toLocaleString('en-IN')} will be blocked until visit completion</li>
-                <li>Customer details will be revealed after claiming</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+interface AssignedPartner {
+  id: string;
+  business_name: string;
+  contact_person: string;
+  phone: string;
+}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex-1 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Claiming...</span>
-              </>
-            ) : (
-              'Confirm & Claim'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+interface LeadOffer {
+  id: string;
+  lead: string;
+  lead_number: string;
+  partner: string;
+  partner_name: string;
+  system_calculated_price: string;
+  partner_offered_price: string;
+  price_deviation_percentage: string;
+  partner_notes: string;
+  inspection_findings: string;
+  inspection_photos: string[];
+  status: string;
+  status_display: string;
+  customer_response: string;
+  is_expired: boolean;
+  created_at: string;
+  expires_at: string;
+  responded_at: string | null;
+}
+
+interface LeadDetail {
+  id: string;
+  lead_number: string;
+  user: LeadUser;
+  device_model: DeviceModel | null;  // Can be null
+  brand_name: string;
+  storage: string;
+  ram: string;
+  color: string;
+  imei_primary: string;
+  condition_responses: Record<string, any>;
+  device_photos: { url: string; description: string }[];
+  estimated_price: string;
+  quoted_price: string | null;
+  final_price: string | null;
+  status: string;
+  status_display: string;
+  assigned_partner: AssignedPartner | null;
+  pickup_address: PickupAddress;
+  preferred_date: string;
+  preferred_time_slot: string;
+  customer_notes: string;
+  created_at: string;
+  updated_at: string;
+  messages_count: number;
+  offers_count: number;
+  unread_messages_count: number;
+}
+
+interface VisitDetails {
+  id: string;
+  visit_number: string;
+  verification_code: string;
+  status: string;
+  check_in_time: string | null;
+  check_out_time: string | null;
+}
+
+interface WalletInfo {
+  current_balance: string;
+  blocked_amount: string;
+  available_balance: string;
+}
+
+// ============ Status Colors ============
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'booked': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
+  'partner_assigned': { bg: 'bg-[#FEC925]/20', text: 'text-[#b48f00]', border: 'border-[#FEC925]' },
+  'en_route': { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' },
+  'checked_in': { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200' },
+  'inspecting': { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
+  'offer_made': { bg: 'bg-[#FEC925]/30', text: 'text-[#b48f00]', border: 'border-[#FEC925]' },
+  'negotiating': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' },
+  'accepted': { bg: 'bg-[#1B8A05]/20', text: 'text-[#1B8A05]', border: 'border-[#1B8A05]' },
+  'payment_processing': { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-200' },
+  'completed': { bg: 'bg-[#1B8A05]/30', text: 'text-[#1B8A05]', border: 'border-[#1B8A05]' },
+  'cancelled': { bg: 'bg-[#FF0000]/10', text: 'text-[#FF0000]', border: 'border-[#FF0000]' },
+  'disputed': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' },
+  'expired': { bg: 'bg-gray-200', text: 'text-gray-600', border: 'border-gray-300' }
 };
 
-// --- Main Page Component ---
+// ============ Lead Status Constants ============
+const LeadStatus = {
+  BOOKED: 'booked',
+  PARTNER_ASSIGNED: 'partner_assigned',
+  EN_ROUTE: 'en_route',
+  CHECKED_IN: 'checked_in',
+  INSPECTING: 'inspecting',
+  OFFER_MADE: 'offer_made',
+  NEGOTIATING: 'negotiating',
+  ACCEPTED: 'accepted',
+  PAYMENT_PROCESSING: 'payment_processing',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  DISPUTED: 'disputed',
+  EXPIRED: 'expired'
+};
+
+
+
+
+// ============ Main Component ============
 export const PartnerLeadDetailPage: React.FC = () => {
-  const { id: leadId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const toast = useToast();
-  const queryClient = useQueryClient();
-  const [showClaimModal, setShowClaimModal] = useState(false);
+  // const { leadId } = useParams<{ leadId: string }>();
+  const { id: leadId } = useParams<{ id: string }>();
 
   if (!leadId) {
     navigate('/partner/leads/my');
     return null;
   }
 
-  // Fetch lead details
-  const { data: lead, isLoading, isError, refetch } = useQuery({
-    queryKey: ['leadDetails', leadId],
-    queryFn: () => leadsService.getLeadDetails(leadId),
-  });
-
-  // --- ACTIONS (Mutations) ---
-  const claimMutation = useMutation({
-    mutationFn: async () => {
-      // Call the claim endpoint
-      const response = await privateApiClient.post(`/leads/${leadId}/claim/`);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setShowClaimModal(false);
-      toast.success(data.message || 'Lead claimed successfully!');
-      
-      // Refetch lead details
-      refetch();
-      
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ['availableLeads'] });
-      queryClient.invalidateQueries({ queryKey: ['myLeads'] });
-      queryClient.invalidateQueries({ queryKey: ['partner-visits'] });
-      
-      // Navigate to claimed lead detail page if visit was created
-      if (data.visit_id || data.visit_number) {
-        setTimeout(() => {
-          navigate(`/partner/my-leads/${data.visit_number || data.lead_number}`, {
-            state: { leadId: leadId }
-          });
-        }, 1500);
-      }
-    },
-    onError: (error: any) => {
-      setShowClaimModal(false);
-      toast.error(handleApiError(error));
-    }
-  });
+  // State
+  const [leadDetails, setLeadDetails] = useState<LeadDetail | null>(null);
+  const [visitDetails, setVisitDetails] = useState<VisitDetails | null>(null);
+  const [offers, setOffers] = useState<LeadOffer[]>([]);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingOffers, setLoadingOffers] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const startVisitMutation = useMutation({
-    mutationFn: (visitId: string) => visitService.startVisit(visitId),
-    onSuccess: (data) => {
-      toast.success(data.message || 'Journey started!');
-      refetch();
-    },
-    onError: (error: any) => {
-      toast.error(handleApiError(error));
-    }
-  });
+  // Modal states
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  
+  // Claim modal state
+  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
+  
+  // Action states
+  const [actionLoading, setActionLoading] = useState(false);
+  
+  // Make offer state
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [offerNotes, setOfferNotes] = useState('');
+  const [inspectionFindings, setInspectionFindings] = useState('');
 
-  const renderActionCard = () => {
-    if (!lead) return null;
-    
-    // 1. Not claimed yet 
-    if (lead.status === 'booked') { 
-      return (
-        <div className="bg-[#FEC925] bg-opacity-10 p-6 rounded-lg border-2 border-[#FEC925]">
-          <h3 className="text-xl font-semibold text-[#1C1C1B] mb-4">Claim this Lead</h3>
-          <p className="text-gray-600 mb-4">
-            You will be charged a ₹50 claim fee (non-refundable) and ₹{parseFloat(lead.estimated_price || '0').toLocaleString('en-IN')} 
-            will be blocked in your wallet. Customer contact details will be revealed after you claim.
-          </p>
-          <button
-            onClick={() => setShowClaimModal(true)}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-xl font-bold text-lg transition-colors"
-          >
-            Claim this Lead
-          </button>
-        </div>
-      );
+  // ============ Load Data ============
+  useEffect(() => {
+    if (!leadId) {
+      setError("No lead ID provided");
+      setLoading(false);
+      return;
     }
-    
-    // 2. Claimed, but not started journey (status: scheduled)
-    if (lead.status === 'scheduled') {
-      const visitId = lead.visit?.id;
-      return (
-        <div className="bg-[#F5F5F5] p-6 rounded-lg">
-          <h3 className="text-xl font-semibold text-[#1C1C1B] mb-4">Next Step: Start Journey</h3>
-          <p className="text-gray-600 mb-4">You have claimed this lead. Click below when you're heading to the customer's location.</p>
-          <button
-            onClick={() => visitId && startVisitMutation.mutate(visitId)}
-            disabled={startVisitMutation.isPending || !visitId}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#1B8A05] hover:bg-[#176f04] text-white rounded-xl font-bold text-lg disabled:opacity-50 transition-colors"
-          >
-            {startVisitMutation.isPending ? <Loader2 className="animate-spin" /> : 'Start Journey'}
-          </button>
-        </div>
-      );
-    }
+    loadLeadDetails(leadId);
+  }, [leadId]);
 
-    // 3. Visit in progress
-    return <InspectionWorkspace lead={lead} onRefresh={refetch} />;
+  const loadLeadDetails = async (id: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      // const token = localStorage.getItem('access_token');
+      // if (!token) throw new Error("Authentication required");
+      const token = useAuthStore.getState().accessToken;
+
+      // Fetch lead details from partner endpoint
+      const res = await fetch(`${API_BASE_URL}/leads/partner/leads/${id}/claim/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) throw new Error("Lead not found");
+        throw new Error("Failed to load lead details");
+      }
+
+      const data: LeadDetail = await res.json();
+      console.log('Partner Lead Details:', data);
+      setLeadDetails(data);
+
+      // const { data: lead, isLoading, isError, refetch } = useQuery({
+      //   queryKey: ['leadDetails', leadId],
+      //   queryFn: () => leadsService.getLeadDetails(leadId),
+      // });
+          
+      // Load related data
+      loadOffers(id);
+      loadWalletInfo();
+      
+      // Load visit if assigned
+      if (data.status !== LeadStatus.BOOKED) {
+        loadVisitDetails(id);
+      }
+      
+    } catch (err: any) {
+      console.error('Failed to load lead:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (isLoading) {
+  const loadOffers = async (id: string) => {
+    try {
+      setLoadingOffers(true);
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/leads/offers/?lead=${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setOffers(data.results || data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load offers:', err);
+    } finally {
+      setLoadingOffers(false);
+    }
+  };
+
+  const loadVisitDetails = async (leadId: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/visits/visits/?lead=${leadId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const visits = data.results || data || [];
+        if (visits.length > 0) {
+          setVisitDetails(visits[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load visit:', err);
+    }
+  };
+
+  const loadWalletInfo = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/finance/partner/wallet/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setWalletInfo(data);
+      }
+    } catch (err) {
+      console.error('Failed to load wallet:', err);
+    }
+  };
+
+  // ============ Actions ============
+  const handleClaimLead = async () => {
+    if (!leadDetails) return;
+    
+    try {
+      setClaimLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Authentication required');
+
+      const res = await fetch(`${API_BASE_URL}/leads/partner/leads/${leadDetails.id}/claim/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to claim lead');
+      }
+
+      const data = await res.json();
+      console.log('✅ Lead claimed:', data);
+      
+      // Store verification code
+      if (data.verification_code) {
+        setVisitDetails(prev => prev ? { ...prev, verification_code: data.verification_code } : {
+          id: data.visit_id,
+          visit_number: data.visit_number,
+          verification_code: data.verification_code,
+          status: 'assigned',
+          check_in_time: null,
+          check_out_time: null
+        });
+      }
+      
+      // Update wallet
+      if (data.wallet_info) {
+        setWalletInfo(data.wallet_info);
+      }
+      
+      setIsClaimModalOpen(false);
+      loadLeadDetails(leadDetails.id);
+      
+    } catch (err: any) {
+      console.error('Claim error:', err);
+      setError(err.message);
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const handleStartVisit = async () => {
+    if (!leadDetails || !visitDetails) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Authentication required');
+
+      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_journey/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to start journey');
+      }
+
+      loadLeadDetails(leadDetails.id);
+      
+    } catch (err: any) {
+      console.error('Start journey error:', err);
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCheckIn = async () => {
+    if (!leadDetails || !visitDetails) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Authentication required');
+
+      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to check in');
+      }
+
+      loadLeadDetails(leadDetails.id);
+      
+    } catch (err: any) {
+      console.error('Check in error:', err);
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartInspection = async () => {
+    if (!leadDetails || !visitDetails) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Authentication required');
+
+      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to start inspection');
+      }
+
+      loadLeadDetails(leadDetails.id);
+      
+    } catch (err: any) {
+      console.error('Start inspection error:', err);
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMakeOffer = async () => {
+    if (!leadDetails || !offerPrice) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Authentication required');
+
+      const payload = {
+        lead: leadDetails.id,
+        partner_offered_price: parseFloat(offerPrice),
+        partner_notes: offerNotes.trim(),
+        inspection_findings: inspectionFindings.trim()
+      };
+
+      const res = await fetch(`${API_BASE_URL}/leads/offers/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to make offer');
+      }
+
+      setIsOfferModalOpen(false);
+      setOfferPrice('');
+      setOfferNotes('');
+      setInspectionFindings('');
+      
+      loadLeadDetails(leadDetails.id);
+      loadOffers(leadDetails.id);
+      
+    } catch (err: any) {
+      console.error('Make offer error:', err);
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============ Helper Functions ============
+  const formatCurrency = (value: string | number | null): string => {
+    if (!value) return '₹0';
+    return `₹${parseFloat(value.toString()).toLocaleString('en-IN')}`;
+  };
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getDeviceName = (lead: LeadDetail): string => {
+    if (lead.device_model?.name) {
+      return `${lead.brand_name} ${lead.device_model.name}`;
+    }
+    return lead.brand_name || 'Unknown Device';
+  };
+
+  // ✅ Use correct address field names from backend
+  const formatAddress = (address: PickupAddress | null): string => {
+    if (!address) return 'Address not available';
+    const parts = [address.line1];
+    if (address.line2) parts.push(address.line2);
+    if (address.landmark) parts.push(`Near ${address.landmark}`);
+    parts.push(`${address.city}, ${address.state} - ${address.postal_code}`);
+    return parts.join(', ');
+  };
+
+  const getStatusColor = (status: string) => {
+    return STATUS_COLORS[status] || STATUS_COLORS['booked'];
+  };
+
+  const isLeadClaimed = leadDetails?.status !== LeadStatus.BOOKED;
+
+  // ============ Loading State ============
+  if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="w-12 h-12 animate-spin text-[#FEC925]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F5F5] via-white to-[#F0F7F6]">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+          <Loader2 className="animate-spin text-[#FEC925] mx-auto mb-4" size={64} />
+          <p className="text-[#1C1C1B] text-xl font-semibold">Loading Lead Details...</p>
+        </motion.div>
       </div>
     );
   }
 
-  if (isError || !lead) {
+  // ============ Error State ============
+  if (!leadDetails) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-[#1C1C1B] mb-2">Error loading lead details</h2>
-        <p className="text-gray-600 mb-6">Please try again later</p>
-        <Link
-          to="/partner/catalog"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] font-semibold rounded-lg transition-colors"
-        >
-          Back to Catalog
-        </Link>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F5F5] via-white to-[#F0F7F6] p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl text-center">
+          <AlertTriangle className="text-[#FF0000] mx-auto mb-4" size={64} />
+          <h2 className="text-2xl font-bold text-[#1C1C1B] mb-2">Error</h2>
+          <p className="text-gray-600 mb-6">{error || 'Lead not found'}</p>
+          <button
+            onClick={() => navigate('/partner/leads')}
+            className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520]"
+          >
+            Back to Leads
+          </button>
+        </div>
       </div>
     );
   }
 
-  const isClaimed = lead.status !== 'booked';
+  const statusColors = getStatusColor(leadDetails.status);
 
   return (
-    <div className="space-y-6">
-      <Link 
-        to="/partner/catalog" 
-        className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#1C1C1B] transition-colors"
-      >
-        <ArrowLeft size={16} /> Back to Catalog
-      </Link>
-      
-      {/* --- Header --- */}
-      <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 pb-6 border-b">
-          <div>
-            <h2 className="text-3xl font-bold text-[#1C1C1B]">{lead.device_model.name}</h2>
-            <p className="text-gray-500">{lead.lead_number}</p>
-          </div>
-          <div className="flex flex-col items-start md:items-end">
-            <p className="text-sm text-gray-600">Est. Price</p>
-            <p className="text-3xl font-bold text-[#1B8A05]">₹{parseFloat(lead.estimated_price || '0').toLocaleString('en-IN')}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-          <div>
-            <p className="text-sm font-semibold text-[#1C1C1B]">Status</p>
-            <p className="capitalize text-gray-700">{lead.status_display}</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[#1C1C1B]">Preferred Date</p>
-            <p className="text-gray-700">{lead.preferred_date} ({lead.preferred_time_slot})</p>
-          </div>
-        </div>
-      </div>
+    <section className="min-h-screen bg-gradient-to-br from-[#F5F5F5] via-white to-[#F0F7F6] py-8 md:py-12">
+      <div className="container mx-auto px-4 max-w-7xl">
+        
+        {/* Back Button */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <button 
+            onClick={() => navigate('/partner/leads')} 
+            className="flex items-center gap-2 text-[#1C1C1B] hover:text-[#FEC925] transition font-semibold"
+          >
+            <ArrowLeft size={24} />
+            Back to Leads
+          </button>
+        </motion.div>
 
-      {/* --- Customer & Device Details --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-          <h3 className="text-xl font-semibold text-[#1C1C1B] mb-4">Customer Details</h3>
-          {!isClaimed ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-8 h-8 text-gray-400" />
+        {/* Error Display */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-[#FF0000]/10 border-2 border-[#FF0000] rounded-xl flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-[#FF0000]" size={24} />
+                <p className="font-semibold text-[#1C1C1B]">{error}</p>
               </div>
-              <p className="text-gray-500">Claim this lead to see customer details</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="font-medium text-lg text-[#1C1C1B]">{lead.user.name}</p>
-              <p className="text-gray-600">{lead.user.phone}</p>
-              <div className="flex items-start gap-2 mt-2">
-                <MapPin size={16} className="text-gray-500 mt-1" />
-                <p className="text-gray-600">
-                  {lead.pickup_address.address_line1}, {lead.pickup_address.city}, {lead.pickup_address.state} - {lead.pickup_address.pincode}
+              <button onClick={() => setError(null)} className="text-[#FF0000]">
+                <X size={20} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ============ Header Section ============ */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20 mb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-3xl font-bold text-[#1C1C1B]">
+                    Lead #{leadDetails.lead_number}
+                  </h2>
+                  <span className={`px-4 py-2 rounded-full text-sm font-bold ${statusColors.bg} ${statusColors.text}`}>
+                    {leadDetails.status_display}
+                  </span>
+                </div>
+                <p className="text-gray-600 mb-1">
+                  {getDeviceName(leadDetails)} • {leadDetails.storage} • {leadDetails.color}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Created: {formatDate(leadDetails.created_at)}
                 </p>
               </div>
-              <a 
-                href={`tel:${lead.user.phone}`} 
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#1B8A05] hover:bg-[#176f04] text-white font-bold rounded-lg transition-colors"
-              >
-                <Phone size={16} /> Call Customer
-              </a>
-            </div>
-          )}
-        </div>
+              
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Claim Button - Only for unclaimed leads */}
+                {leadDetails.status === LeadStatus.BOOKED && (
+                  <button 
+                    onClick={() => setIsClaimModalOpen(true)}
+                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2 shadow-lg"
+                  >
+                    <CheckCircle size={20} />
+                    Claim This Lead
+                  </button>
+                )}
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-          <h3 className="text-xl font-semibold text-[#1C1C1B] mb-4">Device Details</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-600">Storage:</span>
-              <span className="font-semibold text-[#1C1C1B]">{lead.storage}</span>
+                {/* Start Journey Button */}
+                {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && (
+                  <button 
+                    onClick={handleStartVisit}
+                    disabled={actionLoading}
+                    className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Navigation size={20} />}
+                    Start Journey
+                  </button>
+                )}
+
+                {/* Check In Button */}
+                {leadDetails.status === LeadStatus.EN_ROUTE && (
+                  <button 
+                    onClick={handleCheckIn}
+                    disabled={actionLoading}
+                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <MapPin size={20} />}
+                    Check In
+                  </button>
+                )}
+
+                {/* Start Inspection Button */}
+                {leadDetails.status === LeadStatus.CHECKED_IN && (
+                  <button 
+                    onClick={handleStartInspection}
+                    disabled={actionLoading}
+                    className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Eye size={20} />}
+                    Start Inspection
+                  </button>
+                )}
+
+                {/* Make Offer Button */}
+                {leadDetails.status === LeadStatus.INSPECTING && (
+                  <button 
+                    onClick={() => setIsOfferModalOpen(true)}
+                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2"
+                  >
+                    <DollarSign size={20} />
+                    Make Offer
+                  </button>
+                )}
+
+                {/* Report Issue Button */}
+                {isLeadClaimed && !['cancelled', 'completed'].includes(leadDetails.status) && (
+                  <button 
+                    onClick={() => setIsDisputeModalOpen(true)}
+                    className="px-4 py-2 bg-[#FF0000]/10 text-[#FF0000] rounded-lg font-bold hover:bg-[#FF0000] hover:text-white transition flex items-center gap-2"
+                  >
+                    <AlertTriangle size={16} />
+                    Report Issue
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-600">RAM:</span>
-              <span className="font-semibold text-[#1C1C1B]">{lead.ram}</span>
+
+            {/* Verification Code Display */}
+            {visitDetails?.verification_code && isLeadClaimed && (
+              <div className="mt-6 p-4 bg-[#FEC925]/10 border-2 border-[#FEC925] rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-600">Customer Verification Code</p>
+                    <p className="text-3xl font-bold tracking-widest text-[#1C1C1B]">
+                      {visitDetails.verification_code}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Ask customer for this code to verify pickup</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ============ Wallet Info Banner ============ */}
+        {walletInfo && isLeadClaimed && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-r from-[#1C1C1B] to-[#333] p-6 rounded-2xl mb-8 text-white"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Wallet className="text-[#FEC925]" size={28} />
+                <div>
+                  <p className="text-sm text-gray-300">Your Wallet Balance</p>
+                  <p className="text-2xl font-bold text-[#FEC925]">{formatCurrency(walletInfo.current_balance)}</p>
+                </div>
+              </div>
+              <div className="flex gap-6">
+                <div>
+                  <p className="text-xs text-gray-400">Blocked</p>
+                  <p className="font-bold text-[#FF0000]">{formatCurrency(walletInfo.blocked_amount)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Available</p>
+                  <p className="font-bold text-[#1B8A05]">{formatCurrency(walletInfo.available_balance)}</p>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-600">Color:</span>
-              <span className="font-semibold text-[#1C1C1B]">{lead.color}</span>
+          </motion.div>
+        )}
+
+        {/* ============ Offers Section ============ */}
+        {(loadingOffers || offers.length > 0 || [LeadStatus.OFFER_MADE, LeadStatus.NEGOTIATING].includes(leadDetails.status as any)) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="bg-gradient-to-r from-[#FEC925]/20 to-[#1B8A05]/20 p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-[#FEC925] rounded-full flex items-center justify-center">
+                  <DollarSign className="text-[#1C1C1B]" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Your Offers</h3>
+                  <p className="text-gray-600">Track customer responses</p>
+                </div>
+              </div>
+
+              {loadingOffers ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-[#FEC925]" size={32} />
+                </div>
+              ) : offers.length === 0 ? (
+                <div className="bg-white p-6 rounded-xl text-center">
+                  <Clock className="text-gray-300 mx-auto mb-3" size={48} />
+                  <p className="text-gray-600 font-semibold">No offers made yet</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Complete device inspection to make an offer
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {offers.map((offer, index) => (
+                    <motion.div
+                      key={offer.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-lg"
+                    >
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-lg font-bold text-[#1C1C1B]">Your Offer</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              offer.status === 'pending' ? 'bg-[#FEC925]/20 text-[#b48f00]' :
+                              offer.status === 'accepted' ? 'bg-[#1B8A05]/20 text-[#1B8A05]' :
+                              offer.status === 'rejected' ? 'bg-[#FF0000]/10 text-[#FF0000]' :
+                              'bg-gray-200 text-gray-600'
+                            }`}>
+                              {offer.status_display}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-600">System Price</p>
+                              <p className="text-xl font-bold text-gray-800">{formatCurrency(offer.system_calculated_price)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Your Offer</p>
+                              <p className="text-xl font-bold text-[#FEC925]">{formatCurrency(offer.partner_offered_price)}</p>
+                            </div>
+                          </div>
+
+                          {offer.partner_notes && (
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <p className="text-sm font-semibold text-gray-700 mb-1">Your Notes:</p>
+                              <p className="text-sm text-gray-600 italic">"{offer.partner_notes}"</p>
+                            </div>
+                          )}
+
+                          {offer.customer_response && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <p className="text-sm font-semibold text-gray-700 mb-1">Customer Response:</p>
+                              <p className="text-sm text-gray-600">"{offer.customer_response}"</p>
+                            </div>
+                          )}
+
+                          <p className="text-xs text-gray-500">
+                            Offered: {formatDate(offer.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex justify-between py-2">
-              <span className="text-gray-600">IMEI:</span>
-              <span className="font-semibold text-[#1C1C1B] font-mono text-xs">{lead.imei_primary}</span>
+          </motion.div>
+        )}
+
+        {/* ============ Main Grid ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* ============ Left Column ============ */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Customer Details - Only visible after claim */}
+            {isLeadClaimed && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#1B8A05]/20"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <User className="text-[#1B8A05]" size={24} />
+                    <h3 className="text-2xl font-bold text-[#1C1C1B]">Customer Details</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowCustomerDetails(!showCustomerDetails)}
+                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    {showCustomerDetails ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                
+                {showCustomerDetails ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-semibold text-gray-600">Name</span>
+                      <span className="font-bold text-[#1C1C1B]">{leadDetails.user.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-semibold text-gray-600">Phone</span>
+                      <a 
+                        href={`tel:${leadDetails.user.phone}`}
+                        className="font-bold text-[#1B8A05] hover:underline flex items-center gap-2"
+                      >
+                        <Phone size={16} />
+                        {leadDetails.user.phone}
+                      </a>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <span className="font-semibold text-gray-600">Email</span>
+                      <span className="font-bold text-[#1C1C1B]">{leadDetails.user.email || 'Not provided'}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 rounded-xl">
+                    <EyeOff className="text-gray-300 mx-auto mb-2" size={32} />
+                    <p className="text-gray-500">Click the eye icon to reveal customer details</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Device Details */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <Smartphone className="text-[#FEC925]" size={24} />
+                <h3 className="text-2xl font-bold text-[#1C1C1B]">Device Details</h3>
+              </div>
+              <div className="space-y-3">
+                <DetailRow label="Device" value={getDeviceName(leadDetails)} />
+                <DetailRow label="Storage" value={leadDetails.storage} />
+                <DetailRow label="RAM" value={leadDetails.ram} />
+                <DetailRow label="Color" value={leadDetails.color} />
+                <DetailRow label="IMEI" value={leadDetails.imei_primary || 'Not provided'} />
+              </div>
             </div>
+
+            {/* Price Details */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <Wallet className="text-[#FEC925]" size={24} />
+                <h3 className="text-2xl font-bold text-[#1C1C1B]">Price Details</h3>
+              </div>
+              <div className="space-y-3">
+                <DetailRow label="Estimated Price" value={formatCurrency(leadDetails.estimated_price)} highlight />
+                <DetailRow label="Quoted Price" value={leadDetails.quoted_price ? formatCurrency(leadDetails.quoted_price) : 'Pending'} />
+                <DetailRow label="Final Price" value={leadDetails.final_price ? formatCurrency(leadDetails.final_price) : 'Pending'} />
+              </div>
+            </div>
+
+            {/* Pickup Details */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <MapPin className="text-[#FEC925]" size={24} />
+                <h3 className="text-2xl font-bold text-[#1C1C1B]">Pickup Details</h3>
+              </div>
+              <div className="space-y-3">
+                {/* ✅ Use correct field names: line1, line2, postal_code */}
+                <p className="font-bold text-lg">{leadDetails.pickup_address?.line1 || 'Address line 1'}</p>
+                {leadDetails.pickup_address?.line2 && (
+                  <p className="text-gray-700">{leadDetails.pickup_address.line2}</p>
+                )}
+                {leadDetails.pickup_address?.landmark && (
+                  <p className="text-sm text-gray-600">Landmark: {leadDetails.pickup_address.landmark}</p>
+                )}
+                <p className="font-semibold">
+                  {leadDetails.pickup_address?.city}, {leadDetails.pickup_address?.state} - {leadDetails.pickup_address?.postal_code}
+                </p>
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  <DetailRow 
+                    label="Preferred Date" 
+                    value={new Date(leadDetails.preferred_date).toLocaleDateString('en-IN', { 
+                      weekday: 'long', day: 'numeric', month: 'long' 
+                    })} 
+                  />
+                  <DetailRow label="Time Slot" value={leadDetails.preferred_time_slot} />
+                </div>
+                {leadDetails.customer_notes && (
+                  <div className="bg-[#F0F7F6] p-3 rounded-lg border border-[#1B8A05]/20 mt-4">
+                    <p className="font-semibold text-gray-800">Customer Notes:</p>
+                    <p className="text-gray-700 italic">"{leadDetails.customer_notes}"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Condition Report */}
+            {Object.keys(leadDetails.condition_responses).length > 0 && (
+              <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <CheckCircle className="text-[#FEC925]" size={24} />
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Condition Report</h3>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(leadDetails.condition_responses).map(([key, value]) => (
+                    <DetailRow 
+                      key={key} 
+                      label={key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+                      value={Array.isArray(value) ? value.join(', ') : String(value)} 
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Device Photos */}
+            {leadDetails.device_photos?.length > 0 && (
+              <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <Tag className="text-[#FEC925]" size={24} />
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Device Photos</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {leadDetails.device_photos.map((photo, idx) => (
+                    <a key={idx} href={photo.url} target="_blank" rel="noopener noreferrer" className="group">
+                      <img 
+                        src={photo.url} 
+                        alt={photo.description || `Device ${idx + 1}`} 
+                        className="w-full aspect-square object-cover rounded-lg border-2 border-gray-200 group-hover:border-[#FEC925] transition"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Disputes */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <AlertTriangle className="text-[#FEC925]" size={24} />
+                <h3 className="text-2xl font-bold text-[#1C1C1B]">Disputes & Issues</h3>
+              </div>
+              <PartnerLeadDisputesSection leadId={leadDetails.id} />
+            </div>
+          </div>
+
+          {/* ============ Right Column ============ */}
+          <div className="space-y-8">
+            
+            {/* Chat - Only after claim */}
+            {isLeadClaimed && (
+              <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <MessageSquare className="text-[#FEC925]" size={24} />
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Live Chat</h3>
+                </div>
+                <PartnerLeadChat 
+                  leadId={leadDetails.id}
+                  leadClaimed={isLeadClaimed}
+                  customerName={leadDetails.user.name}
+                />
+              </div>
+            )}
+
+            {/* Status History */}
+            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <Activity className="text-[#FEC925]" size={24} />
+                <h3 className="text-2xl font-bold text-[#1C1C1B]">Lead History</h3>
+              </div>
+              <LeadStatusHistory leadId={leadDetails.id} />
+            </div>
+
+            {/* Quick Actions */}
+            {isLeadClaimed && (
+              <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-[#FEC925]/20">
+                <div className="flex items-center gap-3 mb-6">
+                  <Play className="text-[#FEC925]" size={24} />
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Quick Actions</h3>
+                </div>
+                <div className="space-y-3">
+                  <a 
+                    href={`tel:${leadDetails.user.phone}`}
+                    className="flex items-center justify-between p-4 bg-[#1B8A05]/10 rounded-xl hover:bg-[#1B8A05]/20 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Phone className="text-[#1B8A05]" size={20} />
+                      <span className="font-semibold text-[#1C1C1B]">Call Customer</span>
+                    </div>
+                    <ChevronRight className="text-gray-400" size={20} />
+                  </a>
+                  
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddress(leadDetails.pickup_address))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 bg-[#FEC925]/10 rounded-xl hover:bg-[#FEC925]/20 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Navigation className="text-[#FEC925]" size={20} />
+                      <span className="font-semibold text-[#1C1C1B]">Navigate to Address</span>
+                    </div>
+                    <ChevronRight className="text-gray-400" size={20} />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ============ Modals ============ */}
       
-      {/* --- Main Action Card --- */}
-      {renderActionCard()}
+      {/* Claim Confirmation Modal */}
+      <AnimatePresence>
+        {isClaimModalOpen && leadDetails && walletInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full"
+            >
+              <div className="p-6 border-b-2 border-[#FEC925]/20">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Confirm Claim</h3>
+                  <button 
+                    onClick={() => setIsClaimModalOpen(false)}
+                    disabled={claimLoading}
+                    className="text-gray-400 hover:text-[#FF0000] transition"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
 
-      {/* --- Claim Confirmation Modal --- */}
-      {showClaimModal && (
-        <ClaimConfirmationModal
-          lead={lead}
-          onConfirm={() => claimMutation.mutate()}
-          onCancel={() => setShowClaimModal(false)}
-          isLoading={claimMutation.isPending}
-        />
-      )}
-    </div>
-  );
-};
+              <div className="p-6 space-y-6">
+                <div className="bg-[#FEC925]/10 p-4 rounded-xl border-2 border-[#FEC925]">
+                  <h4 className="font-bold text-[#1C1C1B] mb-3">Wallet Deduction</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Claim Fee (Non-refundable)</span>
+                      <span className="font-bold">₹50</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Blocked Amount (Refundable)</span>
+                      <span className="font-bold">{formatCurrency(leadDetails.estimated_price)}</span>
+                    </div>
+                    <div className="border-t pt-2 mt-2 flex justify-between">
+                      <span className="font-bold text-[#1C1C1B]">Total</span>
+                      <span className="font-bold text-[#1C1C1B]">
+                        {formatCurrency(50 + parseFloat(leadDetails.estimated_price))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-// --- Sub-Component for Inspection (Keep existing code) ---
-const InspectionWorkspace: React.FC<{ lead: LeadDetails, onRefresh: () => void }> = ({ lead, onRefresh }) => {
-  const visitId = lead.visit?.id;
-  const toast = useToast();
-  const queryClient = useQueryClient();
-  const [code, setCode] = useState('');
-  const [notes, setNotes] = useState('');
-  const [price, setPrice] = useState(lead.estimated_price || '0'); 
-  
-  const { data: visitData, isLoading: isLoadingVisit } = useQuery({
-    queryKey: ['visitDetails', visitId],
-    queryFn: () => visitService.getVisit(visitId!),
-    enabled: !!visitId,
-  });
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <h4 className="font-bold text-[#1C1C1B] mb-2">Your Wallet</h4>
+                  <p className="text-2xl font-bold text-[#1B8A05]">{formatCurrency(walletInfo.available_balance)}</p>
+                  <p className="text-xs text-gray-500">Available Balance</p>
+                </div>
 
-  const { data: checklist, isLoading: isLoadingChecklist } = useQuery({
-    queryKey: ['visitChecklist', visitId],
-    queryFn: () => visitService.getChecklist(visitId!),
-    enabled: !!visitData && visitData.status === 'in_progress', 
-  });
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                  <h4 className="font-bold text-blue-800 mb-2">⚠️ Important</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• ₹50 claim fee is non-refundable</li>
+                    <li>• Blocked amount will be released upon completion</li>
+                    <li>• You'll receive a verification code after claiming</li>
+                  </ul>
+                </div>
+              </div>
 
-  const updateItemMutation = useMutation({
-    mutationFn: ({ itemId, status, notes }: { itemId: string, status: string, notes: string }) => 
-      privateApiClient.patch(`/visits/${visitId}/checklist/${itemId}/`, { status, notes }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['visitChecklist', visitId] }); 
-      toast.success("Checklist updated.");
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
-  });
-
-  const verifyCodeMutation = useMutation({
-    mutationFn: () => visitService.verifyCode(visitId!, { code }),
-    onSuccess: () => {
-      toast.success("Code Verified!");
-      onRefresh(); 
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
-  });
-
-  const startInspectionMutation = useMutation({
-    mutationFn: () => visitService.startInspection(visitId!),
-    onSuccess: () => {
-      toast.success("Inspection Started. Checklist loading...");
-      onRefresh(); 
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
-  });
-  
-  const completeInspectionMutation = useMutation({
-    mutationFn: () => visitService.completeInspection(visitId!, {
-      inspection_notes: notes,
-      inspection_photos: [],
-      verified_imei: lead.imei_primary || '',
-      imei_matches: true,
-      device_powers_on: true,
-      partner_assessment: {},
-      partner_recommended_price: price,
-    }),
-    onSuccess: () => {
-      onRefresh(); 
-      toast.success("Inspection Complete! Ready for final offer.");
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
-  });
-  
-  const makeOfferMutation = useMutation({
-    mutationFn: () => leadsService.createOffer({
-      lead: lead.id,
-      partner_offered_price: price,
-      message: notes || "Based on inspection, here is the final offer."
-    }),
-    onSuccess: () => {
-      onRefresh();
-      toast.success("Offer Sent to Customer!");
-    },
-    onError: (error: any) => toast.error(handleApiError(error)),
-  });
-
-  if (isLoadingVisit) {
-    return (
-      <div className="flex justify-center p-12">
-        <Loader2 className="w-12 h-12 animate-spin text-[#FEC925]" />
-      </div>
-    );
-  }
-
-  if (!visitData) {
-    return (
-      <div className="text-center text-red-600 py-8">
-        <AlertCircle className="w-12 h-12 mx-auto mb-3" />
-        <p>Could not load visit details. Refresh and try again.</p>
-      </div>
-    );
-  }
-
-  // 1. Not Verified
-  if (!visitData.is_code_verified) {
-    return (
-      <form onSubmit={(e) => { e.preventDefault(); verifyCodeMutation.mutate(); }} className="bg-white p-6 rounded-xl shadow-lg space-y-4 border border-gray-200">
-        <h3 className="text-xl font-semibold text-[#1C1C1B]">Verify Customer Code</h3>
-        <p className="text-gray-600">Ask the customer for their verification code to start the inspection.</p>
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          maxLength={6}
-          className="w-full p-3 border-2 border-gray-300 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-[#FEC925] focus:outline-none"
-          placeholder="••••••"
-        />
-        <button
-          type="submit"
-          disabled={verifyCodeMutation.isPending || code.length < 4}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-xl font-bold text-lg disabled:opacity-50 transition-colors"
-        >
-          {verifyCodeMutation.isPending ? <Loader2 className="animate-spin" /> : 'Verify Code'}
-        </button>
-      </form>
-    );
-  }
-  
-  // 2. Verified, but not inspecting
-  if (visitData.is_code_verified && visitData.status === 'arrived') {
-    return (
-      <div className="bg-white p-6 rounded-xl shadow-lg space-y-4 text-center border border-gray-200">
-         <CheckCircle className="w-16 h-16 text-[#1B8A05] mx-auto mb-4" />
-         <h3 className="text-xl font-semibold text-[#1C1C1B]">Code Verified!</h3>
-         <p className="text-gray-600 mb-4">You are clear to inspect the device.</p>
-         <button
-          onClick={() => startInspectionMutation.mutate()}
-          disabled={startInspectionMutation.isPending}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-xl font-bold text-lg disabled:opacity-50 transition-colors"
-         >
-           {startInspectionMutation.isPending ? <Loader2 className="animate-spin" /> : 'Start Inspection'}
-         </button>
-      </div>
-    );
-  }
-  
-  // 3. Offer is made and pending
-  if (lead.status === 'offer_made' || lead.status === 'negotiating' || lead.status === 'accepted') {
-    return (
-       <div className="bg-white p-6 rounded-xl shadow-lg space-y-4 text-center border-l-4 border-[#1B8A05]">
-         <CheckCircle className="w-16 h-16 text-[#1B8A05] mx-auto mb-4" />
-         <h3 className="text-xl font-semibold text-[#1C1C1B]">Status: {lead.status_display}</h3>
-         <p className="text-gray-600 mb-4">
-           Your final price: <strong className="text-[#1C1C1B]">₹{lead.final_price || lead.estimated_price}</strong>
-         </p>
-         <p className="text-gray-600">Waiting for customer response or further action.</p>
-      </div>
-    );
-  }
-
-  // 4. Inspection is Complete, ready to make offer 
-  if (visitData.status === 'completed') {
-    return (
-      <form onSubmit={(e) => { e.preventDefault(); makeOfferMutation.mutate(); }} className="bg-white p-6 rounded-xl shadow-lg space-y-4 border border-gray-200">
-        <h3 className="text-xl font-semibold text-[#1C1C1B]">Make Final Offer</h3>
-        <p className="text-sm text-gray-600">Review notes and propose your final price to the customer.</p>
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-[#FEC925] focus:outline-none"
-          min="0"
-        />
-         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add notes for your offer (e.g., 'Battery health at 82%')"
-          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none"
-          rows={4}
-        />
-        <button
-          type="submit"
-          disabled={makeOfferMutation.isPending}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#1B8A05] hover:bg-[#176f04] text-white rounded-xl font-bold text-lg disabled:opacity-50 transition-colors"
-        >
-          {makeOfferMutation.isPending ? <Loader2 className="animate-spin" /> : 'Send Offer to Customer'}
-        </button>
-      </form>
-    );
-  }
-  
-  // 5. Currently Inspecting
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-lg space-y-4 border border-gray-200">
-      <h3 className="text-xl font-semibold text-[#1C1C1B]">Device Inspection Checklist</h3>
-      {isLoadingChecklist ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FEC925]" />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {checklist?.map((item, index) => (
-            <div key={index} className="p-3 bg-[#F5F5F5] rounded-lg">
-              <p className="font-semibold text-[#1C1C1B]">{item.item_name}</p>
-              <div className="flex gap-2 mt-2">
+              <div className="p-6 border-t-2 border-gray-200 flex gap-3">
                 <button
-                  onClick={() => updateItemMutation.mutate({ 
-                    itemId: item.item_name, 
-                    status: 'pass', 
-                    notes: 'OK' 
-                  })}
-                  disabled={updateItemMutation.isPending}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    item.status === 'pass' 
-                      ? 'bg-[#1B8A05] text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                  }`}
+                  onClick={() => setIsClaimModalOpen(false)}
+                  disabled={claimLoading}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100 transition"
                 >
-                  Pass
+                  Cancel
                 </button>
                 <button
-                  onClick={() => updateItemMutation.mutate({ 
-                    itemId: item.item_name, 
-                    status: 'fail', 
-                    notes: 'Issue found' 
-                  })}
-                  disabled={updateItemMutation.isPending}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    item.status === 'fail' 
-                      ? 'bg-[#FF0000] text-white' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                  }`}
+                  onClick={handleClaimLead}
+                  disabled={claimLoading || parseFloat(walletInfo.available_balance) < (50 + parseFloat(leadDetails.estimated_price))}
+                  className="flex-1 px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  Fail
+                  {claimLoading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <CheckCircle size={20} />
+                      Confirm Claim
+                    </>
+                  )}
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Make Offer Modal */}
+      <AnimatePresence>
+        {isOfferModalOpen && leadDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full"
+            >
+              <div className="p-6 border-b-2 border-[#FEC925]/20">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-[#1C1C1B]">Make Offer</h3>
+                  <button 
+                    onClick={() => setIsOfferModalOpen(false)}
+                    disabled={actionLoading}
+                    className="text-gray-400 hover:text-[#FF0000] transition"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-sm text-gray-600 mb-1">Estimated Price</p>
+                  <p className="text-2xl font-bold text-[#1C1C1B]">{formatCurrency(leadDetails.estimated_price)}</p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#1C1C1B] mb-2">Your Offer Price *</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-bold">₹</span>
+                    <input
+                      type="number"
+                      value={offerPrice}
+                      onChange={(e) => setOfferPrice(e.target.value)}
+                      placeholder="Enter your offer"
+                      disabled={actionLoading}
+                      className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none font-bold text-lg"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#1C1C1B] mb-2">Inspection Findings</label>
+                  <textarea
+                    value={inspectionFindings}
+                    onChange={(e) => setInspectionFindings(e.target.value)}
+                    placeholder="Describe device condition, any issues found..."
+                    disabled={actionLoading}
+                    rows={3}
+                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#1C1C1B] mb-2">Notes for Customer (Optional)</label>
+                  <textarea
+                    value={offerNotes}
+                    onChange={(e) => setOfferNotes(e.target.value)}
+                    placeholder="Any additional notes..."
+                    disabled={actionLoading}
+                    rows={2}
+                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 border-t-2 border-gray-200 flex gap-3">
+                <button
+                  onClick={() => setIsOfferModalOpen(false)}
+                  disabled={actionLoading}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMakeOffer}
+                  disabled={actionLoading || !offerPrice}
+                  className="flex-1 px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Send size={20} />
+                      Send Offer
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dispute Modal */}
+      {leadDetails && (
+        <PartnerRaiseDisputeModal
+          isOpen={isDisputeModalOpen}
+          onClose={() => setIsDisputeModalOpen(false)}
+          leadId={leadDetails.id}
+          leadNumber={leadDetails.lead_number}
+          onSuccess={() => {
+            loadLeadDetails(leadDetails.id);
+            setIsDisputeModalOpen(false);
+          }}
+        />
       )}
-      <div className="border-t pt-4 space-y-4">
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Final inspection notes... (e.g., 'Battery health at 82%')"
-          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none"
-          rows={4}
-        />
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="Recommended Price"
-          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-[#FEC925] focus:outline-none"
-          min="0"
-        />
-        <button
-          onClick={() => completeInspectionMutation.mutate()}
-          disabled={completeInspectionMutation.isPending || isLoadingChecklist}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#FEC925] hover:bg-[#e6b31f] text-[#1C1C1B] rounded-xl font-bold text-lg disabled:opacity-50 transition-colors"
-        >
-          {completeInspectionMutation.isPending ? <Loader2 className="animate-spin" /> : 'Complete Inspection'}
-        </button>
-      </div>
-    </div>
+    </section>
   );
 };
+
+// ============ Helper Components ============
+interface DetailRowProps {
+  label: string;
+  value: string | number | null;
+  highlight?: boolean;
+}
+
+const DetailRow: React.FC<DetailRowProps> = ({ label, value, highlight }) => (
+  <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+    <span className="font-semibold text-gray-600">{label}:</span>
+    <span className={`font-bold text-right ${highlight ? 'text-[#1B8A05] text-lg' : 'text-[#1C1C1B]'}`}>
+      {value || 'N/A'}
+    </span>
+  </div>
+);
+
+export default PartnerLeadDetailPage;

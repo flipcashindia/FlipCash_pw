@@ -157,7 +157,7 @@ import { useAuthStore } from './stores/authStore';
 import { Loader2 } from 'lucide-react';
 
 // --- Layouts & Routes ---
-import HeaderRibbon from './components/layout/HeaderRibbon';
+// import HeaderRibbon from './components/layout/HeaderRibbon';
 import MainNavbar from './components/layout/MainNavbar';
 import Footer from './components/layout/Footer';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -170,15 +170,25 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import HomePage from './pages/HomePage';
 import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
-import FAQPage from './pages/FAQPage';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactUsPage';
-import CareerPage from './pages/CareerPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsPage from './pages/TermsAndConditionsPage';
-import RefundPolicyPage from './pages/RefundPolicyPage';
-import CookiesPolicyPage from './pages/CookiesPolicyPage';
+// import FAQPage from './pages/FAQPage';
+// import AboutPage from './pages/AboutPage';
+// import ContactPage from './pages/ContactPage';
+// import CareerPage from './pages/CareerPage';
+// import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+// import TermsPage from './pages/TermsAndConditionsPage';
+// import RefundPolicyPage from './pages/RefundPolicyPage';
+// import CookiesPolicyPage from './pages/CookiesPolicyPage';
+
+import ContactUsPage from './pages/ContactUsPage copy'
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import RefundPolicy from './pages/RefundPolicy';
+import FAQ from './pages/FAQPage'
+import TermsOfUse from './pages/TermsOfUse';
+import CookiePolicy from './pages/CookiePolicy';
+import Career from './pages/CareerPage'
 import NotFoundPage from './pages/NotFoundPage';
+
 
 // --- Consumer Pages ---
 import MyAccountPage from './pages/MyAccountPage';
@@ -188,7 +198,7 @@ import PartnerSignUpPage from './components/partner/PartnerSignUp';
 import PartnerDashboardPage from './components/partner/PartnerDashboard'; // OLD DASHBOARD
 import { PartnerLeadsPage } from './components/partner/PartnerLeadPage';
 import { PartnerLeadDetailPage } from './components/partner/PartnerLeadDetailPage';
-import { PartnerWalletPage } from './components/partner/PartnerWalletPage';
+// import { PartnerWalletPage } from './components/partner/PartnerWalletPage';
 
 // --- Partner Profile Pages ---
 import { PartnerProfilePage } from './components/partner/profile/PartneProfilePage';
@@ -204,6 +214,25 @@ import BrandsPage from './pages/partner/catalog/BrandsPage';
 import ModelsPage from './pages/partner/catalog/ModelsPage';
 import LeadsPage from './pages/partner/catalog/LeadsPage';
 import LeadDetailPage from './pages/partner/catalog/LeadDetailPage';
+// import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { partnerFinanceRoutes } from './routes/financeRoutes';
+import AboutUs from './pages/AboutSection';
+
+
+
+// For Partner App (partner.flipcash.in)
+// const partnerRouter = createBrowserRouter([
+//   {
+//     path: '/',
+//     element: <PartnerLayout />,
+//     children: [
+//       // ... other routes
+//       ...partnerFinanceRoutes,
+//     ],
+//   },
+// ])
+
+
 
 // QueryClient with catalog caching settings
 const queryClient = new QueryClient({
@@ -245,18 +274,28 @@ const AppRoutes: React.FC = () => {
       <Route path="/blog/:id" element={<BlogDetailPage />} />
       
       {/* Help & Info Pages */}
-      <Route path="/faq" element={<FAQPage />} />
+      {/* <Route path="/faq" element={<FAQPage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/contact" element={<ContactPage />} />
-      <Route path="/career" element={<CareerPage />} />
+      <Route path="/career" element={<CareerPage />} /> */}
       
       {/* Legal Pages */}
-      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      {/* <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/terms-of-use" element={<TermsPage />} />
       <Route path="/refund-policy" element={<RefundPolicyPage />} />
-      <Route path="/cookies-policy" element={<CookiesPolicyPage />} />
+      <Route path="/cookies-policy" element={<CookiesPolicyPage />} /> */}
 
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/about" element={<AboutUs />} />
+      <Route path="/terms" element={<TermsAndConditions />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/refund-policy" element={<RefundPolicy />} />
+      <Route path="/terms-of-use" element={<TermsOfUse />} />
+      <Route path="/career" element={<Career />} />
+      <Route path="/contact" element={<ContactUsPage />} />
+      <Route path="/cookies" element={<CookiePolicy />} />
+      
       {/* ============================= */}
       {/* CONSUMER PROTECTED ROUTES */}
       {/* ============================= */}
@@ -268,6 +307,8 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* <RouterProvider router={partnerRouter} /> */}
 
       {/* ============================= */}
       {/* PARTNER PROTECTED ROUTES */}
@@ -291,9 +332,13 @@ const AppRoutes: React.FC = () => {
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 
         <Route path="lead/:id" element={<PartnerLeadDetailPage />} />
         
+        {partnerFinanceRoutes}
+
         {/* Wallet */}
-        <Route path="wallet" element={<PartnerWalletPage />} />
+        {/* <Route path="wallet" element={<PartnerWalletPage />} /> */}
         
+        
+
         {/* Catalog - Browse New Leads */}
         <Route path="catalog" element={<CategoriesPage />} />
         <Route path="catalog/categories/:categoryId/brands" element={<BrandsPage />} />
@@ -334,7 +379,7 @@ function App() {
       <ToastProvider>
         <Router>
           <div className="flex flex-col min-h-screen">
-            <HeaderRibbon />
+            {/* <HeaderRibbon /> */}
             <MainNavbar />
             <ErrorBoundary>
               <AppRoutes />
