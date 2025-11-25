@@ -47,6 +47,7 @@ const PartnerPaymentCallbackPage: React.FC = () => {
       setPageState('error');
       return;
     }
+    // fixed
 
     if (IS_LOCALHOST) {
       console.log('🔍 Verifying payment for order:', orderId);
