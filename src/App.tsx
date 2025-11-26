@@ -197,7 +197,7 @@ import MyAccountPage from './pages/MyAccountPage';
 import PartnerSignUpPage from './components/partner/PartnerSignUp';
 import PartnerDashboardPage from './components/partner/PartnerDashboard'; // OLD DASHBOARD
 import { PartnerLeadsPage } from './components/partner/PartnerLeadPage';
-import { PartnerLeadDetailPage } from './components/partner/PartnerLeadDetailPage';
+// import { PartnerLeadDetailPage } from './components/partner/PartnerLeadDetailPage';
 // import { PartnerWalletPage } from './components/partner/PartnerWalletPage';
 
 // --- Partner Profile Pages ---
