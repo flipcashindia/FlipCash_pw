@@ -217,6 +217,7 @@ import LeadDetailPage from './pages/partner/catalog/LeadDetailPage';
 // import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { partnerFinanceRoutes } from './routes/financeRoutes';
 import AboutUs from './pages/AboutSection';
+import ClaimedLeadDetailPage from './pages/partner/ClaimedleadDetailPage';
 
 
 
@@ -330,7 +331,7 @@ const AppRoutes: React.FC = () => {
         
         {/* My Leads */}
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 
-        <Route path="lead/:id" element={<PartnerLeadDetailPage />} />
+        <Route path="lead/:id" element={<ClaimedLeadDetailPage />} />
         
         {partnerFinanceRoutes}
 
