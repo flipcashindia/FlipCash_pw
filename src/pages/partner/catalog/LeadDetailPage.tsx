@@ -200,11 +200,9 @@ const LeadDetailPage: React.FC = () => {
       // Navigate to claimed lead detail
       setTimeout(() => {
         if (data.visit_number) {
-          navigate(`/partner/my-leads/${data.visit_number}`, {
-            state: { leadId: leadId }
-          });
+          navigate(`/partner/leads/${leadId}`);
         } else {
-          navigate('/partner/my-leads');
+          navigate('/partner/leads/my');
         }
       }, 1500);
     },

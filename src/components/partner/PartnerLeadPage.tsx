@@ -161,7 +161,7 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
             {/* Action Button */}
             {lead.status === 'booked' && (
                 <Link 
-                    to={`/partner/lead/${lead.id}`} 
+                    to={`/partner/catalog/leads/${lead.id}`} 
                     className="mt-2 block w-full text-center px-4 py-2.5 font-bold rounded-lg transition-all duration-200 hover:shadow-md"
                     style={{ 
                         backgroundColor: COLORS.brandYellow, 
