@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, AlertTriangle, CheckCircle, Clock, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '../../stores/authStore';
+// const token = useAuthStore.getState().accessToken;
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -67,7 +69,7 @@ const PartnerLeadDisputesSection: React.FC<PartnerLeadDisputesSectionProps> = ({
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`${API_BASE_URL}/ops/disputes/?lead=${leadId}`, {
