@@ -197,7 +197,7 @@ import MyAccountPage from './pages/MyAccountPage';
 import PartnerSignUpPage from './components/partner/PartnerSignUp';
 import PartnerDashboardPage from './components/partner/PartnerDashboard'; // OLD DASHBOARD
 import { PartnerLeadsPage } from './components/partner/PartnerLeadPage';
-// import { PartnerLeadDetailPage } from './components/partner/PartnerLeadDetailPage';
+import { PartnerLeadDetailPage } from './components/partner/PartnerLeadDetailPage';
 // import { PartnerWalletPage } from './components/partner/PartnerWalletPage';
 
 // --- Partner Profile Pages ---
@@ -217,7 +217,7 @@ import LeadDetailPage from './pages/partner/catalog/LeadDetailPage';
 // import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { partnerFinanceRoutes } from './routes/financeRoutes';
 import AboutUs from './pages/AboutSection';
-import ClaimedLeadDetailPage from './pages/partner/ClaimedleadDetailPage';
+import AgentsPage from './pages/partner/AgentsPage';
 
 
 
@@ -331,9 +331,10 @@ const AppRoutes: React.FC = () => {
         
         {/* My Leads */}
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 
-        <Route path="lead/:id" element={<ClaimedLeadDetailPage />} />
+        <Route path="lead/:leadId" element={<PartnerLeadDetailPage />} />
         
         {partnerFinanceRoutes}
+        <Route path="agents" element={<AgentsPage />} />
 
         {/* Wallet */}
         {/* <Route path="wallet" element={<PartnerWalletPage />} /> */}

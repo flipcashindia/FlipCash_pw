@@ -1,21 +1,27 @@
-// src/pages/partner/PartnerLeadDetailPage.tsx - Complete Partner Lead Detail with Chat & Disputes
+// src/components/partner/PartnerLeadDetailPage.tsx
+// Complete Partner Lead Detail with Chat, Disputes & ASSIGN AGENT functionality
 // Follows backend API structure exactly - uses correct field names (line1, line2, postal_code)
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Loader2, AlertTriangle, X, Wallet, MapPin, User, CheckCircle,
   Tag, MessageSquare, Activity, Phone, Clock, Navigation, Eye, EyeOff,
-  Smartphone, DollarSign, Send, Play, ChevronRight
+  Smartphone, DollarSign, Send, Play,  ChevronRight,
+  UserPlus, Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuthStore } from '../../stores/authStore';
 
 // Import components
 import PartnerLeadChat from '../../components/leads/PartnerLeadChat';
-import PartnerRaiseDisputeModal from '../dispute/PartneRaiseDisputeModal'
+import PartnerRaiseDisputeModal from '../../components/dispute/PartnerRaiseDisputeModal';
 import PartnerLeadDisputesSection from '../../components/leads/PartnerLeadDisputesSection';
 import LeadStatusHistory from '../../components/leads/LeadStatusHistory';
-// import { leadsService } from '../../api/services/leadsService';
+import { useAuthStore } from '../../stores/authStore';
+
+// Import Agent Assignment Modal
+import AssignAgentModal from '../../components/partner/agents/AssignAgentModal';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 // FlipCash Color Theme
@@ -43,11 +49,11 @@ interface DeviceModel {
 
 interface PickupAddress {
   id: string;
-  line1: string;        // ✅ Correct field name from backend
+  line1: string;
   line2?: string;
   city: string;
   state: string;
-  postal_code: string;  // ✅ Correct field name from backend
+  postal_code: string;
   landmark?: string;
 }
 
@@ -56,6 +62,14 @@ interface AssignedPartner {
   business_name: string;
   contact_person: string;
   phone: string;
+}
+
+interface AssignedAgent {
+  id: string;
+  name: string;
+  phone: string;
+  employee_id?: string;
+  status: string;
 }
 
 interface LeadOffer {
@@ -83,7 +97,7 @@ interface LeadDetail {
   id: string;
   lead_number: string;
   user: LeadUser;
-  device_model: DeviceModel | null;  // Can be null
+  device_model: DeviceModel | null;
   brand_name: string;
   storage: string;
   ram: string;
@@ -97,6 +111,7 @@ interface LeadDetail {
   status: string;
   status_display: string;
   assigned_partner: AssignedPartner | null;
+  assigned_agent?: AssignedAgent | null;
   pickup_address: PickupAddress;
   preferred_date: string;
   preferred_time_slot: string;
@@ -157,19 +172,10 @@ const LeadStatus = {
   EXPIRED: 'expired'
 };
 
-
-
-
 // ============ Main Component ============
 export const PartnerLeadDetailPage: React.FC = () => {
   const navigate = useNavigate();
-  // const { leadId } = useParams<{ leadId: string }>();
-  const { id: leadId } = useParams<{ id: string }>();
-
-  if (!leadId) {
-    navigate('/partner/leads/my');
-    return null;
-  }
+  const { leadId } = useParams<{ leadId: string }>();
 
   // State
   const [leadDetails, setLeadDetails] = useState<LeadDetail | null>(null);
@@ -197,6 +203,9 @@ export const PartnerLeadDetailPage: React.FC = () => {
   const [offerNotes, setOfferNotes] = useState('');
   const [inspectionFindings, setInspectionFindings] = useState('');
 
+  // Assign Agent modal state
+  const [isAssignAgentModalOpen, setIsAssignAgentModalOpen] = useState(false);
+
   // ============ Load Data ============
   useEffect(() => {
     if (!leadId) {
@@ -211,29 +220,32 @@ export const PartnerLeadDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      // const token = localStorage.getItem('access_token');
-      // if (!token) throw new Error("Authentication required");
+      
       const token = useAuthStore.getState().accessToken;
+      if (!token) throw new Error("Authentication required");
 
-      // Fetch lead details from partner endpoint
-      const res = await fetch(`${API_BASE_URL}/leads/partner/leads/${id}/claim/`, {
+      // Try main leads endpoint first (works for claimed leads)
+      let res = await fetch(`${API_BASE_URL}/leads/leads/${id}/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
+      // If main endpoint fails, try partner leads endpoint (for unclaimed leads)
+      if (!res.ok && res.status === 404) {
+        res = await fetch(`${API_BASE_URL}/leads/partner/leads/${id}/`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+
       if (!res.ok) {
         if (res.status === 404) throw new Error("Lead not found");
+        if (res.status === 403) throw new Error("You don't have access to this lead");
         throw new Error("Failed to load lead details");
       }
 
       const data: LeadDetail = await res.json();
       console.log('Partner Lead Details:', data);
       setLeadDetails(data);
-
-      // const { data: lead, isLoading, isError, refetch } = useQuery({
-      //   queryKey: ['leadDetails', leadId],
-      //   queryFn: () => leadsService.getLeadDetails(leadId),
-      // });
-          
+      
       // Load related data
       loadOffers(id);
       loadWalletInfo();
@@ -254,7 +266,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
   const loadOffers = async (id: string) => {
     try {
       setLoadingOffers(true);
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) return;
 
       const res = await fetch(`${API_BASE_URL}/leads/offers/?lead=${id}`, {
@@ -274,7 +286,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
   const loadVisitDetails = async (leadId: string) => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) return;
 
       const res = await fetch(`${API_BASE_URL}/visits/visits/?lead=${leadId}`, {
@@ -295,7 +307,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
   const loadWalletInfo = async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) return;
 
       const res = await fetch(`${API_BASE_URL}/finance/partner/wallet/`, {
@@ -319,7 +331,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setClaimLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`${API_BASE_URL}/leads/partner/leads/${leadDetails.id}/claim/`, {
@@ -373,7 +385,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setActionLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_journey/`, {
@@ -406,7 +418,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setActionLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
@@ -439,7 +451,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setActionLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
@@ -472,7 +484,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setActionLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const payload = {
@@ -535,7 +547,6 @@ export const PartnerLeadDetailPage: React.FC = () => {
     return lead.brand_name || 'Unknown Device';
   };
 
-  // ✅ Use correct address field names from backend
   const formatAddress = (address: PickupAddress | null): string => {
     if (!address) return 'Address not available';
     const parts = [address.line1];
@@ -550,6 +561,11 @@ export const PartnerLeadDetailPage: React.FC = () => {
   };
 
   const isLeadClaimed = leadDetails?.status !== LeadStatus.BOOKED;
+  
+  // Check if lead can have agent assigned
+  const canAssignAgent = isLeadClaimed && 
+    !leadDetails?.assigned_agent &&
+    !['completed', 'cancelled', 'expired'].includes(leadDetails?.status || '');
 
   // ============ Loading State ============
   if (loading) {
@@ -572,7 +588,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-[#1C1C1B] mb-2">Error</h2>
           <p className="text-gray-600 mb-6">{error || 'Lead not found'}</p>
           <button
-            onClick={() => navigate('/partner/leads')}
+            onClick={() => navigate('/partner/leads/all')}
             className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520]"
           >
             Back to Leads
@@ -591,7 +607,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
         {/* Back Button */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <button 
-            onClick={() => navigate('/partner/leads')} 
+            onClick={() => navigate('/partner/leads/all')} 
             className="flex items-center gap-2 text-[#1C1C1B] hover:text-[#FEC925] transition font-semibold"
           >
             <ArrowLeft size={24} />
@@ -653,8 +669,19 @@ export const PartnerLeadDetailPage: React.FC = () => {
                   </button>
                 )}
 
+                {/* Assign Agent Button */}
+                {canAssignAgent && (
+                  <button 
+                    onClick={() => setIsAssignAgentModalOpen(true)}
+                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2 shadow-lg"
+                  >
+                    <UserPlus size={20} />
+                    Assign Agent
+                  </button>
+                )}
+
                 {/* Start Journey Button */}
-                {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && (
+                {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && !leadDetails.assigned_agent && (
                   <button 
                     onClick={handleStartVisit}
                     disabled={actionLoading}
@@ -712,6 +739,36 @@ export const PartnerLeadDetailPage: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Assigned Agent Info Display */}
+            {leadDetails.assigned_agent && (
+              <div className="mt-6 p-4 bg-[#1B8A05]/10 border-2 border-[#1B8A05] rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#1B8A05]/20 rounded-full flex items-center justify-center">
+                      <Users className="text-[#1B8A05]" size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-600">Assigned Agent</p>
+                      <p className="text-lg font-bold text-[#1C1C1B]">{leadDetails.assigned_agent.name}</p>
+                      <p className="text-sm text-gray-600">{leadDetails.assigned_agent.phone}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      leadDetails.assigned_agent.status === 'active' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {leadDetails.assigned_agent.status}
+                    </span>
+                    {leadDetails.assigned_agent.employee_id && (
+                      <p className="text-xs text-gray-500 mt-1">ID: {leadDetails.assigned_agent.employee_id}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Verification Code Display */}
             {visitDetails?.verification_code && isLeadClaimed && (
@@ -946,7 +1003,6 @@ export const PartnerLeadDetailPage: React.FC = () => {
                 <h3 className="text-2xl font-bold text-[#1C1C1B]">Pickup Details</h3>
               </div>
               <div className="space-y-3">
-                {/* ✅ Use correct field names: line1, line2, postal_code */}
                 <p className="font-bold text-lg">{leadDetails.pickup_address?.line1 || 'Address line 1'}</p>
                 {leadDetails.pickup_address?.line2 && (
                   <p className="text-gray-700">{leadDetails.pickup_address.line2}</p>
@@ -1083,6 +1139,20 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     </div>
                     <ChevronRight className="text-gray-400" size={20} />
                   </a>
+
+                  {/* Assign Agent Quick Action */}
+                  {canAssignAgent && (
+                    <button
+                      onClick={() => setIsAssignAgentModalOpen(true)}
+                      className="w-full flex items-center justify-between p-4 bg-[#1B8A05]/10 rounded-xl hover:bg-[#1B8A05]/20 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <UserPlus className="text-[#1B8A05]" size={20} />
+                        <span className="font-semibold text-[#1C1C1B]">Assign to Agent</span>
+                      </div>
+                      <ChevronRight className="text-gray-400" size={20} />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1276,6 +1346,21 @@ export const PartnerLeadDetailPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Assign Agent Modal */}
+      {leadDetails && (
+        <AssignAgentModal
+          isOpen={isAssignAgentModalOpen}
+          onClose={() => setIsAssignAgentModalOpen(false)}
+          leadId={leadDetails.id}
+          leadNumber={leadDetails.lead_number}
+          deviceName={getDeviceName(leadDetails)}
+          onSuccess={() => {
+            setIsAssignAgentModalOpen(false);
+            loadLeadDetails(leadDetails.id);
+          }}
+        />
+      )}
 
       {/* Dispute Modal */}
       {leadDetails && (

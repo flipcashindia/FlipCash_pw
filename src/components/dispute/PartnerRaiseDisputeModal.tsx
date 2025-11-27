@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, X, AlertTriangle, Upload, FileText, Image as ImageIcon } from 'lucide-react';
-
+import { useAuthStore } from '../../stores/authStore';
+// const token = useAuthStore.getState().accessToken;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 interface PartnerRaiseDisputeModalProps {
@@ -120,7 +121,7 @@ const PartnerRaiseDisputeModal: React.FC<PartnerRaiseDisputeModalProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
 
       const payload = {

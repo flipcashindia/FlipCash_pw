@@ -3,6 +3,8 @@ import { X, MapPin, Calendar, Package } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type Lead } from '../../types/lead.types';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+// import { useAuthStore } from '../../stores/authStore';
+// const token = useAuthStore.getState().accessToken;
 
 interface LeadDetailsModalProps {
   lead: Lead;
