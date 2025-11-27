@@ -23,9 +23,8 @@ declare global {
 
 type PageState = 'form' | 'processing' | 'redirect' | 'error';
 
-// Environment detection
+// Environment detection for debug logging ONLY (not for SDK mode)
 const IS_LOCALHOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const CASHFREE_MODE = IS_LOCALHOST ? 'sandbox' : 'production';
 
 const PartnerAddMoneyPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,13 +40,11 @@ const PartnerAddMoneyPage: React.FC = () => {
   // Load Cashfree SDK on component mount
   useEffect(() => {
     const loadCashfreeSDK = async () => {
-      // Check if already loaded
       if (window.Cashfree) {
         setCashfreeLoaded(true);
         return;
       }
 
-      // Load Cashfree SDK script
       const script = document.createElement('script');
       script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
       script.async = true;
@@ -64,6 +61,43 @@ const PartnerAddMoneyPage: React.FC = () => {
 
     loadCashfreeSDK();
   }, []);
+
+  // ================================================================
+  // UPDATED: Accept cashfreeMode as parameter from API response
+  // ================================================================
+  const openCashfreeCheckout = async (paymentSessionId: string, cashfreeMode: string) => {
+    try {
+      if (!window.Cashfree) {
+        throw new Error('Cashfree SDK not loaded');
+      }
+
+      if (IS_LOCALHOST) {
+        console.log('🚀 Opening Cashfree checkout...');
+        console.log('📋 Mode:', cashfreeMode);
+        console.log('📋 Session ID:', paymentSessionId);
+      }
+
+      // Initialize Cashfree with mode from backend
+      const cashfree = window.Cashfree({
+        mode: cashfreeMode,  // ✅ Use mode from API, not hardcoded
+      });
+
+      const checkoutOptions = {
+        paymentSessionId: paymentSessionId,
+        redirectTarget: '_self',
+      };
+
+      if (IS_LOCALHOST) console.log('📋 Checkout options:', checkoutOptions);
+
+      await cashfree.checkout(checkoutOptions);
+      
+      if (IS_LOCALHOST) console.log('✅ Checkout opened');
+      
+    } catch (err: any) {
+      if (IS_LOCALHOST) console.error('❌ Cashfree checkout error:', err);
+      throw new Error(`Payment gateway error: ${err.message || 'Unknown error'}`);
+    }
+  };
 
   const handleSubmit = async (amount: string) => {
     if (IS_LOCALHOST) console.log('📤 Creating payment for amount:', amount);
@@ -86,8 +120,17 @@ const PartnerAddMoneyPage: React.FC = () => {
       
       setCreatedPayment(payment);
 
-      // Get the payment session ID
-      const paymentSessionId = payment.payment_session_id || payment.payment_session_id;
+      const paymentSessionId = payment.payment_session_id;
+      
+      // ================================================================
+      // CRITICAL: Get Cashfree mode from backend response
+      // ================================================================
+      const cashfreeMode = payment.cashfree_mode || 'sandbox';
+      
+      if (IS_LOCALHOST) {
+        console.log('📋 Payment Session ID:', paymentSessionId);
+        console.log('📋 Cashfree Mode from Backend:', cashfreeMode);
+      }
       
       // If we have a direct payment link, use it
       if (payment.payment_link && payment.payment_link.startsWith('http')) {
@@ -102,7 +145,7 @@ const PartnerAddMoneyPage: React.FC = () => {
       // Otherwise, use Cashfree SDK with payment_session_id
       if (paymentSessionId) {
         if (IS_LOCALHOST) console.log('🔗 Using Cashfree SDK with session:', paymentSessionId);
-        await openCashfreeCheckout(paymentSessionId);
+        await openCashfreeCheckout(paymentSessionId, cashfreeMode);
       } else {
         throw new Error('No payment link or session ID received');
       }
@@ -113,42 +156,6 @@ const PartnerAddMoneyPage: React.FC = () => {
       setPageState('error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const openCashfreeCheckout = async (paymentSessionId: string) => {
-    try {
-      if (!window.Cashfree) {
-        throw new Error('Cashfree SDK not loaded');
-      }
-
-      if (IS_LOCALHOST) {
-        console.log('🚀 Opening Cashfree checkout...');
-        console.log('📋 Mode:', CASHFREE_MODE);
-        console.log('📋 Session ID:', paymentSessionId);
-      }
-
-      // Initialize Cashfree
-      const cashfree = window.Cashfree({
-        mode: CASHFREE_MODE, // "sandbox" or "production"
-      });
-
-      // Open checkout
-      const checkoutOptions = {
-        paymentSessionId: paymentSessionId,
-        redirectTarget: '_self', // '_self' to redirect in same tab, '_blank' for new tab
-      };
-
-      if (IS_LOCALHOST) console.log('📋 Checkout options:', checkoutOptions);
-
-      await cashfree.checkout(checkoutOptions);
-      
-      // Note: This line won't execute if checkout redirects
-      if (IS_LOCALHOST) console.log('✅ Checkout opened');
-      
-    } catch (err: any) {
-      if (IS_LOCALHOST) console.error('❌ Cashfree checkout error:', err);
-      throw new Error(`Payment gateway error: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -165,13 +172,14 @@ const PartnerAddMoneyPage: React.FC = () => {
   const handleManualRedirect = () => {
     if (!createdPayment) return;
     
-    const paymentSessionId = createdPayment.payment_session_id || createdPayment.payment_session_id;
+    const paymentSessionId = createdPayment.payment_session_id;
     const paymentLink = createdPayment.payment_link;
+    const cashfreeMode = createdPayment.cashfree_mode || 'sandbox';
     
     if (paymentLink && paymentLink.startsWith('http')) {
       window.location.href = paymentLink;
     } else if (paymentSessionId) {
-      openCashfreeCheckout(paymentSessionId);
+      openCashfreeCheckout(paymentSessionId, cashfreeMode);
     } else {
       setError('No payment link available');
     }

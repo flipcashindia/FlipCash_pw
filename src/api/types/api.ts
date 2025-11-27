@@ -89,7 +89,7 @@ export interface User {
   name: string | null;
   full_name?: string;
   email: string | null;
-  role: 'consumer' | 'partner' | 'super_admin' | 'admin' | 'sales' | 'support' | 'finance' | 'compliance';
+  role: 'consumer' | 'partner' | 'agent' | 'super_admin' | 'admin' | 'sales' | 'support' | 'finance' | 'compliance';
   is_phone_verified: boolean;
   is_email_verified: boolean;
   device_binding_id?: string;

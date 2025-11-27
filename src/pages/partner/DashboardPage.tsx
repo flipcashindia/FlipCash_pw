@@ -124,11 +124,11 @@ const DashboardPage: React.FC = () => {
               <div className="flex items-baseline gap-2 mb-4">
                 <Wallet className="w-6 h-6" />
                 <span className="text-4xl font-bold">
-                  ₹{parseFloat(balance?.available_balance || '0').toLocaleString('en-IN')}
+                  ₹{parseFloat(balance?.balance || '0').toLocaleString('en-IN')}
                 </span>
               </div>
               <p className="text-sm opacity-80">
-                Blocked: ₹{(parseFloat(balance?.balance || '0') - parseFloat(balance?.available_balance || '0')).toLocaleString('en-IN')}
+                Blocked: ₹{(parseFloat(balance?.blocked_balance || '0') - parseFloat(balance?.blocked_balance || '0')).toLocaleString('en-IN')}
               </p>
             </div>
             <Link

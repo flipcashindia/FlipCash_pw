@@ -13,6 +13,7 @@ export interface Wallet {
   owner_id: string;
   balance: string;
   available_balance: string;
+  blocked_balance: string;
   currency: string;
   status: WalletStatus;
   daily_withdrawal_limit: string | null;
@@ -24,6 +25,7 @@ export interface Wallet {
 export interface WalletStatistics {
   current_balance: string;
   available_balance: string;
+  blocked_balance: string;
   total_credits: string;
   total_debits: string;
   transaction_count: number;
@@ -116,6 +118,7 @@ export interface CashfreePayment {
   metadata: Record<string, unknown>;
   created_at: string;
   paid_at: string | null;
+  cashfree_mode: 'sandbox' | 'production';
 }
 
 export interface PaymentListResponse {

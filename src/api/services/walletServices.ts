@@ -150,8 +150,8 @@ class WalletService {
   /**
    * Get wallet balance (lightweight)
    */
-  async getBalance(): Promise<{ balance: string; available_balance: string }> {
-    const response: AxiosResponse<{ balance: string; available_balance: string }> = 
+  async getBalance(): Promise<{ balance: string; blocked_balance: string; available_balance: string; }> {
+    const response: AxiosResponse<{ balance: string; blocked_balance: string; available_balance: string; }> = 
       await privateApiClient.get(`${this.baseUrl}/wallet/balance/`);
     return response.data;
   }
