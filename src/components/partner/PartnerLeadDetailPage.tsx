@@ -235,6 +235,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
       }
+      
 
       if (!res.ok) {
         if (res.status === 404) throw new Error("Lead not found");
