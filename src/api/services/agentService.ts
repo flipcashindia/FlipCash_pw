@@ -40,7 +40,27 @@ const apiCall = async <T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || error.error || `API Error: ${response.status}`);
+    
+    // Debug: Log raw error response
+    console.error('API Error Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: error
+    });
+    
+    // Handle DRF validation errors (field-level errors)
+    if (typeof error === 'object' && !error.detail && !error.error) {
+      // DRF returns errors like { "phone": ["error message"], "name": ["error"] }
+      const messages = Object.entries(error)
+        .map(([field, msgs]) => {
+          const msgArray = Array.isArray(msgs) ? msgs : [msgs];
+          return `${field}: ${msgArray.join(', ')}`;
+        })
+        .join('; ');
+      throw new Error(messages || `API Error: ${response.status}`);
+    }
+    
+    throw new Error(error.detail || error.error || error.message || `API Error: ${response.status}`);
   }
 
   return response.json();
