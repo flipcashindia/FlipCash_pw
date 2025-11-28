@@ -85,7 +85,7 @@ const getAddressDisplay = (address: Address | null | undefined): { short: string
 
 // Card for "New Leads" tab (Available Leads)
 const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
-    console.log('Rendering AvailableLeadCard with lead:', lead);
+    // console.log('Rendering AvailableLeadCard with lead:', lead);
     
     const deviceName = getDeviceName(lead.device_model, lead.brand_name);
     const addressInfo = getAddressDisplay(lead.pickup_address);
@@ -189,7 +189,7 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
 
 // Card for "My Leads" tab (Claimed/Assigned Leads)
 const MyLeadCard: React.FC<{ lead: MyLead }> = ({ lead }) => {
-    console.log('Rendering MyLeadCard with lead:', lead);
+    // console.log('Rendering MyLeadCard with lead:', lead);
     
     const deviceName = getDeviceName(lead.device_model, lead.brand_name);
     const addressInfo = getAddressDisplay(lead.pickup_address);
@@ -372,7 +372,7 @@ export const PartnerLeadsPage: React.FC = () => {
             if (statusFilter && statusFilter !== '') {
                 params.status = statusFilter;
             }
-            console.log('Fetching myLeads with params:', params);
+            // console.log('Fetching myLeads with params:', params);
             return leadsService.getMyLeads(params);
         },
         enabled: tab === 'my',
@@ -386,12 +386,12 @@ export const PartnerLeadsPage: React.FC = () => {
     const currentData = tab === 'new' ? availableLeads : myLeads;
 
     // Enhanced logging
-    console.log('=== DEBUG INFO ===');
-    console.log('Current tab:', tab);
-    console.log('Status filter:', statusFilter);
-    console.log('Is loading:', isLoading);
-    console.log('Current data:', currentData);
-    console.log('==================');
+    // console.log('=== DEBUG INFO ===');
+    // console.log('Current tab:', tab);
+    // console.log('Status filter:', statusFilter);
+    // console.log('Is loading:', isLoading);
+    // console.log('Current data:', currentData);
+    // console.log('==================');
 
     // Determine the actual data structure
     let leadsArray: (AvailableLead | MyLead)[] = [];
@@ -411,7 +411,7 @@ export const PartnerLeadsPage: React.FC = () => {
         }
     }
 
-    console.log('Processed leadsArray length:', leadsArray.length);
+    // console.log('Processed leadsArray length:', leadsArray.length);
 
     // Filter options - Match backend LeadStatus choices
     const leadStatusOptions = [
@@ -499,7 +499,7 @@ export const PartnerLeadsPage: React.FC = () => {
                             id="status-filter"
                             value={statusFilter}
                             onChange={(e) => {
-                                console.log('Filter changed to:', e.target.value);
+                                // console.log('Filter changed to:', e.target.value);
                                 setStatusFilter(e.target.value);
                                 setPage(1);
                             }}

@@ -63,15 +63,16 @@ export interface AgentProfile {
 
 export type AgentStatus = 'active' | 'inactive' | 'suspended' | 'pending';
 
+
 export interface AgentLeadAssignment {
   id: string;
-  agent: string;
-  agent_name: string;
-  lead: string;
-  lead_number: string;
+  agent: string;                      // UUID
+  agent_name: string;                 // read_only
+  lead: string;                       // UUID
+  lead_number: string;                // read_only
   status: AssignmentStatus;
-  status_display: string;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status_display: string;             // read_only
+  priority: AssignmentPriority;
   
   // Timestamps
   assigned_at: string;
@@ -82,7 +83,7 @@ export interface AgentLeadAssignment {
   completed_at: string | null;
   expected_completion_at: string | null;
   
-  // Location
+  // Location (check-in coordinates)
   checkin_latitude: string | null;
   checkin_longitude: string | null;
   
@@ -90,28 +91,52 @@ export interface AgentLeadAssignment {
   assignment_notes: string;
   completion_notes?: string;
   
-  // Lead details (nested)
-  lead_details?: {
-    lead_number: string;
-    device_name: string;
-    customer_name: string;
-    pickup_address: string;
-    estimated_price: string;
-    scheduled_date: string;
-    scheduled_time_slot: string;
-  };
+  // Lead details (nested, for detail view)
+  lead_details?: LeadDetails;
 }
 
 export type AssignmentStatus = 
-  | 'assigned'
-  | 'accepted'
-  | 'rejected'
-  | 'en_route'
-  | 'checked_in'
-  | 'inspecting'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled';
+  | 'assigned'      // Just assigned, waiting for agent to accept
+  | 'accepted'      // Agent accepted
+  | 'rejected'      // Agent rejected
+  | 'en_route'      // Agent is traveling to location
+  | 'checked_in'    // Agent arrived at location
+  | 'inspecting'    // Device inspection in progress
+  | 'in_progress'   // Legacy status
+  | 'completed'     // Assignment completed
+  | 'cancelled';    // Assignment cancelled
+
+export type AssignmentPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface LeadDetails {
+  lead_number: string;
+  device_name: string;
+  device_category: string;
+  device_brand: string;
+  device_model: string;
+  device_storage?: string;
+  device_color?: string;
+  customer_name: string;
+  customer_phone: string;
+  pickup_address: PickupAddress;
+  estimated_price: string;
+  scheduled_date: string;
+  scheduled_time_slot: string;
+  condition_responses?: Record<string, any>;
+}
+
+export interface PickupAddress {
+  id: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+
 
 export interface AgentActivityLog {
   id: string;
