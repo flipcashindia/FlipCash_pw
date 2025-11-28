@@ -79,7 +79,7 @@ useAuthStore.subscribe((state, prevState) => {
   const userJustLoaded = (!prevState.user && state.user) || (prevState.isLoading && !state.isLoading && state.user);
   
   if (userJustLoaded && state.user?.role === 'partner') {
-    console.log('✅ TRIGGERING PARTNER FETCH (Auth state changed)');
+    // console.log('✅ TRIGGERING PARTNER FETCH (Auth state changed)');
     // Use timeout to ensure this runs after the state update is fully complete
     setTimeout(() => {
       usePartnerStore.getState().fetchPartnerProfile();
@@ -93,7 +93,7 @@ useAuthStore.subscribe((state, prevState) => {
 useAuthStore.subscribe((state, prevState) => {
   const isJustLoggedOut = prevState.user && !state.user;
   if (isJustLoggedOut) {
-    console.log('❌ CLEARING PARTNER PROFILE (User logged out)');
+    // console.log('❌ CLEARING PARTNER PROFILE (User logged out)');
     usePartnerStore.getState().clearPartnerProfile();
   }
 });
