@@ -43,7 +43,7 @@ const DashboardPage: React.FC = () => {
 
   // ✅ Safe array handling - ensure visits is always an array
   const visits = Array.isArray(visitsData) ? visitsData : [];
-  const agents = agentsData?.results || [];
+  const agents = agentsData || [];
 
   const activeLeads = visits.filter((v) => 
     ['scheduled', 'en_route', 'in_progress'].includes(v.status)
@@ -327,17 +327,17 @@ const DashboardPage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#FEC925]/20 rounded-full flex items-center justify-center">
                           <span className="font-bold text-[#b48f00]">
-                            {agent.user.name?.charAt(0)?.toUpperCase() || 'A'}
+                            {agent.user_name?.charAt(0)?.toUpperCase() || 'A'}
                           </span>
                         </div>
                         <div>
-                          <p className="font-semibold text-[#1C1C1B]">{agent.user.name}</p>
-                          <p className="text-sm text-gray-600">{agent.user.phone}</p>
+                          <p className="font-semibold text-[#1C1C1B]">{agent.user_name}</p>
+                          <p className="text-sm text-gray-600">{agent.user_phone}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="font-semibold text-[#1C1C1B]">{agent.total_visits_completed}</p>
+                          <p className="font-semibold text-[#1C1C1B]">{agent.total_leads_completed}</p>
                           <p className="text-xs text-gray-500">Completed</p>
                         </div>
                         {agent.average_rating && (

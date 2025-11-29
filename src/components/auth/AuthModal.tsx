@@ -3,32 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   X, Phone, KeyRound, Smartphone, Shield, Zap, Loader2,
-  User, LogOut, ArrowRight, FileText, Banknote, MapPin, ListChecks 
+  User, LogOut, ArrowRight, FileText, Banknote, MapPin, ListChecks,
+  // NEW: Agent-specific icons
+  Navigation, ClipboardCheck, UserCircle, Activity
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore'; // ✅ Use the correct store
-import { authService } from '../../api/services/authService2'; // Make sure path is correct
+import { useAuthStore } from '../../stores/authStore';
+import { authService } from '../../api/services/authService2';
 import { useToast } from '../../contexts/ToastContext';
 import { type ApiError, type User as ApiUser } from '../../api/types/api';
 
 type LoginStep = 'phone' | 'otp';
-
-// // --- Helper: Branded Auth Input ---
-// const AuthInput: React.FC<{ label: string; id: string; type?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; maxLength?: number; required?: boolean; }> = ({ label, id, type = "text", value, onChange, maxLength, required = true }) => (
-//   <div>
-//     <label htmlFor={id} className="block text-sm font-semibold text-brand-black mb-2">
-//       {label}
-//       {required && <span className="text-brand-red">*</span>}
-//     </label>
-//     <input 
-//       type={type} id={id} name={id} value={value} 
-//       onChange={onChange} maxLength={maxLength} 
-//       className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg 
-//                  focus:outline-none focus:ring-4 focus:ring-brand-yellow/30 focus:border-brand-yellow 
-//                  font-medium transition" //
-//       required={required} 
-//     />
-//   </div>
-// );
 
 // --- Helper: Branded Auth Button ---
 const AuthButton: React.FC<{
@@ -42,7 +26,7 @@ const AuthButton: React.FC<{
     className="w-full flex items-center justify-center gap-3 px-6 py-4 
                bg-gradient-to-r from-brand-yellow to-brand-green text-brand-black 
                rounded-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed 
-               font-bold text-lg shadow-lg transition" //
+               font-bold text-lg shadow-lg transition"
   >
     {isLoading ? <Loader2 className="animate-spin" size={24} /> : text}
   </button>
@@ -103,6 +87,87 @@ const PartnerMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () =
         ))}
       </div>
       
+      <div className="border-t pt-4">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-gray-100 text-brand-red rounded-xl font-bold text-lg hover:bg-red-50 transition"
+        >
+          <LogOut size={20} />
+          Log Out
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- NEW: Agent Menu ---
+const AgentMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () => void; }> = ({ user, onLogout, onClose }) => {
+  
+  const menuItems = [
+    { name: 'Dashboard', href: '/agent/dashboard', icon: Zap },
+    { name: 'My Leads', href: '/agent/leads', icon: ListChecks },
+    { name: 'Activity', href: '/agent/activity', icon: Activity },
+    { name: 'Profile', href: '/agent/profile', icon: UserCircle },
+  ];
+
+  return (
+    <motion.div
+      key="agent-menu"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="space-y-4"
+    >
+      {/* Agent Welcome Card */}
+      <div className="bg-gradient-to-r from-[#FEC925]/20 to-[#1B8A05]/20 p-4 rounded-xl border-2 border-[#1B8A05]/30">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-[#1B8A05] rounded-full flex items-center justify-center">
+            <Navigation className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-brand-black">
+              Welcome, {user.name || 'Agent'}!
+            </h3>
+            <p className="text-sm text-gray-600">
+              Field Agent Portal
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+          <ClipboardCheck className="w-5 h-5 text-[#1B8A05] mx-auto mb-1" />
+          <p className="text-xs text-gray-500">Active Leads</p>
+          <p className="text-lg font-bold text-brand-black">-</p>
+        </div>
+        <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+          <Activity className="w-5 h-5 text-[#FEC925] mx-auto mb-1" />
+          <p className="text-xs text-gray-500">Completed</p>
+          <p className="text-lg font-bold text-brand-black">-</p>
+        </div>
+      </div>
+      
+      {/* Menu Items */}
+      <div className="space-y-3">
+        {menuItems.map((item) => (
+          <Link
+            key={item.href}
+            to={item.href}
+            onClick={onClose}
+            className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-[#FEC925] transition"
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className="w-5 h-5 text-[#1B8A05]" />
+              <span className="font-semibold text-brand-black">{item.name}</span>
+            </div>
+            <ArrowRight className="w-5 h-5 text-gray-400" />
+          </Link>
+        ))}
+      </div>
+      
+      {/* Logout Button */}
       <div className="border-t pt-4">
         <button
           onClick={onLogout}
@@ -199,10 +264,10 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
          setLoading(false);
          return;
       }
-      const response = await authService.sendLoginOtp({ phone: formattedPhone, purpose: 'login' }); //
+      const response = await authService.sendLoginOtp({ phone: formattedPhone, purpose: 'login' });
       setPhone(formattedPhone); 
       setStep('otp');
-      startResendCooldown(response.resend_after || 30); //
+      startResendCooldown(response.resend_after || 30);
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -219,9 +284,9 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
       
       // This 'login' function is from useAuthStore.
       // It will call the API AND set the global Zustand state.
-      const response = await login(phone, otp, deviceId); //
+      const response = await login(phone, otp, deviceId);
       
-      const userRole = response.user.role; //
+      const userRole = response.user.role;
       console.log('user role: ', userRole);
       
       toast.success('Login Successful!');
@@ -239,7 +304,7 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     } catch (err: any) {
        const apiError = err as ApiError;
        const message = apiError.response?.data?.detail || "Invalid or expired OTP. Please try again.";
-       setError(message); //
+       setError(message);
        setOtp('');
        setLoading(false);
     }
@@ -256,9 +321,9 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     setLoading(true);
     setError('');
     try {
-      const response = await authService.sendLoginOtp({ phone: phone, purpose: 'login' }); //
+      const response = await authService.sendLoginOtp({ phone: phone, purpose: 'login' });
       setOtp('');
-      startResendCooldown(response.resend_after || 30); //
+      startResendCooldown(response.resend_after || 30);
       toast.success('OTP has been resent.');
     } catch (err: any) {
       setError(err.message || 'Failed to resend OTP');
@@ -292,13 +357,31 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     resetForm();
     onClose();
   };
+
+  // NEW: Helper to get header subtitle based on role
+  const getHeaderSubtitle = (): string => {
+    if (!isAuthenticated()) return 'Login to your Account';
+    
+    switch (user?.role) {
+      case 'partner':
+        return 'Partner Portal';
+      case 'agent':
+        return 'Agent Portal';
+      default:
+        return 'Welcome!';
+    }
+  };
   
-  // This render function checks the global auth state
+  // UPDATED: This render function checks the global auth state
+  // Added 'agent' role check
   const renderContent = () => {
     if (isAuthenticated() && user) {
       // --- USER IS LOGGED IN ---
-      if (user.role === 'partner') { //
+      if (user.role === 'partner') {
         return <PartnerMenu user={user} onLogout={handleLogout} onClose={onClose} />;
+      } else if (user.role === 'agent') {
+        // NEW: Agent menu for agent users
+        return <AgentMenu user={user} onLogout={handleLogout} onClose={onClose} />;
       } else {
         return <ConsumerMenu user={user} onLogout={handleLogout} onClose={onClose} />;
       }
@@ -478,7 +561,8 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
                   {isAuthenticated() ? 'My Account' : 'Login / Sign Up'}
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {isAuthenticated() ? (user?.role === 'partner' ? 'Partner Portal' : 'Welcome!') : 'Login to your Account'}
+                  {/* UPDATED: Now uses getHeaderSubtitle() for agent support */}
+                  {getHeaderSubtitle()}
                 </p>
               </div>
               <button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors">

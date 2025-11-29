@@ -384,3 +384,16 @@ const DeviceImageCapture: React.FC<DeviceImageCaptureProps> = ({
 };
 
 export default DeviceImageCapture;
+
+
+
+
+
+
+
+
+
+
+
+
+

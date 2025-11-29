@@ -9,7 +9,7 @@ import {
   MapPin,
   Phone,
   Calendar,
-  // Clock,
+  Clock,
   IndianRupee,
   User,
   Package,
@@ -18,20 +18,13 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  // Play,
+  Play,
   MapPinned,
   KeyRound,
   ClipboardCheck,
-  // Calculator,
   BadgeCheck,
   Camera,
-  // MessageSquare,
-  // ChevronRight,
-  // ChevronDown,
-  // Star,
   Smartphone,
-  // Battery,
-  // HardDrive,
   Fingerprint,
   Wifi,
   Bluetooth,
@@ -39,6 +32,7 @@ import {
   Mic,
   Zap,
   Eye,
+  ExternalLink,
 } from 'lucide-react';
 import {
   useAgentAssignment,
@@ -51,18 +45,12 @@ import {
   useSubmitInspection,
   useCalculatePrice,
   useCompleteDeal,
-  // useCancelAssignment,
   useCurrentLocation,
 } from '../../hooks/useAgentApp';
 import type { DeviceInspectionData } from '../../api/types/agentApp.types';
-
-// FlipCash Colors
-// const COLORS = {
-//   primary: '#FEC925',
-//   success: '#1B8A05',
-//   error: '#FF0000',
-//   black: '#1C1C1B',
-// };
+import VerificationCodeEntry from '../../components/agent/VerificationCodeEntry';
+import DealCompletion from '../../components/agent/DealCompletion';
+import DeviceImageCapture from '../../components/agent/DeviceImageCapture';
 
 const AgentLeadDetailPage: React.FC = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -80,7 +68,6 @@ const AgentLeadDetailPage: React.FC = () => {
   const submitInspectionMutation = useSubmitInspection();
   const calculatePriceMutation = useCalculatePrice();
   const completeDealMutation = useCompleteDeal();
-  // const cancelMutation = useCancelAssignment();
   const { getCurrentLocation } = useCurrentLocation();
 
   // State for modals/forms
@@ -89,11 +76,9 @@ const AgentLeadDetailPage: React.FC = () => {
   const [showInspectionForm, setShowInspectionForm] = useState(false);
   const [showPriceReview, setShowPriceReview] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [_showCancelModal, _setShowCancelModal] = useState(false);
   
   const [rejectReason, setRejectReason] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  // const [cancelReason, _setCancelReason] = useState('');
+  const [_verificationCode, setVerificationCode] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -124,6 +109,12 @@ const AgentLeadDetailPage: React.FC = () => {
     has_earphones: false,
     has_bill: false,
     notes: '',
+    // Image fields
+    front_image: undefined,
+    back_image: undefined,
+    screen_image: undefined,
+    imei_image: undefined,
+    defect_images: [],
   });
 
   // Price calculation state
@@ -135,7 +126,7 @@ const AgentLeadDetailPage: React.FC = () => {
   const [proposedPrice, setProposedPrice] = useState<number>(0);
 
   // Complete deal state
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'bank_transfer'>('upi');
+  // const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'bank_transfer'>('upi');
 
   useEffect(() => {
     if (actionSuccess) {
@@ -210,17 +201,17 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!assignmentId || verificationCode.length !== 6) return;
+  const handleVerifyCode = async (code: string) => {
+    if (!assignmentId || code.length !== 6) return;
     setActionError(null);
     try {
-      await verifyCodeMutation.mutateAsync({ assignmentId, code: verificationCode });
+      await verifyCodeMutation.mutateAsync({ assignmentId, code });
       setActionSuccess('Code verified! You can now start inspection.');
       setShowVerifyCodeModal(false);
       setVerificationCode('');
       refetch();
     } catch (err: any) {
-      setActionError(err.message || 'Invalid verification code');
+      throw new Error(err.message || 'Invalid verification code');
     }
   };
 
@@ -228,7 +219,10 @@ const AgentLeadDetailPage: React.FC = () => {
     if (!assignmentId) return;
     setActionError(null);
     try {
+      // This changes visit status from 'arrived' to 'in_progress'
       await startInspectionMutation.mutateAsync(assignmentId);
+      
+      // Now show the inspection form
       setShowInspectionForm(true);
       refetch();
     } catch (err: any) {
@@ -238,6 +232,7 @@ const AgentLeadDetailPage: React.FC = () => {
 
   const handleSubmitInspection = async () => {
     if (!assignmentId) return;
+
     setActionError(null);
     try {
       await submitInspectionMutation.mutateAsync({
@@ -261,56 +256,65 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   };
 
-  const handleConfirmPrice = async () => {
+  const handleCompleteDeal = async (data: {
+    payment_method: 'cash' | 'upi' | 'bank_transfer';
+    signature?: string;
+    notes?: string;
+  }) => {
     if (!assignmentId) return;
-    setShowPriceReview(false);
-    setShowCompleteModal(true);
-  };
-
-  const handleCompleteDeal = async () => {
-    if (!assignmentId) return;
-    setActionError(null);
     try {
       await completeDealMutation.mutateAsync({
         assignmentId,
         data: {
-          final_price: proposedPrice,
-          payment_method: paymentMethod,
+          final_price: proposedPrice || calculatedPrice?.calculated_price || 0,
+          payment_method: data.payment_method,
+          customer_signature: data.signature,
+          notes: data.notes,
         },
       });
-      setActionSuccess('Deal completed successfully!');
       setShowCompleteModal(false);
-      navigate('/agent/leads?status=completed');
+      setActionSuccess('Deal completed successfully!');
+      setTimeout(() => navigate('/agent/activity'), 2000);
     } catch (err: any) {
-      setActionError(err.message || 'Failed to complete deal');
+      throw new Error(err.message || 'Failed to complete deal');
     }
   };
 
-  // const handleCancel = async () => {
-  //   if (!assignmentId || !cancelReason.trim()) return;
-  //   setActionError(null);
-  //   try {
-  //     await cancelMutation.mutateAsync({ assignmentId, reason: cancelReason });
-  //     navigate('/agent/leads');
-  //   } catch (err: any) {
-  //     setActionError(err.message || 'Failed to cancel');
-  //   }
-  // };
-
-
-  // Get current step
-  const getCurrentStep = () => {
-    if (!assignment) return 0;
-    const steps: Record<string, number> = {
-      assigned: 1,
-      accepted: 2,
-      en_route: 3,
-      checked_in: 4,
-      inspecting: 5,
-      completed: 6,
-    };
-    return steps[assignment.assignment_status] || 0;
+  const openGoogleMaps = () => {
+    if (assignment?.pickup_address) {
+      const { latitude, longitude, line1, city, state, postal_code } = assignment.pickup_address;
+      if (latitude && longitude) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`, '_blank');
+      } else {
+        const address = encodeURIComponent(`${line1}, ${city}, ${state} ${postal_code}`);
+        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+      }
+    }
   };
+
+  const callCustomer = () => {
+    if (assignment?.customer_phone) {
+      window.location.href = `tel:${assignment.customer_phone}`;
+    }
+  };
+
+  // Get workflow stage
+  const getWorkflowStage = () => {
+    if (!assignment) return 'loading';
+    switch (assignment.assignment_status) {
+      case 'assigned': return 'pending';
+      case 'accepted': return 'accepted';
+      case 'en_route': return 'en_route';
+      case 'checked_in': return 'checked_in';
+      case 'inspecting': return 'inspecting';
+      case 'completed': return 'completed';
+      case 'cancelled': return 'cancelled';
+      case 'rejected': return 'rejected';
+      default: return 'unknown';
+    }
+  };
+
+  const stage = getWorkflowStage();
 
   if (isLoading) {
     return (
@@ -323,12 +327,12 @@ const AgentLeadDetailPage: React.FC = () => {
   if (error || !assignment) {
     return (
       <div className="p-6 text-center">
-        <XCircle className="mx-auto text-red-500 mb-4" size={48} />
-        <p className="text-lg font-semibold text-gray-900">Failed to load lead details</p>
-        <p className="text-gray-500 mb-4">{(error as Error)?.message || 'Lead not found'}</p>
+        <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
+        <p className="text-lg font-semibold text-gray-900">Failed to load lead</p>
+        <p className="text-gray-500">{(error as Error)?.message || 'Lead not found'}</p>
         <button
           onClick={() => navigate('/agent/leads')}
-          className="px-4 py-2 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition"
+          className="mt-4 px-4 py-2 bg-[#FEC925] text-[#1C1C1B] rounded-lg font-semibold"
         >
           Back to Leads
         </button>
@@ -336,621 +340,619 @@ const AgentLeadDetailPage: React.FC = () => {
     );
   }
 
-  const currentStep = getCurrentStep();
+  // Show inspection form
+  if (showInspectionForm) {
+    // Simple image upload handler - in production, this would upload to S3/cloud storage
+    const handleImageUpload = async (_key: string, file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // Return base64 data URL for now
+          // In production, upload to backend and return the URL
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    };
+
+    return (
+      <InspectionForm
+        data={inspectionData}
+        onDataChange={setInspectionData}
+        onSubmit={handleSubmitInspection}
+        onCancel={() => setShowInspectionForm(false)}
+        isSubmitting={submitInspectionMutation.isPending || calculatePriceMutation.isPending}
+        deviceInfo={{
+          brand: assignment.device_brand,
+          model: assignment.device_model,
+          storage: assignment.device_storage,
+        }}
+        onImageUpload={handleImageUpload}
+      />
+    );
+  }
+
+  // Show price review
+  if (showPriceReview && calculatedPrice) {
+    return (
+      <PriceReviewScreen
+        originalPrice={parseFloat(assignment.estimated_price)}
+        calculatedPrice={calculatedPrice}
+        proposedPrice={proposedPrice}
+        onProposedPriceChange={setProposedPrice}
+        onConfirm={() => {
+          setShowPriceReview(false);
+          setShowCompleteModal(true);
+        }}
+        onCancel={() => setShowPriceReview(false)}
+      />
+    );
+  }
+
+  // Show complete modal
+  if (showCompleteModal) {
+    return (
+      <DealCompletion
+        leadNumber={assignment.lead_number}
+        deviceName={`${assignment.device_brand} ${assignment.device_model}`}
+        customerName={assignment.customer_name}
+        customerPhone={assignment.customer_phone}
+        finalPrice={proposedPrice || calculatedPrice?.calculated_price || parseFloat(assignment.estimated_price)}
+        onComplete={handleCompleteDeal}
+        onCancel={() => setShowCompleteModal(false)}
+        isLoading={completeDealMutation.isPending}
+        error={completeDealMutation.error?.message || null}
+      />
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-24">
+    <div className="max-w-2xl mx-auto pb-24">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/agent/leads')}
           className="p-2 hover:bg-gray-100 rounded-lg transition"
         >
           <ArrowLeft size={24} />
         </button>
-        <div className="flex-1">
+        <div>
           <h1 className="text-xl font-bold text-[#1C1C1B]">Lead #{assignment.lead_number}</h1>
-          <p className="text-sm text-gray-500">
-            {assignment.device_brand} {assignment.device_model}
-          </p>
+          <p className="text-sm text-gray-500">{assignment.device_brand} {assignment.device_model}</p>
         </div>
-        <StatusBadge status={assignment.assignment_status} />
       </div>
 
-      {/* Alerts */}
+      {/* Success/Error Messages */}
       <AnimatePresence>
-        {actionError && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center gap-3"
-          >
-            <AlertCircle className="text-red-500 flex-shrink-0" size={20} />
-            <p className="text-red-700 text-sm font-medium">{actionError}</p>
-          </motion.div>
-        )}
         {actionSuccess && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-[#1B8A05]/10 border-2 border-[#1B8A05] rounded-xl p-4 flex items-center gap-3"
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-4 p-4 bg-[#1B8A05]/10 border border-[#1B8A05] rounded-xl flex items-center gap-3"
           >
-            <CheckCircle2 className="text-[#1B8A05] flex-shrink-0" size={20} />
-            <p className="text-[#1B8A05] text-sm font-medium">{actionSuccess}</p>
+            <CheckCircle2 className="text-[#1B8A05]" size={20} />
+            <span className="text-[#1B8A05] font-medium">{actionSuccess}</span>
+          </motion.div>
+        )}
+        {actionError && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
+          >
+            <AlertCircle className="text-red-500" size={20} />
+            <span className="text-red-700 font-medium">{actionError}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Progress Steps */}
-      <ProgressSteps currentStep={currentStep} />
+      {/* Status Badge */}
+      <StatusBadge status={assignment.assignment_status} priority={assignment.assignment_priority} />
 
       {/* Device Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] p-4 text-white">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
-              <Smartphone className="text-[#FEC925]" size={32} />
-            </div>
-            <div className="flex-1">
-              <p className="text-lg font-bold">
-                {assignment.device_brand} {assignment.device_model}
-              </p>
-              <p className="text-white/70 text-sm">
-                {assignment.device_storage} • {assignment.device_color}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Estimated Price</p>
-              <div className="flex items-center gap-1 text-2xl font-bold text-[#1B8A05]">
-                <IndianRupee size={20} />
-                {parseFloat(assignment.estimated_price).toLocaleString('en-IN')}
-              </div>
-            </div>
-            {assignment.final_price && (
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Final Price</p>
-                <div className="flex items-center gap-1 text-2xl font-bold text-[#FEC925]">
-                  <IndianRupee size={20} />
-                  {parseFloat(assignment.final_price).toLocaleString('en-IN')}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Customer & Location Info */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 space-y-4">
-        {/* Customer */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#FEC925]/20 rounded-full flex items-center justify-center">
-            <User className="text-[#FEC925]" size={24} />
+          <div className="w-16 h-16 bg-[#FEC925]/20 rounded-xl flex items-center justify-center">
+            <Package className="text-[#FEC925]" size={32} />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-[#1C1C1B]">{assignment.customer_name}</p>
-            <a
-              href={`tel:${assignment.customer_phone}`}
-              className="text-sm text-[#FEC925] flex items-center gap-1"
-            >
-              <Phone size={14} />
-              {assignment.customer_phone}
-            </a>
-          </div>
-          <a
-            href={`tel:${assignment.customer_phone}`}
-            className="p-3 bg-[#1B8A05] text-white rounded-full hover:bg-[#156d04] transition"
-          >
-            <Phone size={20} />
-          </a>
-        </div>
-
-        {/* Address */}
-        {assignment.pickup_address && (
-          <div className="flex items-start gap-4 pt-4 border-t border-gray-100">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <MapPin className="text-blue-600" size={24} />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-[#1C1C1B]">Pickup Address</p>
-              <p className="text-sm text-gray-600">
-                {assignment.pickup_address.line1}
-                {assignment.pickup_address.line2 && `, ${assignment.pickup_address.line2}`}
-              </p>
-              <p className="text-sm text-gray-600">
-                {assignment.pickup_address.city}, {assignment.pickup_address.state} -{' '}
-                {assignment.pickup_address.postal_code}
-              </p>
-            </div>
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${assignment.pickup_address.latitude},${assignment.pickup_address.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"
-            >
-              <Navigation size={20} />
-            </a>
-          </div>
-        )}
-
-        {/* Schedule */}
-        <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
-          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-            <Calendar className="text-purple-600" size={24} />
-          </div>
-          <div>
-            <p className="font-semibold text-[#1C1C1B]">Scheduled Visit</p>
-            <p className="text-sm text-gray-600">
-              {assignment.preferred_date} • {assignment.preferred_time_slot}
+            <h2 className="text-lg font-bold text-[#1C1C1B]">
+              {assignment.device_brand} {assignment.device_model}
+            </h2>
+            <p className="text-gray-500">
+              {assignment.device_storage} • {assignment.device_color}
             </p>
+            <div className="flex items-center gap-1 mt-1 font-bold text-[#1B8A05]">
+              <IndianRupee size={18} />
+              <span>{parseFloat(assignment.estimated_price).toLocaleString('en-IN')}</span>
+              <span className="text-gray-400 text-sm font-normal ml-1">Est.</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Action Buttons based on status */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white border-t border-gray-200 p-4 shadow-lg z-40">
-        {assignment.assignment_status === 'assigned' && (
-          <div className="max-w-2xl mx-auto flex gap-3">
+      {/* Customer Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+        <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
+          <User size={18} className="text-[#FEC925]" />
+          Customer Details
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-[#1C1C1B]">{assignment.customer_name}</p>
+              <p className="text-sm text-gray-500">{assignment.customer_phone}</p>
+            </div>
             <button
-              onClick={() => setShowRejectModal(true)}
-              disabled={rejectMutation.isPending}
-              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+              onClick={callCustomer}
+              className="p-3 bg-[#1B8A05]/10 rounded-full text-[#1B8A05] hover:bg-[#1B8A05]/20 transition"
             >
-              Reject
+              <Phone size={20} />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Location Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+        <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
+          <MapPin size={18} className="text-[#FEC925]" />
+          Pickup Location
+        </h3>
+        {assignment.pickup_address && (
+          <div className="space-y-2">
+            <p className="text-[#1C1C1B]">{assignment.pickup_address.line1}</p>
+            {assignment.pickup_address.line2 && (
+              <p className="text-gray-600">{assignment.pickup_address.line2}</p>
+            )}
+            <p className="text-gray-500">
+              {assignment.pickup_address.city}, {assignment.pickup_address.state} - {assignment.pickup_address.postal_code}
+            </p>
             <button
-              onClick={handleAccept}
-              disabled={acceptMutation.isPending}
-              className="flex-1 px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              onClick={openGoogleMaps}
+              className="mt-3 w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-100 transition"
             >
-              {acceptMutation.isPending ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <>
-                  <CheckCircle2 size={20} />
-                  Accept Lead
-                </>
-              )}
+              <Navigation size={18} />
+              Open in Google Maps
+              <ExternalLink size={14} />
             </button>
           </div>
         )}
+      </div>
 
-        {assignment.assignment_status === 'accepted' && (
-          <div className="max-w-2xl mx-auto">
+      {/* Schedule Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+        <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
+          <Calendar size={18} className="text-[#FEC925]" />
+          Scheduled Time
+        </h3>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-[#1C1C1B]">
+            <Calendar size={16} className="text-gray-400" />
+            <span>{assignment.preferred_date}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#1C1C1B]">
+            <Clock size={16} className="text-gray-400" />
+            <span>{assignment.preferred_time_slot}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Workflow Progress */}
+      <WorkflowProgress stage={stage} />
+
+      {/* Action Buttons - Fixed at Bottom */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white border-t border-gray-200 p-4 z-40">
+        <div className="max-w-2xl mx-auto">
+          {/* Stage: Pending Acceptance */}
+          {stage === 'pending' && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRejectModal(true)}
+                disabled={rejectMutation.isPending}
+                className="flex-1 py-3 border-2 border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition disabled:opacity-50"
+              >
+                Reject
+              </button>
+              <button
+                onClick={handleAccept}
+                disabled={acceptMutation.isPending}
+                className="flex-1 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {acceptMutation.isPending ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <>
+                    <CheckCircle2 size={20} />
+                    Accept Lead
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Stage: Accepted - Start Journey */}
+          {stage === 'accepted' && (
             <button
               onClick={handleStartJourney}
               disabled={startJourneyMutation.isPending}
-              className="w-full px-4 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {startJourneyMutation.isPending ? (
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  <Navigation size={20} />
+                  <Play size={24} />
                   Start Journey
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
 
-        {assignment.assignment_status === 'en_route' && (
-          <div className="max-w-2xl mx-auto">
+          {/* Stage: En Route - Check In */}
+          {stage === 'en_route' && (
             <button
               onClick={handleCheckIn}
               disabled={checkInMutation.isPending}
-              className="w-full px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-[#1B8A05] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {checkInMutation.isPending ? (
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  <MapPinned size={20} />
+                  <MapPinned size={24} />
                   Check In at Location
                 </>
               )}
             </button>
-            <p className="text-xs text-gray-500 text-center mt-2">
-              Make sure you're at the customer's location before checking in
-            </p>
-          </div>
-        )}
+          )}
 
-        {assignment.assignment_status === 'checked_in' && (
-          <div className="max-w-2xl mx-auto">
-            <button
-              onClick={handleStartInspection}
-              disabled={startInspectionMutation.isPending}
-              className="w-full px-4 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {startInspectionMutation.isPending ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <>
-                  <ClipboardCheck size={20} />
-                  Start Device Inspection
-                </>
-              )}
-            </button>
-          </div>
-        )}
+          {/* Stage: Checked In - Verify Code or Start Inspection */}
+          {stage === 'checked_in' && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowVerifyCodeModal(true)}
+                className="flex-1 py-4 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold flex items-center justify-center gap-2"
+              >
+                <KeyRound size={20} />
+                Enter Code
+              </button>
+              <button
+                onClick={handleStartInspection}
+                disabled={startInspectionMutation.isPending}
+                className="flex-1 py-4 bg-[#1B8A05] text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {startInspectionMutation.isPending ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <>
+                    <ClipboardCheck size={20} />
+                    Start Inspection
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
-        {assignment.assignment_status === 'inspecting' && !showInspectionForm && !showPriceReview && (
-          <div className="max-w-2xl mx-auto">
+          {/* Stage: Inspecting */}
+          {stage === 'inspecting' && (
             <button
               onClick={() => setShowInspectionForm(true)}
-              className="w-full px-4 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center justify-center gap-2"
+              className="w-full py-4 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold text-lg flex items-center justify-center gap-2"
             >
-              <ClipboardCheck size={20} />
+              <ClipboardCheck size={24} />
               Continue Inspection
             </button>
-          </div>
-        )}
+          )}
 
-        {assignment.assignment_status === 'completed' && (
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="flex items-center justify-center gap-2 text-[#1B8A05]">
-              <CheckCircle2 size={24} />
-              <span className="font-bold text-lg">Deal Completed</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modals */}
-      {/* Reject Modal */}
-      <Modal isOpen={showRejectModal} onClose={() => setShowRejectModal(false)}>
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-[#1C1C1B] mb-4">Reject Lead</h3>
-          <p className="text-gray-600 mb-4">Please provide a reason for rejecting this lead:</p>
-          <textarea
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Enter reason..."
-            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-24"
-          />
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => setShowRejectModal(false)}
-              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl font-bold"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleReject}
-              disabled={!rejectReason.trim() || rejectMutation.isPending}
-              className="flex-1 px-4 py-3 bg-[#FF0000] text-white rounded-xl font-bold disabled:opacity-50"
-            >
-              {rejectMutation.isPending ? 'Rejecting...' : 'Reject Lead'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Verify Code Modal */}
-      <Modal isOpen={showVerifyCodeModal} onClose={() => setShowVerifyCodeModal(false)}>
-        <div className="p-6">
-          <div className="w-16 h-16 bg-[#FEC925]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <KeyRound className="text-[#FEC925]" size={32} />
-          </div>
-          <h3 className="text-xl font-bold text-[#1C1C1B] text-center mb-2">
-            Enter Verification Code
-          </h3>
-          <p className="text-gray-600 text-center mb-6">
-            Ask the customer for their 6-digit verification code
-          </p>
-          <input
-            type="text"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="000000"
-            maxLength={6}
-            className="w-full text-center text-3xl font-mono tracking-[0.5em] p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-          />
-          <button
-            onClick={handleVerifyCode}
-            disabled={verificationCode.length !== 6 || verifyCodeMutation.isPending}
-            className="w-full mt-4 px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold disabled:opacity-50"
-          >
-            {verifyCodeMutation.isPending ? 'Verifying...' : 'Verify Code'}
-          </button>
-        </div>
-      </Modal>
-
-      {/* Inspection Form Modal */}
-      <Modal 
-        isOpen={showInspectionForm} 
-        onClose={() => setShowInspectionForm(false)}
-        fullScreen
-      >
-        <InspectionForm
-          data={inspectionData}
-          onChange={setInspectionData}
-          onSubmit={handleSubmitInspection}
-          onCancel={() => setShowInspectionForm(false)}
-          isSubmitting={submitInspectionMutation.isPending}
-          deviceInfo={{
-            brand: assignment.device_brand,
-            model: assignment.device_model,
-            storage: assignment.device_storage,
-          }}
-        />
-      </Modal>
-
-      {/* Price Review Modal */}
-      <Modal isOpen={showPriceReview} onClose={() => setShowPriceReview(false)}>
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-[#1C1C1B] mb-4 text-center">
-            Price Review
-          </h3>
-          
-          {calculatedPrice && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Original Estimate</span>
-                  <span className="font-semibold">₹{calculatedPrice.original_price.toLocaleString()}</span>
-                </div>
-                
-                {calculatedPrice.deductions.length > 0 && (
-                  <div className="border-t border-gray-200 pt-2 mt-2 space-y-1">
-                    {calculatedPrice.deductions.map((d, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-red-600">- {d.reason}</span>
-                        <span className="text-red-600">-₹{d.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between items-center">
-                  <span className="font-bold">Calculated Price</span>
-                  <span className="text-xl font-bold text-[#1B8A05]">
-                    ₹{calculatedPrice.calculated_price.toLocaleString()}
-                  </span>
-                </div>
+          {/* Stage: Completed */}
+          {stage === 'completed' && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-[#1B8A05]/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <BadgeCheck className="text-[#1B8A05]" size={32} />
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Final Offer Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                  <input
-                    type="number"
-                    value={proposedPrice}
-                    onChange={(e) => setProposedPrice(Number(e.target.value))}
-                    className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none text-xl font-bold"
-                  />
-                </div>
-              </div>
-
+              <p className="text-lg font-bold text-[#1B8A05]">Lead Completed!</p>
               <button
-                onClick={handleConfirmPrice}
-                className="w-full px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold"
+                onClick={() => navigate('/agent/activity')}
+                className="mt-4 px-6 py-2 bg-gray-100 rounded-lg font-semibold"
               >
-                Confirm Price & Complete Deal
+                View Activity
               </button>
             </div>
           )}
         </div>
-      </Modal>
+      </div>
 
-      {/* Complete Deal Modal */}
-      <Modal isOpen={showCompleteModal} onClose={() => setShowCompleteModal(false)}>
-        <div className="p-6">
-          <div className="w-16 h-16 bg-[#1B8A05]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BadgeCheck className="text-[#1B8A05]" size={32} />
-          </div>
-          <h3 className="text-xl font-bold text-[#1C1C1B] text-center mb-2">
-            Complete Deal
-          </h3>
-          <p className="text-gray-600 text-center mb-6">
-            Final Amount: <span className="font-bold text-[#1B8A05]">₹{proposedPrice.toLocaleString()}</span>
-          </p>
-
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Payment Method
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['cash', 'upi', 'bank_transfer'] as const).map((method) => (
+      {/* Reject Modal */}
+      <AnimatePresence>
+        {showRejectModal && (
+          <Modal onClose={() => setShowRejectModal(false)}>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-[#1C1C1B] mb-2">Reject Lead</h3>
+              <p className="text-gray-500 mb-4">Please provide a reason for rejecting this lead.</p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Enter reason..."
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-24"
+              />
+              <div className="flex gap-3 mt-4">
                 <button
-                  key={method}
-                  onClick={() => setPaymentMethod(method)}
-                  className={`p-3 rounded-xl border-2 text-center font-semibold transition ${
-                    paymentMethod === method
-                      ? 'border-[#FEC925] bg-[#FEC925]/10'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  onClick={() => setShowRejectModal(false)}
+                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl font-semibold"
                 >
-                  {method === 'cash' && 'Cash'}
-                  {method === 'upi' && 'UPI'}
-                  {method === 'bank_transfer' && 'Bank'}
+                  Cancel
                 </button>
-              ))}
+                <button
+                  onClick={handleReject}
+                  disabled={!rejectReason.trim() || rejectMutation.isPending}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50"
+                >
+                  {rejectMutation.isPending ? 'Rejecting...' : 'Reject Lead'}
+                </button>
+              </div>
             </div>
-          </div>
+          </Modal>
+        )}
+      </AnimatePresence>
 
-          <button
-            onClick={handleCompleteDeal}
-            disabled={completeDealMutation.isPending}
-            className="w-full px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {completeDealMutation.isPending ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                <CheckCircle2 size={20} />
-                Complete Deal
-              </>
-            )}
-          </button>
-        </div>
-      </Modal>
+      {/* Verify Code Modal */}
+      <AnimatePresence>
+        {showVerifyCodeModal && (
+          <Modal onClose={() => setShowVerifyCodeModal(false)}>
+            <VerificationCodeEntry
+              onVerify={handleVerifyCode}
+              onCancel={() => setShowVerifyCodeModal(false)}
+              isLoading={verifyCodeMutation.isPending}
+              error={verifyCodeMutation.error?.message || null}
+              customerName={assignment.customer_name}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-// Progress Steps Component
-const ProgressSteps: React.FC<{ currentStep: number }> = ({ currentStep }) => {
-  const steps = [
-    { num: 1, label: 'Accept' },
-    { num: 2, label: 'Journey' },
-    { num: 3, label: 'Check-in' },
-    { num: 4, label: 'Inspect' },
-    { num: 5, label: 'Complete' },
-  ];
+// =====================================================
+// SUB COMPONENTS
+// =====================================================
+
+// Status Badge
+const StatusBadge: React.FC<{ status: string; priority: string }> = ({ status, priority }) => {
+  const getStatusStyle = () => {
+    const styles: Record<string, string> = {
+      assigned: 'bg-blue-100 text-blue-700 border-blue-200',
+      accepted: 'bg-[#FEC925]/20 text-[#b48f00] border-[#FEC925]',
+      en_route: 'bg-purple-100 text-purple-700 border-purple-200',
+      checked_in: 'bg-green-100 text-green-700 border-green-200',
+      inspecting: 'bg-orange-100 text-orange-700 border-orange-200',
+      completed: 'bg-[#1B8A05]/20 text-[#1B8A05] border-[#1B8A05]',
+      cancelled: 'bg-red-100 text-red-700 border-red-200',
+      rejected: 'bg-gray-100 text-gray-600 border-gray-200',
+    };
+    return styles[status] || styles.assigned;
+  };
+
+  const getStatusLabel = () => {
+    const labels: Record<string, string> = {
+      assigned: 'Pending Acceptance',
+      accepted: 'Accepted',
+      en_route: 'En Route',
+      checked_in: 'At Location',
+      inspecting: 'Inspecting Device',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      rejected: 'Rejected',
+    };
+    return labels[status] || status;
+  };
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-      <div className="flex justify-between">
-        {steps.map((step, index) => (
-          <div key={step.num} className="flex flex-col items-center flex-1">
-            <div className="flex items-center w-full">
+    <div className="flex items-center gap-2">
+      <span className={`px-4 py-2 rounded-full border-2 font-bold ${getStatusStyle()}`}>
+        {getStatusLabel()}
+      </span>
+      {priority !== 'normal' && (
+        <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${
+          priority === 'urgent' ? 'bg-red-500 text-white' :
+          priority === 'high' ? 'bg-orange-500 text-white' :
+          'bg-gray-200 text-gray-600'
+        }`}>
+          {priority}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Workflow Progress
+const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
+  const stages = ['pending', 'accepted', 'en_route', 'checked_in', 'inspecting', 'completed'];
+  const currentIndex = stages.indexOf(stage);
+
+  const stageLabels: Record<string, string> = {
+    pending: 'Accept',
+    accepted: 'Start',
+    en_route: 'Check In',
+    checked_in: 'Inspect',
+    inspecting: 'Price',
+    completed: 'Done',
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+      <h3 className="font-bold text-[#1C1C1B] mb-4">Progress</h3>
+      <div className="flex justify-between relative">
+        {/* Progress Line */}
+        <div className="absolute top-4 left-4 right-4 h-1 bg-gray-200 z-0">
+          <div
+            className="h-full bg-[#1B8A05] transition-all duration-500"
+            style={{ width: `${(currentIndex / (stages.length - 1)) * 100}%` }}
+          />
+        </div>
+        
+        {stages.map((s, i) => {
+          const isCompleted = i < currentIndex;
+          const isCurrent = i === currentIndex;
+          
+          return (
+            <div key={s} className="flex flex-col items-center z-10">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  currentStep >= step.num
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  isCompleted
                     ? 'bg-[#1B8A05] text-white'
-                    : currentStep === step.num - 1
+                    : isCurrent
                     ? 'bg-[#FEC925] text-[#1C1C1B]'
                     : 'bg-gray-200 text-gray-500'
                 }`}
               >
-                {currentStep > step.num ? (
-                  <CheckCircle2 size={16} />
-                ) : (
-                  <span className="text-sm font-bold">{step.num}</span>
-                )}
+                {isCompleted ? <CheckCircle2 size={16} /> : i + 1}
               </div>
-              {index < steps.length - 1 && (
-                <div
-                  className={`flex-1 h-1 mx-1 rounded ${
-                    currentStep > step.num ? 'bg-[#1B8A05]' : 'bg-gray-200'
-                  }`}
-                />
-              )}
+              <span className={`text-xs mt-2 ${isCurrent ? 'font-bold text-[#1C1C1B]' : 'text-gray-500'}`}>
+                {stageLabels[s]}
+              </span>
             </div>
-            <span className="text-xs text-gray-500 mt-1">{step.label}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 };
 
-// Status Badge Component
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    assigned: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'New' },
-    accepted: { bg: 'bg-[#FEC925]/20', text: 'text-[#b48f00]', label: 'Accepted' },
-    en_route: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'En Route' },
-    checked_in: { bg: 'bg-green-100', text: 'text-green-700', label: 'At Location' },
-    inspecting: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Inspecting' },
-    completed: { bg: 'bg-[#1B8A05]/20', text: 'text-[#1B8A05]', label: 'Completed' },
-    cancelled: { bg: 'bg-red-100', text: 'text-red-700', label: 'Cancelled' },
-  };
-
-  const { bg, text, label } = config[status] || config.assigned;
-
-  return (
-    <span className={`px-3 py-1 rounded-full text-sm font-bold ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-};
-
 // Modal Component
-const Modal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  fullScreen?: boolean;
-}> = ({ isOpen, onClose, children, fullScreen }) => {
-  if (!isOpen) return null;
+const Modal: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+    onClick={onClose}
+  >
+    <motion.div
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.95, opacity: 0 }}
+      className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-auto"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </motion.div>
+  </motion.div>
+);
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/50"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className={`relative bg-white rounded-2xl shadow-xl z-10 ${
-            fullScreen
-              ? 'w-full h-full max-w-none rounded-none'
-              : 'max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto'
-          }`}
-        >
-          {children}
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
-};
-
-// Inspection Form Component
-const InspectionForm: React.FC<{
+// Inspection Form
+interface InspectionFormProps {
   data: Partial<DeviceInspectionData>;
-  onChange: (data: Partial<DeviceInspectionData>) => void;
+  onDataChange: (data: Partial<DeviceInspectionData>) => void;
   onSubmit: () => void;
   onCancel: () => void;
   isSubmitting: boolean;
   deviceInfo: { brand: string; model: string; storage: string };
-}> = ({ data, onChange, onSubmit, onCancel, isSubmitting, deviceInfo }) => {
-  const updateField = (field: keyof DeviceInspectionData, value: any) => {
-    onChange({ ...data, [field]: value });
+  onImageUpload?: (key: string, file: File) => Promise<string>;
+}
+
+const InspectionForm: React.FC<InspectionFormProps> = ({
+  data,
+  onDataChange,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+  deviceInfo,
+  onImageUpload,
+}) => {
+  const updateField = <K extends keyof DeviceInspectionData>(key: K, value: DeviceInspectionData[K]) => {
+    onDataChange({ ...data, [key]: value });
   };
 
+  // Convert DeviceInspectionData image fields to Record format for DeviceImageCapture
+  const images: Record<string, string> = {
+    ...(data.front_image && { front: data.front_image }),
+    ...(data.back_image && { back: data.back_image }),
+    ...(data.screen_image && { screen: data.screen_image }),
+    ...(data.imei_image && { imei: data.imei_image }),
+  };
+
+  const handleImagesChange = (newImages: Record<string, string>) => {
+    onDataChange({
+      ...data,
+      front_image: newImages.front || undefined,
+      back_image: newImages.back || undefined,
+      screen_image: newImages.screen || undefined,
+      imei_image: newImages.imei || undefined,
+    });
+  };
+
+  // Check if required images are captured (front, back, and imei are required)
+  const requiredImagesCaptured = Boolean(images.front && images.back && images.imei);
+  
+  // Check if form is valid for submission
+  const isFormValid = requiredImagesCaptured && 
+    data.imei_number && 
+    data.imei_number.length >= 15 &&
+    data.notes && 
+    data.notes.trim().length > 0;
+
   return (
-    <div className="h-full flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-[#1C1C1B] text-white p-4 flex items-center gap-4">
-        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg">
-          <ArrowLeft size={24} />
-        </button>
-        <div>
-          <h2 className="font-bold">Device Inspection</h2>
-          <p className="text-sm text-white/70">
-            {deviceInfo.brand} {deviceInfo.model}
-          </p>
+      <div className="bg-gradient-to-r from-[#FEC925] to-[#e5b520] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/20 rounded-lg transition">
+            <ArrowLeft size={24} className="text-[#1C1C1B]" />
+          </button>
+          <span className="text-[#1C1C1B] font-bold">Device Inspection</span>
+          <div className="w-10" />
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+            <Smartphone className="text-[#1C1C1B]" size={28} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-[#1C1C1B]">{deviceInfo.brand} {deviceInfo.model}</h1>
+            <p className="text-[#1C1C1B]/70">{deviceInfo.storage}</p>
+          </div>
         </div>
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="p-4 space-y-6 pb-24">
+        {/* Device Photos - REQUIRED */}
+        <Section title="Device Photos (Required)">
+          <DeviceImageCapture
+            images={images}
+            onImagesChange={handleImagesChange}
+            onUpload={onImageUpload}
+          />
+          {!requiredImagesCaptured && (
+            <p className="text-sm text-[#FF0000] mt-2 flex items-center gap-1">
+              <AlertCircle size={14} />
+              Please capture Front, Back, and IMEI photos to continue
+            </p>
+          )}
+        </Section>
+
         {/* Physical Condition */}
         <Section title="Physical Condition">
           <SelectField
             label="Screen Condition"
             value={data.screen_condition || 'good'}
-            onChange={(v) => updateField('screen_condition', v)}
+            onChange={(v) => updateField('screen_condition', v as DeviceInspectionData['screen_condition'])}
             options={[
               { value: 'excellent', label: 'Excellent - No scratches' },
               { value: 'good', label: 'Good - Minor scratches' },
               { value: 'fair', label: 'Fair - Visible scratches' },
-              { value: 'poor', label: 'Poor - Deep scratches/cracks' },
-              { value: 'broken', label: 'Broken - Not functional' },
+              { value: 'poor', label: 'Poor - Deep scratches' },
+              { value: 'broken', label: 'Broken - Cracked screen' },
             ]}
           />
           <SelectField
             label="Body Condition"
             value={data.body_condition || 'good'}
-            onChange={(v) => updateField('body_condition', v)}
+            onChange={(v) => updateField('body_condition', v as DeviceInspectionData['body_condition'])}
             options={[
               { value: 'excellent', label: 'Excellent - Like new' },
               { value: 'good', label: 'Good - Minor wear' },
@@ -964,66 +966,16 @@ const InspectionForm: React.FC<{
         {/* Functional Tests */}
         <Section title="Functional Tests">
           <div className="grid grid-cols-2 gap-3">
-            <ToggleField
-              icon={Zap}
-              label="Power On"
-              value={data.power_on ?? true}
-              onChange={(v) => updateField('power_on', v)}
-            />
-            <ToggleField
-              icon={Smartphone}
-              label="Touch Working"
-              value={data.touch_working ?? true}
-              onChange={(v) => updateField('touch_working', v)}
-            />
-            <ToggleField
-              icon={Eye}
-              label="Display Working"
-              value={data.display_working ?? true}
-              onChange={(v) => updateField('display_working', v)}
-            />
-            <ToggleField
-              icon={Volume2}
-              label="Speakers"
-              value={data.speakers_working ?? true}
-              onChange={(v) => updateField('speakers_working', v)}
-            />
-            <ToggleField
-              icon={Mic}
-              label="Microphone"
-              value={data.microphone_working ?? true}
-              onChange={(v) => updateField('microphone_working', v)}
-            />
-            <ToggleField
-              icon={Camera}
-              label="Cameras"
-              value={data.cameras_working ?? true}
-              onChange={(v) => updateField('cameras_working', v)}
-            />
-            <ToggleField
-              icon={Wifi}
-              label="WiFi"
-              value={data.wifi_working ?? true}
-              onChange={(v) => updateField('wifi_working', v)}
-            />
-            <ToggleField
-              icon={Bluetooth}
-              label="Bluetooth"
-              value={data.bluetooth_working ?? true}
-              onChange={(v) => updateField('bluetooth_working', v)}
-            />
-            <ToggleField
-              icon={Fingerprint}
-              label="Fingerprint"
-              value={data.fingerprint_working ?? true}
-              onChange={(v) => updateField('fingerprint_working', v)}
-            />
-            <ToggleField
-              icon={Package}
-              label="Buttons"
-              value={data.buttons_working ?? true}
-              onChange={(v) => updateField('buttons_working', v)}
-            />
+            <ToggleField icon={Zap} label="Power On" value={data.power_on ?? true} onChange={(v) => updateField('power_on', v)} />
+            <ToggleField icon={Smartphone} label="Touch Working" value={data.touch_working ?? true} onChange={(v) => updateField('touch_working', v)} />
+            <ToggleField icon={Eye} label="Display Working" value={data.display_working ?? true} onChange={(v) => updateField('display_working', v)} />
+            <ToggleField icon={Volume2} label="Speakers" value={data.speakers_working ?? true} onChange={(v) => updateField('speakers_working', v)} />
+            <ToggleField icon={Mic} label="Microphone" value={data.microphone_working ?? true} onChange={(v) => updateField('microphone_working', v)} />
+            <ToggleField icon={Camera} label="Cameras" value={data.cameras_working ?? true} onChange={(v) => updateField('cameras_working', v)} />
+            <ToggleField icon={Wifi} label="WiFi" value={data.wifi_working ?? true} onChange={(v) => updateField('wifi_working', v)} />
+            <ToggleField icon={Bluetooth} label="Bluetooth" value={data.bluetooth_working ?? true} onChange={(v) => updateField('bluetooth_working', v)} />
+            <ToggleField icon={Fingerprint} label="Fingerprint" value={data.fingerprint_working ?? true} onChange={(v) => updateField('fingerprint_working', v)} />
+            <ToggleField icon={Package} label="Buttons" value={data.buttons_working ?? true} onChange={(v) => updateField('buttons_working', v)} />
           </div>
         </Section>
 
@@ -1031,9 +983,7 @@ const InspectionForm: React.FC<{
         <Section title="Device Verification">
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                IMEI Number
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">IMEI Number</label>
               <input
                 type="text"
                 value={data.imei_number || ''}
@@ -1042,16 +992,9 @@ const InspectionForm: React.FC<{
                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
               />
             </div>
-            <ToggleField
-              icon={CheckCircle2}
-              label="IMEI Verified"
-              value={data.imei_verified ?? false}
-              onChange={(v) => updateField('imei_verified', v)}
-            />
+            <ToggleField icon={CheckCircle2} label="IMEI Verified" value={data.imei_verified ?? false} onChange={(v) => updateField('imei_verified', v)} />
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Actual Storage
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Actual Storage</label>
               <input
                 type="text"
                 value={data.actual_storage || ''}
@@ -1061,9 +1004,7 @@ const InspectionForm: React.FC<{
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Battery Health (%)
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Battery Health (%)</label>
               <input
                 type="number"
                 value={data.battery_health || ''}
@@ -1080,60 +1021,186 @@ const InspectionForm: React.FC<{
         {/* Accessories */}
         <Section title="Accessories Included">
           <div className="grid grid-cols-2 gap-3">
-            <ToggleField
-              icon={Package}
-              label="Original Box"
-              value={data.has_box ?? false}
-              onChange={(v) => updateField('has_box', v)}
-            />
-            <ToggleField
-              icon={Zap}
-              label="Charger"
-              value={data.has_charger ?? false}
-              onChange={(v) => updateField('has_charger', v)}
-            />
-            <ToggleField
-              icon={Volume2}
-              label="Earphones"
-              value={data.has_earphones ?? false}
-              onChange={(v) => updateField('has_earphones', v)}
-            />
-            <ToggleField
-              icon={ClipboardCheck}
-              label="Bill/Invoice"
-              value={data.has_bill ?? false}
-              onChange={(v) => updateField('has_bill', v)}
-            />
+            <ToggleField icon={Package} label="Original Box" value={data.has_box ?? false} onChange={(v) => updateField('has_box', v)} />
+            <ToggleField icon={Zap} label="Charger" value={data.has_charger ?? false} onChange={(v) => updateField('has_charger', v)} />
+            <ToggleField icon={Volume2} label="Earphones" value={data.has_earphones ?? false} onChange={(v) => updateField('has_earphones', v)} />
+            <ToggleField icon={ClipboardCheck} label="Bill/Invoice" value={data.has_bill ?? false} onChange={(v) => updateField('has_bill', v)} />
           </div>
         </Section>
 
         {/* Notes */}
-        <Section title="Additional Notes">
+        <Section title="Additional Notes (Required)">
           <textarea
             value={data.notes || ''}
             onChange={(e) => updateField('notes', e.target.value)}
-            placeholder="Any additional observations..."
+            placeholder="Describe the device condition, any defects found, customer interaction notes..."
             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-24"
           />
+          {(!data.notes || data.notes.trim().length === 0) && (
+            <p className="text-sm text-[#FF0000] mt-1">Please add inspection notes</p>
+          )}
         </Section>
+
+        {/* Validation Summary */}
+        {!isFormValid && (
+          <div className="bg-[#FEC925]/10 border border-[#FEC925] rounded-xl p-4">
+            <h4 className="font-bold text-[#1C1C1B] mb-2 flex items-center gap-2">
+              <AlertCircle size={18} className="text-[#b48f00]" />
+              Complete Required Fields
+            </h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              {!requiredImagesCaptured && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  Capture required photos (Front, Back, IMEI)
+                </li>
+              )}
+              {(!data.imei_number || data.imei_number.length < 15) && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  Enter valid IMEI number (15 digits)
+                </li>
+              )}
+              {(!data.notes || data.notes.trim().length === 0) && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  Add inspection notes
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 bg-white">
-        <button
-          onClick={onSubmit}
-          disabled={isSubmitting}
-          className="w-full px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isSubmitting ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <>
-              <CheckCircle2 size={20} />
-              Submit Inspection
-            </>
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={onSubmit}
+            disabled={isSubmitting || !isFormValid}
+            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+              isFormValid 
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isSubmitting ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                <CheckCircle2 size={20} />
+                Submit Inspection
+              </>
+            )}
+          </button>
+          {!isFormValid && (
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Complete all required fields to submit
+            </p>
           )}
-        </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Price Review Screen
+interface PriceReviewScreenProps {
+  originalPrice: number;
+  calculatedPrice: {
+    original_price: number;
+    calculated_price: number;
+    deductions: Array<{ reason: string; amount: number }>;
+  };
+  proposedPrice: number;
+  onProposedPriceChange: (price: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const PriceReviewScreen: React.FC<PriceReviewScreenProps> = ({
+  originalPrice,
+  calculatedPrice,
+  proposedPrice,
+  onProposedPriceChange,
+  onConfirm,
+  onCancel,
+}) => {
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
+            <ArrowLeft size={24} className="text-white" />
+          </button>
+          <span className="text-white font-bold">Price Review</span>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Original Price */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Original Estimate</span>
+            <span className="font-bold text-lg flex items-center">
+              <IndianRupee size={18} />
+              {originalPrice.toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+
+        {/* Deductions */}
+        {calculatedPrice.deductions.length > 0 && (
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <h3 className="font-bold text-[#1C1C1B] mb-3">Deductions</h3>
+            <div className="space-y-2">
+              {calculatedPrice.deductions.map((d, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-gray-600">{d.reason}</span>
+                  <span className="text-red-500 font-semibold">-₹{d.amount.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Calculated Price */}
+        <div className="bg-[#1B8A05]/10 rounded-xl p-4 border border-[#1B8A05]">
+          <div className="flex justify-between items-center">
+            <span className="text-[#1B8A05] font-semibold">Calculated Price</span>
+            <span className="font-bold text-2xl text-[#1B8A05] flex items-center">
+              <IndianRupee size={22} />
+              {calculatedPrice.calculated_price.toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+
+        {/* Adjust Price */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <label className="block font-bold text-[#1C1C1B] mb-2">Offer Price</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+            <input
+              type="number"
+              value={proposedPrice}
+              onChange={(e) => onProposedPriceChange(Number(e.target.value))}
+              className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-bold focus:border-[#FEC925] focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={onConfirm}
+            className="w-full py-4 bg-[#1B8A05] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+          >
+            <BadgeCheck size={24} />
+            Proceed to Complete Deal
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1161,9 +1228,7 @@ const SelectField: React.FC<{
       className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white"
     >
       {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
   </div>
@@ -1179,21 +1244,13 @@ const ToggleField: React.FC<{
     type="button"
     onClick={() => onChange(!value)}
     className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${
-      value
-        ? 'border-[#1B8A05] bg-[#1B8A05]/10'
-        : 'border-gray-200 bg-white'
+      value ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-200 bg-white'
     }`}
   >
     <Icon size={18} className={value ? 'text-[#1B8A05]' : 'text-gray-400'} />
-    <span className={`text-sm font-semibold ${value ? 'text-[#1B8A05]' : 'text-gray-600'}`}>
-      {label}
-    </span>
+    <span className={`text-sm font-semibold ${value ? 'text-[#1B8A05]' : 'text-gray-600'}`}>{label}</span>
     <div className="ml-auto">
-      {value ? (
-        <CheckCircle2 size={18} className="text-[#1B8A05]" />
-      ) : (
-        <XCircle size={18} className="text-gray-300" />
-      )}
+      {value ? <CheckCircle2 size={18} className="text-[#1B8A05]" /> : <XCircle size={18} className="text-gray-300" />}
     </div>
   </button>
 );

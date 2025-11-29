@@ -1,9 +1,11 @@
-// src/types/agentApp.types.ts
-// Type definitions for Agent-facing Application
-// IMPORTANT: Field names MUST match backend serializers exactly
+// src/api/types/agentApp.types.ts
+// Type definitions for Agent Self-Service Application
+// CRITICAL: Field names MUST match backend serializers exactly
+// Based on: FlipCash_b1/partner_agents/urls.py
 
 // =====================================================
-// AGENT SELF PROFILE
+// AGENT PROFILE (AgentMeView)
+// GET/PUT /api/v1/partner-agents/me/
 // =====================================================
 
 export interface AgentSelfProfile {
@@ -17,8 +19,8 @@ export interface AgentSelfProfile {
     kyc_status: string;
     created_at: string;
   };
-  partner: string;
-  partner_name: string;
+  partner: string;                    // UUID
+  partner_name: string;               // Partner business name
   employee_code: string;
   status: 'active' | 'inactive' | 'suspended' | 'pending';
   verification_status: 'pending' | 'verified' | 'rejected';
@@ -28,12 +30,14 @@ export interface AgentSelfProfile {
   current_assigned_leads_count: number;
   max_concurrent_leads: number;
   total_leads_completed: number;
+  total_visits_completed: number;
   average_rating: string | null;
   created_at: string;
 }
 
 // =====================================================
-// ASSIGNED LEAD (What agent sees)
+// ASSIGNED LEAD (AgentAssignedLeadsView)
+// GET /api/v1/partner-agents/my-leads/
 // =====================================================
 
 export interface AgentAssignedLead {
@@ -44,22 +48,21 @@ export interface AgentAssignedLead {
   assignment_notes: string;
   
   // Lead info
-  lead_id: string;
+  lead: string;                       // lead UUID
   lead_number: string;
-  lead_status: string;
-  lead_status_display: string;
-  
-  // Customer info (limited for privacy)
-  customer_name: string;
-  customer_phone: string;
   
   // Device info
+  device_name: string;
   device_category: string;
   device_brand: string;
   device_model: string;
   device_storage: string;
   device_color: string;
-  condition_responses: Record<string, any>;
+  condition_responses?: Record<string, any>;
+  
+  // Customer info
+  customer_name: string;
+  customer_phone: string;
   
   // Pricing
   estimated_price: string;
@@ -89,6 +92,7 @@ export interface AgentAssignedLead {
   started_at: string | null;
   checked_in_at: string | null;
   inspection_started_at: string | null;
+  completed_at: string | null;
   expected_completion_at: string | null;
 }
 
@@ -103,27 +107,241 @@ export type AssignmentStatus =
   | 'cancelled';
 
 // =====================================================
-// VERIFICATION & INSPECTION
+// VISIT DETAILS (AgentVisitDetailView)
+// GET /api/v1/partner-agents/my-leads/{id}/visit/
 // =====================================================
 
-export interface VerificationCodeRequest {
-  verification_code: string;
+export interface AgentVisitDetail {
+  id: string;                         // visit UUID
+  lead: string;
+  lead_number: string;
+  assignment: string;
+  
+  // Status
+  status: VisitStatus;
+  status_display: string;
+  
+  // Customer
+  customer_name: string;
+  customer_phone: string;
+  
+  // Device
+  device_name: string;
+  device_category: string;
+  device_brand: string;
+  device_model: string;
+  
+  // Pricing
+  estimated_price: string;
+  offered_price: string | null;
+  final_price: string | null;
+  
+  // Location
+  pickup_address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    latitude: number | null;
+    longitude: number | null;
+  };
+  
+  // Schedule
+  scheduled_date: string;
+  scheduled_time_slot: string;
+  
+  // Verification
+  verification_code?: string;         // Only shown when needed
+  code_verified: boolean;
+  code_verified_at: string | null;
+  
+  // Inspection
+  inspection_started_at: string | null;
+  inspection_completed_at: string | null;
+  inspection_notes: string | null;
+  inspection_photos: string[];
+  
+  // Completion
+  completed_at: string | null;
+  completion_notes: string | null;
+  customer_signature_url: string | null;
+  
+  // Timestamps
+  started_at: string | null;
+  arrived_at: string | null;
 }
 
+export type VisitStatus = 
+  | 'scheduled'
+  | 'en_route'
+  | 'arrived'
+  | 'in_progress'
+  | 'inspection_done'
+  | 'offer_made'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show';
+
+// =====================================================
+// REQUEST TYPES
+// =====================================================
+
+/**
+ * Update availability
+ * PUT /api/v1/partner-agents/me/
+ */
+export interface UpdateAvailabilityRequest {
+  is_available: boolean;
+}
+
+/**
+ * Check-in at location
+ * POST /api/v1/partner-agents/my-leads/{id}/check-in/
+ */
 export interface CheckInRequest {
   latitude: number;
   longitude: number;
   notes?: string;
 }
 
-export interface DeviceConditionItem {
-  id: string;
-  question: string;
-  category: string;
-  answer: boolean | string | null;
-  notes?: string;
-  image_url?: string;
+/**
+ * Verify arrival code
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/verify-code/
+ */
+export interface VerifyCodeRequest {
+  code: string;                       // 6-digit code from customer
+  latitude?: number;
+  longitude?: number;
 }
+
+/**
+ * Submit inspection
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/submit-inspection/
+ * 
+ * Backend expects partner_assessment as an object with:
+ * - screen_condition, body_condition, battery_health, device_age
+ * - accessories: { charger_available, box_available, earphones_available, bill_available }
+ * - functional_issues: string[]
+ */
+export interface SubmitInspectionRequest {
+  verified_imei: string;
+  imei_matches: boolean;
+  device_powers_on: boolean;
+  inspection_notes: string;
+  inspection_photos: string[];       // URLs of uploaded photos
+  partner_assessment: PartnerAssessment;
+  condition_inputs?: Record<string, string | number | boolean>;  // Direct pricing inputs
+  partner_recommended_price?: number;  // Optional recommended price
+  checklist_items?: ChecklistItem[];
+}
+
+/**
+ * Partner's assessment of the device condition
+ * Used in submit-inspection endpoint
+ */
+export interface PartnerAssessment {
+  screen_condition: 'excellent' | 'good' | 'fair' | 'poor' | 'broken';
+  body_condition: 'excellent' | 'good' | 'fair' | 'poor' | 'damaged';
+  battery_health?: number;              // 0-100 percentage
+  battery_condition?: 'excellent' | 'good' | 'fair' | 'poor';
+  device_age?: string;                  // e.g., "0-6_months", "6-12_months", "1-2_years"
+  accessories: {
+    charger_available: boolean;
+    box_available: boolean;
+    earphones_available?: boolean;
+    bill_available?: boolean;
+  };
+  functional_issues: string[];          // List of issues found
+}
+
+export interface ChecklistItem {
+  item: string;
+  passed: boolean;
+  notes?: string;
+}
+
+/**
+ * Make price offer
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/make-offer/
+ */
+export interface MakeOfferRequest {
+  offered_price: number;
+  offer_notes?: string;
+}
+
+/**
+ * Complete visit
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/complete/
+ */
+export interface CompleteVisitRequest {
+  final_price: number;
+  customer_signature_url?: string;
+  completion_notes?: string;
+}
+
+/**
+ * Cancel visit
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/cancel/
+ */
+export interface CancelVisitRequest {
+  reason: string;
+}
+
+/**
+ * Location breadcrumb
+ * POST /api/v1/partner-agents/my-leads/{id}/visit/breadcrumb/
+ */
+export interface LocationBreadcrumbRequest {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}
+
+/**
+ * Update GPS location
+ * POST /api/v1/partner-agents/update-location/
+ */
+export interface UpdateLocationRequest {
+  latitude: number;
+  longitude: number;
+}
+
+// =====================================================
+// RESPONSE TYPES
+// =====================================================
+
+export interface AgentAssignedLeadsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AgentAssignedLead[];
+}
+
+export interface ActionResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+// =====================================================
+// STATS
+// =====================================================
+
+export interface AgentDashboardStats {
+  total_assigned: number;
+  pending_acceptance: number;
+  in_progress: number;
+  completed_today: number;
+  completed_this_week: number;
+  completed_this_month: number;
+  average_rating: number | null;
+  total_earnings: number;
+}
+
+// =====================================================
+// DEVICE INSPECTION DATA (for UI form)
+// =====================================================
 
 export interface DeviceInspectionData {
   // Physical condition
@@ -158,10 +376,10 @@ export interface DeviceInspectionData {
   has_earphones: boolean;
   has_bill: boolean;
   
-  // Additional notes
+  // Additional
   notes: string;
   
-  // Images (URLs after upload)
+  // Image URLs (after upload)
   front_image?: string;
   back_image?: string;
   screen_image?: string;
@@ -169,19 +387,8 @@ export interface DeviceInspectionData {
   defect_images?: string[];
 }
 
-export interface InspectionSubmitRequest {
-  inspection_data: DeviceInspectionData;
-  images: {
-    front?: File;
-    back?: File;
-    screen?: File;
-    imei?: File;
-    defects?: File[];
-  };
-}
-
 // =====================================================
-// PRICE RE-ESTIMATION
+// PRICE CALCULATION
 // =====================================================
 
 export interface PriceDeduction {
@@ -190,88 +397,87 @@ export interface PriceDeduction {
   category: string;
 }
 
-export interface PriceReEstimationData {
+export interface CalculatedPrice {
   original_price: number;
+  calculated_price: number;
   deductions: PriceDeduction[];
-  final_price: number;
-  notes: string;
-}
-
-export interface PriceReEstimationRequest {
-  inspection_data: DeviceInspectionData;
-  proposed_price: number;
-  price_breakdown: {
-    base_price: number;
-    deductions: PriceDeduction[];
-  };
-  notes: string;
 }
 
 // =====================================================
-// DEAL COMPLETION
+// GEOLOCATION
 // =====================================================
-
-export interface CompleteDealRequest {
-  final_price: number;
-  payment_method: 'cash' | 'upi' | 'bank_transfer';
-  customer_signature?: string; // Base64 encoded signature
-  notes?: string;
-}
-
-export interface CompletedDeal {
-  id: string;
-  lead_number: string;
-  device_name: string;
-  final_price: number;
-  payment_method: string;
-  completed_at: string;
-  customer_name: string;
-}
-
-// =====================================================
-// AGENT STATS
-// =====================================================
-
-export interface AgentDashboardStats {
-  total_assigned: number;
-  pending_acceptance: number;
-  in_progress: number;
-  completed_today: number;
-  completed_this_week: number;
-  completed_this_month: number;
-  average_rating: number | null;
-  total_earnings: number;
-}
-
-// =====================================================
-// API RESPONSES
-// =====================================================
-
-export interface AgentAssignedLeadsResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: AgentAssignedLead[];
-}
-
-export interface AgentActionResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-}
-
-// =====================================================
-// LOCATION
-// =====================================================
-
-export interface LocationUpdateRequest {
-  latitude: number;
-  longitude: number;
-}
 
 export interface GeoLocation {
   latitude: number;
   longitude: number;
   accuracy?: number;
   timestamp?: number;
+}
+
+// =====================================================
+// ADDITIONAL REQUEST TYPES (Aliases & Extended)
+// =====================================================
+
+/**
+ * Location update request
+ * POST /api/v1/partner-agents/update-location/
+ */
+export interface LocationUpdateRequest {
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Price re-estimation request
+ * Used when agent submits new price based on inspection
+ */
+export interface PriceReEstimationRequest {
+  original_price: number;
+  proposed_price: number;
+  deductions: PriceDeduction[];
+  reason_for_change?: string;
+  notes?: string;
+}
+
+/**
+ * Complete deal request
+ * Final step to complete the transaction
+ */
+export interface CompleteDealRequest {
+  final_price: number;
+  payment_method: 'cash' | 'upi' | 'bank_transfer';
+  customer_signature?: string;       // Base64 or URL
+  customer_id_verified?: boolean;
+  notes?: string;
+}
+
+/**
+ * Agent action response
+ * Standard response for agent actions
+ */
+export interface AgentActionResponse {
+  success: boolean;
+  message: string;
+  data?: Record<string, any>;
+  error?: string;
+}
+
+// =====================================================
+// ACTIVITY LOG (for agent's own activity)
+// =====================================================
+
+export interface AgentActivityLogEntry {
+  id: string;
+  activity_type: string;
+  description: string;
+  lead_number?: string;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+export interface AgentActivityLogsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AgentActivityLogEntry[];
 }

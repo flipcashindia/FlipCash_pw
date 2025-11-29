@@ -1,17 +1,20 @@
 // src/hooks/useAgentApp.ts
-// React Query hooks for Agent-facing application
+// React Query hooks for Agent Self-Service Application
+// Used by agents to manage their own leads, profile, and workflow
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 import { agentAppService } from '../api/services/agentAppService';
 import type {
-  // AgentSelfProfile,
-  // AgentAssignedLead,
-  // AgentDashboardStats,
   CheckInRequest,
+  // VerifyCodeRequest,
+  SubmitInspectionRequest,
+  MakeOfferRequest,
+  CompleteVisitRequest,
+  CancelVisitRequest,
+  LocationBreadcrumbRequest,
   DeviceInspectionData,
-  PriceReEstimationRequest,
   CompleteDealRequest,
-  LocationUpdateRequest,
 } from '../api/types/agentApp.types';
 
 // =====================================================
@@ -23,130 +26,158 @@ export const agentAppKeys = {
   profile: () => [...agentAppKeys.all, 'profile'] as const,
   stats: () => [...agentAppKeys.all, 'stats'] as const,
   assignments: () => [...agentAppKeys.all, 'assignments'] as const,
-  assignmentsList: (filters: Record<string, any>) => 
-    [...agentAppKeys.assignments(), 'list', filters] as const,
-  assignment: (id: string) => [...agentAppKeys.assignments(), id] as const,
-  activityLogs: () => [...agentAppKeys.all, 'activityLogs'] as const,
+  assignmentsList: (params?: { status?: string }) => [...agentAppKeys.assignments(), 'list', params] as const,
+  assignment: (id: string) => [...agentAppKeys.assignments(), 'detail', id] as const,
+  visit: (id: string) => [...agentAppKeys.all, 'visit', id] as const,
+  activityLogs: (params?: { page?: number; limit?: number }) => [...agentAppKeys.all, 'activity-logs', params] as const,
 };
 
 // =====================================================
-// PROFILE HOOKS
+// PROFILE QUERIES
 // =====================================================
 
 /**
  * Get agent's own profile
+ * Used in AgentLayout sidebar and AgentProfilePage
  */
 export const useAgentProfile = () => {
   return useQuery({
     queryKey: agentAppKeys.profile(),
     queryFn: () => agentAppService.getProfile(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 60000, // 1 minute
   });
 };
 
 /**
- * Update agent availability
- */
-export const useUpdateAvailability = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (isAvailable: boolean) => 
-      agentAppService.updateAvailability(isAvailable),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.profile() });
-    },
-  });
-};
-
-/**
- * Update agent location
- */
-export const useUpdateLocation = () => {
-  return useMutation({
-    mutationFn: (data: LocationUpdateRequest) => 
-      agentAppService.updateLocation(data),
-  });
-};
-
-// =====================================================
-// DASHBOARD & STATS HOOKS
-// =====================================================
-
-/**
- * Get dashboard stats
+ * Get agent's dashboard stats
+ * Used in AgentDashboardPage
  */
 export const useAgentDashboardStats = () => {
   return useQuery({
     queryKey: agentAppKeys.stats(),
     queryFn: () => agentAppService.getDashboardStats(),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    staleTime: 30000, // 30 seconds
   });
 };
 
 // =====================================================
-// ASSIGNMENTS HOOKS
+// ASSIGNMENTS QUERIES
 // =====================================================
 
 /**
- * Get assigned leads list
+ * Get agent's assigned leads
+ * Used in AgentLeadsPage and AgentDashboardPage
  */
-export const useAgentAssignments = (params?: {
-  status?: string;
-  priority?: string;
-  page?: number;
-}) => {
+export const useAgentAssignments = (params?: { status?: string; page?: number }) => {
   return useQuery({
-    queryKey: agentAppKeys.assignmentsList(params || {}),
+    queryKey: agentAppKeys.assignmentsList(params),
     queryFn: () => agentAppService.getAssignedLeads(params),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: 30000,
   });
 };
 
 /**
- * Get single assignment details
+ * Get single assignment detail
+ * Used in AgentLeadDetailPage
  */
 export const useAgentAssignment = (assignmentId: string) => {
   return useQuery({
     queryKey: agentAppKeys.assignment(assignmentId),
     queryFn: () => agentAppService.getAssignment(assignmentId),
     enabled: !!assignmentId,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 10000, // 10 seconds - want fresh data for workflow
+  });
+};
+
+/**
+ * Get visit details
+ * Used in AgentLeadDetailPage for visit workflow
+ */
+export const useAgentVisit = (assignmentId: string) => {
+  return useQuery({
+    queryKey: agentAppKeys.visit(assignmentId),
+    queryFn: () => agentAppService.getVisitDetails(assignmentId),
+    enabled: !!assignmentId,
+    staleTime: 10000,
+  });
+};
+
+/**
+ * Get activity logs
+ * Used in AgentActivityPage
+ */
+export const useAgentActivityLogs = (params?: { page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: agentAppKeys.activityLogs(params),
+    queryFn: () => agentAppService.getActivityLogs(params),
+    staleTime: 60000,
   });
 };
 
 // =====================================================
-// ASSIGNMENT ACTIONS HOOKS
+// PROFILE MUTATIONS
 // =====================================================
 
 /**
- * Accept assignment
+ * Update agent availability
+ * Used in AgentLayout sidebar and AgentProfilePage
+ */
+export const useUpdateAvailability = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (isAvailable: boolean) => agentAppService.updateAvailability(isAvailable),
+    onSuccess: (data) => {
+      queryClient.setQueryData(agentAppKeys.profile(), data);
+    },
+  });
+};
+
+/**
+ * Update agent location
+ * Used for GPS tracking during journey
+ */
+export const useUpdateLocation = () => {
+  return useMutation({
+    mutationFn: (data: { latitude: number; longitude: number }) =>
+      agentAppService.updateLocation(data),
+  });
+};
+
+// =====================================================
+// ASSIGNMENT WORKFLOW MUTATIONS
+// =====================================================
+
+/**
+ * Accept an assignment
+ * Used in AgentLeadDetailPage
  */
 export const useAcceptAssignment = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (assignmentId: string) => 
-      agentAppService.acceptAssignment(assignmentId),
+    mutationFn: (assignmentId: string) => agentAppService.acceptAssignment(assignmentId),
     onSuccess: (_, assignmentId) => {
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.profile() });
     },
   });
 };
 
 /**
- * Reject assignment
+ * Reject an assignment
+ * Used in AgentLeadDetailPage
  */
 export const useRejectAssignment = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason: string }) => 
+    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason: string }) =>
       agentAppService.rejectAssignment(assignmentId, reason),
-    onSuccess: () => {
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
     },
@@ -154,14 +185,14 @@ export const useRejectAssignment = () => {
 };
 
 /**
- * Start journey
+ * Start journey (en route)
+ * Used in AgentLeadDetailPage
  */
 export const useStartJourney = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (assignmentId: string) => 
-      agentAppService.startJourney(assignmentId),
+    mutationFn: (assignmentId: string) => agentAppService.startJourney(assignmentId),
     onSuccess: (_, assignmentId) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
@@ -169,155 +200,151 @@ export const useStartJourney = () => {
   });
 };
 
-// =====================================================
-// CHECK-IN & VERIFICATION HOOKS
-// =====================================================
-
 /**
- * Check-in at location
+ * Check in at customer location
+ * Used in AgentLeadDetailPage
  */
 export const useCheckIn = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CheckInRequest }) => 
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CheckInRequest }) =>
       agentAppService.checkIn(assignmentId, data),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
     },
   });
 };
 
 /**
- * Verify with customer code
+ * Verify customer code
+ * Used in VerificationCodeEntry modal
  */
 export const useVerifyCode = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ assignmentId, code }: { assignmentId: string; code: string }) => 
-      agentAppService.verifyWithCode(assignmentId, code),
+    mutationFn: ({ assignmentId, code }: { assignmentId: string; code: string }) =>
+      agentAppService.verifyCode(assignmentId, { code }),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
     },
   });
 };
 
 /**
  * Start inspection
+ * Used in AgentLeadDetailPage
  */
 export const useStartInspection = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (assignmentId: string) => 
-      agentAppService.startInspection(assignmentId),
+    // Use startVisitInspection to match the visit workflow
+    // This hits /visit/start-inspection/ which is required before /visit/submit-inspection/
+    mutationFn: (assignmentId: string) => agentAppService.startVisitInspection(assignmentId),
     onSuccess: (_, assignmentId) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
     },
   });
 };
 
-// =====================================================
-// INSPECTION HOOKS
-// =====================================================
-
 /**
- * Submit inspection data
+ * Submit inspection with device data
+ * Used in InspectionForm
  */
 export const useSubmitInspection = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ 
-      assignmentId, 
-      data 
-    }: { 
-      assignmentId: string; 
-      data: DeviceInspectionData 
-    }) => agentAppService.submitInspection(assignmentId, data),
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: DeviceInspectionData | SubmitInspectionRequest }) =>
+      agentAppService.submitInspection(assignmentId, data),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
     },
   });
 };
-
-/**
- * Upload inspection image
- */
-export const useUploadInspectionImage = () => {
-  return useMutation({
-    mutationFn: ({ 
-      assignmentId, 
-      imageType, 
-      file 
-    }: { 
-      assignmentId: string; 
-      imageType: string; 
-      file: File 
-    }) => agentAppService.uploadInspectionImage(assignmentId, imageType, file),
-  });
-};
-
-// =====================================================
-// PRICE RE-ESTIMATION HOOKS
-// =====================================================
 
 /**
  * Calculate price based on inspection
+ * Used in PriceBreakdown component
  */
 export const useCalculatePrice = () => {
   return useMutation({
-    mutationFn: ({ 
-      assignmentId, 
-      data 
-    }: { 
-      assignmentId: string; 
-      data: DeviceInspectionData 
-    }) => agentAppService.calculatePrice(assignmentId, data),
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: DeviceInspectionData }) =>
+      agentAppService.calculatePrice(assignmentId, data),
   });
 };
 
 /**
- * Submit re-estimated price
+ * Make price offer
+ * Used in PriceBreakdown component
  */
-export const useSubmitReEstimation = () => {
+export const useMakeOffer = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ 
-      assignmentId, 
-      data 
-    }: { 
-      assignmentId: string; 
-      data: PriceReEstimationRequest 
-    }) => agentAppService.submitReEstimation(assignmentId, data),
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: MakeOfferRequest }) =>
+      agentAppService.makeOffer(assignmentId, data),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
     },
   });
 };
 
-// =====================================================
-// DEAL COMPLETION HOOKS
-// =====================================================
+/**
+ * Complete visit
+ * Used in DealCompletion component
+ */
+export const useCompleteVisit = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CompleteVisitRequest }) =>
+      agentAppService.completeVisit(assignmentId, data),
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.profile() });
+    },
+  });
+};
 
 /**
- * Complete deal
+ * Complete deal with final price and payment
+ * Used in DealCompletion component
  */
 export const useCompleteDeal = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ 
-      assignmentId, 
-      data 
-    }: { 
-      assignmentId: string; 
-      data: CompleteDealRequest 
-    }) => agentAppService.completeDeal(assignmentId, data),
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CompleteDealRequest }) =>
+      agentAppService.completeDeal(assignmentId, data),
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.profile() });
+    },
+  });
+};
+
+/**
+ * Cancel visit
+ * Used in AgentLeadDetailPage
+ */
+export const useCancelVisit = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CancelVisitRequest }) =>
+      agentAppService.cancelVisit(assignmentId, data),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
@@ -327,33 +354,31 @@ export const useCompleteDeal = () => {
 };
 
 /**
- * Cancel assignment
+ * Cancel assignment (alias for cancel visit with reason)
  */
 export const useCancelAssignment = () => {
-  const queryClient = useQueryClient();
-  
+  return useCancelVisit();
+};
+
+/**
+ * Record location breadcrumb
+ * Used during journey for tracking
+ */
+export const useRecordBreadcrumb = () => {
   return useMutation({
-    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason: string }) => 
-      agentAppService.cancelAssignment(assignmentId, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
-      queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
-    },
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: LocationBreadcrumbRequest }) =>
+      agentAppService.recordBreadcrumb(assignmentId, data),
   });
 };
 
-// =====================================================
-// ACTIVITY LOGS HOOKS
-// =====================================================
-
 /**
- * Get activity logs
+ * Upload inspection image
+ * Used in DeviceImageCapture component
  */
-export const useAgentActivityLogs = (params?: { page?: number; limit?: number }) => {
-  return useQuery({
-    queryKey: [...agentAppKeys.activityLogs(), params],
-    queryFn: () => agentAppService.getActivityLogs(params),
-    staleTime: 5 * 60 * 1000,
+export const useUploadInspectionImage = () => {
+  return useMutation({
+    mutationFn: ({ assignmentId, imageType, file }: { assignmentId: string; imageType: string; file: File }) =>
+      agentAppService.uploadInspectionImage(assignmentId, imageType, file),
   });
 };
 
@@ -362,19 +387,47 @@ export const useAgentActivityLogs = (params?: { page?: number; limit?: number })
 // =====================================================
 
 /**
- * Custom hook for getting current location
+ * Hook for getting current location
+ * Used for check-in and breadcrumb tracking
  */
 export const useCurrentLocation = () => {
-  const getCurrentLocation = (): Promise<GeolocationPosition> => {
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const getCurrentLocation = useCallback((): Promise<GeolocationPosition> => {
     return new Promise((resolve, reject) => {
+      setIsGettingLocation(true);
+      setLocationError(null);
+
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by your browser'));
+        setIsGettingLocation(false);
+        setLocationError('Geolocation is not supported by your browser');
+        reject(new Error('Geolocation is not supported'));
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
-        resolve,
-        reject,
+        (position) => {
+          setIsGettingLocation(false);
+          resolve(position);
+        },
+        (error) => {
+          setIsGettingLocation(false);
+          let message = 'Failed to get location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              message = 'Location permission denied. Please enable location access.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              message = 'Location information unavailable.';
+              break;
+            case error.TIMEOUT:
+              message = 'Location request timed out.';
+              break;
+          }
+          setLocationError(message);
+          reject(new Error(message));
+        },
         {
           enableHighAccuracy: true,
           timeout: 10000,
@@ -382,7 +435,92 @@ export const useCurrentLocation = () => {
         }
       );
     });
-  };
+  }, []);
 
-  return { getCurrentLocation };
+  const watchLocation = useCallback((onUpdate: (position: GeolocationPosition) => void): number | null => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported');
+      return null;
+    }
+
+    return navigator.geolocation.watchPosition(
+      onUpdate,
+      (error) => {
+        console.error('Watch location error:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000,
+      }
+    );
+  }, []);
+
+  const clearWatch = useCallback((watchId: number) => {
+    if (navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+  }, []);
+
+  return {
+    getCurrentLocation,
+    watchLocation,
+    clearWatch,
+    isGettingLocation,
+    locationError,
+  };
+};
+
+// =====================================================
+// COMBINED WORKFLOW HOOK
+// =====================================================
+
+/**
+ * Combined hook for lead workflow management
+ * Provides all the mutations needed for the complete workflow
+ */
+export const useLeadWorkflow = (assignmentId: string) => {
+  const assignment = useAgentAssignment(assignmentId);
+  const accept = useAcceptAssignment();
+  const reject = useRejectAssignment();
+  const startJourney = useStartJourney();
+  const checkIn = useCheckIn();
+  const verifyCode = useVerifyCode();
+  const startInspection = useStartInspection();
+  const submitInspection = useSubmitInspection();
+  const calculatePrice = useCalculatePrice();
+  const makeOffer = useMakeOffer();
+  const completeDeal = useCompleteDeal();
+  const cancelVisit = useCancelVisit();
+  const location = useCurrentLocation();
+
+  const isLoading =
+    accept.isPending ||
+    reject.isPending ||
+    startJourney.isPending ||
+    checkIn.isPending ||
+    verifyCode.isPending ||
+    startInspection.isPending ||
+    submitInspection.isPending ||
+    calculatePrice.isPending ||
+    makeOffer.isPending ||
+    completeDeal.isPending ||
+    cancelVisit.isPending;
+
+  return {
+    assignment,
+    accept,
+    reject,
+    startJourney,
+    checkIn,
+    verifyCode,
+    startInspection,
+    submitInspection,
+    calculatePrice,
+    makeOffer,
+    completeDeal,
+    cancelVisit,
+    location,
+    isLoading,
+  };
 };

@@ -36,7 +36,7 @@ import {
   useActivateAgent,
   useDeactivateAgent,
 } from '../../hooks/useAgents';
-import type { AgentProfile, AgentStatus } from '../../api/types/agent.type';
+import type { AgentListItem, AgentStatus } from '../../api/types/agent.type';
 import AddAgentModal from '../../components/partner/agents/AddAgentModal';
 import AgentDetailModal from '../../components/partner/agents/AgentDetailModal';
 
@@ -51,10 +51,10 @@ import AgentDetailModal from '../../components/partner/agents/AgentDetailModal';
 const AgentsPage: React.FC = () => {
   // State
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<AgentStatus | ''>('');
   const [availabilityFilter, setAvailabilityFilter] = useState<string>('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentListItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [actionMenuAgent, setActionMenuAgent] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -79,7 +79,10 @@ const AgentsPage: React.FC = () => {
   const activateAgentMutation = useActivateAgent();
   const deactivateAgentMutation = useDeactivateAgent();
 
-  const agents = agentsData?.results || [];
+  // Handle both flat array and paginated response formats
+  const agents: AgentListItem[] = Array.isArray(agentsData) 
+    ? agentsData 
+    : (agentsData || []);
 
   // Handlers
   const handleRemoveAgent = async (agentId: string) => {
@@ -119,7 +122,7 @@ const AgentsPage: React.FC = () => {
     }
   };
 
-  const handleViewAgent = (agent: AgentProfile) => {
+  const handleViewAgent = (agent: AgentListItem) => {
     setSelectedAgent(agent);
     setIsDetailModalOpen(true);
     setActionMenuAgent(null);
@@ -200,7 +203,7 @@ const AgentsPage: React.FC = () => {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as AgentStatus | '')}
             className="px-4 py-3 border border-gray-200 rounded-xl focus:border-[#FEC925] outline-none bg-white min-w-[150px]"
           >
             <option value="">All Status</option>
@@ -378,7 +381,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, bgColor }) => (
 );
 
 interface AgentRowProps {
-  agent: AgentProfile;
+  agent: AgentListItem;
   index: number;
   isMenuOpen: boolean;
   onToggleMenu: () => void;
@@ -416,14 +419,14 @@ const AgentRow: React.FC<AgentRowProps> = ({
           {/* Avatar */}
           <div className="w-12 h-12 bg-[#FEC925]/20 rounded-full flex items-center justify-center">
             <span className="text-lg font-bold text-[#b48f00]">
-              {agent.user.name?.charAt(0)?.toUpperCase() || 'A'}
+              {agent.user_name?.charAt(0)?.toUpperCase() || 'A'}
             </span>
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-[#1C1C1B] truncate">{agent.user.name}</h3>
+              <h3 className="font-bold text-[#1C1C1B] truncate">{agent.user_name}</h3>
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 ${statusBadge.bg} ${statusBadge.text}`}>
                 {statusBadge.icon}
                 {agent.status}
@@ -437,7 +440,7 @@ const AgentRow: React.FC<AgentRowProps> = ({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
               <span className="flex items-center gap-1">
                 <Phone size={14} />
-                {agent.user.phone}
+                {agent.user_phone}
               </span>
               {agent.employee_code && (
                 <span className="text-gray-400">ID: {agent.employee_code}</span>
@@ -454,11 +457,11 @@ const AgentRow: React.FC<AgentRowProps> = ({
           {/* Stats */}
           <div className="hidden md:flex items-center gap-6">
             <div className="text-center">
-              <p className="text-lg font-bold text-[#1C1C1B]">{agent.total_visits_completed}</p>
+              <p className="text-lg font-bold text-[#1C1C1B]">{agent.total_leads_completed}</p>
               <p className="text-xs text-gray-500">Completed</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-[#1C1C1B]">{agent.active_assignments_count || 0}</p>
+              <p className="text-lg font-bold text-[#1C1C1B]">{agent.current_assigned_leads_count || 0}</p>
               <p className="text-xs text-gray-500">Active</p>
             </div>
           </div>
