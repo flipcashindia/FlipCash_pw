@@ -1,50 +1,56 @@
 // src/hooks/useAgents.ts
-// React Query hooks for agent management
+// React Query hooks for Partner managing Agents
+// Used in: AgentsPage, AgentDetailModal, AddAgentModal, AssignLeadModal
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentService } from '../api/services/agentService';
 import type {
-  // AgentProfile,
-  // AgentLeadAssignment,
+  AgentProfile,
+  AgentListParams,
   CreateAgentRequest,
   UpdateAgentRequest,
-  AssignLeadToAgentRequest,
-  // AgentStats,
+  CreateAssignmentRequest,
+  ReassignLeadRequest,
+  AadhaarVerifyRequest,
+  AssignmentListParams,
 } from '../api/types/agent.type';
 
-// Query Keys
+// =====================================================
+// QUERY KEYS
+// =====================================================
+
 export const agentKeys = {
   all: ['agents'] as const,
   lists: () => [...agentKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...agentKeys.lists(), filters] as const,
+  list: (params?: AgentListParams) => [...agentKeys.lists(), params] as const,
   details: () => [...agentKeys.all, 'detail'] as const,
   detail: (id: string) => [...agentKeys.details(), id] as const,
-  assignments: () => [...agentKeys.all, 'assignments'] as const,
-  assignment: (filters: Record<string, any>) => [...agentKeys.assignments(), filters] as const,
+  assignments: (id: string) => [...agentKeys.all, id, 'assignments'] as const,
+  activityLogs: (id: string) => [...agentKeys.all, id, 'activity-logs'] as const,
   stats: () => [...agentKeys.all, 'stats'] as const,
-  available: (leadId: string) => [...agentKeys.all, 'available', leadId] as const,
+  assignableLeads: () => [...agentKeys.all, 'assignable-leads'] as const,
+  allAssignments: (params?: AssignmentListParams) => [...agentKeys.all, 'all-assignments', params] as const,
 };
 
-// ==================== AGENT QUERIES ====================
+// =====================================================
+// QUERIES - Reading Data
+// =====================================================
 
 /**
- * Hook to fetch agents list
+ * Get list of agents
+ * Used in AgentsPage to display all agents
  */
-export const useAgents = (params?: {
-  status?: string;
-  is_available?: boolean;
-  search?: string;
-  page?: number;
-}) => {
+export const useAgents = (params?: AgentListParams) => {
   return useQuery({
-    queryKey: agentKeys.list(params || {}),
+    queryKey: agentKeys.list(params),
     queryFn: () => agentService.getAgents(params),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30000, // 30 seconds
   });
 };
 
 /**
- * Hook to fetch single agent
+ * Get single agent details
+ * Used in AgentDetailModal
  */
 export const useAgent = (agentId: string) => {
   return useQuery({
@@ -55,86 +61,149 @@ export const useAgent = (agentId: string) => {
 };
 
 /**
- * Hook to fetch available agents for a lead
+ * Get agent's assignments
+ * Used in AgentDetailModal to show assigned leads
  */
-export const useAvailableAgents = (leadId: string) => {
+export const useAgentAssignments = (agentId: string, status?: string) => {
   return useQuery({
-    queryKey: agentKeys.available(leadId),
-    queryFn: () => agentService.getAvailableAgentsForLead(leadId),
-    enabled: !!leadId,
-    staleTime: 30 * 1000, // 30 seconds
+    queryKey: agentKeys.assignments(agentId),
+    queryFn: () => agentService.getAgentAssignments(agentId, status),
+    enabled: !!agentId,
   });
 };
 
 /**
- * Hook to fetch agent stats
+ * Get agent's activity logs
+ * Used in AgentDetailModal for activity history
+ */
+export const useAgentActivityLogs = (agentId: string) => {
+  return useQuery({
+    queryKey: agentKeys.activityLogs(agentId),
+    queryFn: () => agentService.getAgentActivityLogs(agentId),
+    enabled: !!agentId,
+  });
+};
+
+/**
+ * Get overall agents stats
+ * Used in AgentsPage header
  */
 export const useAgentStats = () => {
   return useQuery({
     queryKey: agentKeys.stats(),
     queryFn: () => agentService.getOverallStats(),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 60000, // 1 minute
   });
 };
 
 /**
- * Hook to fetch assignments
+ * Get assignable leads (leads that can be assigned to agents)
+ * Used in AssignLeadModal dropdown
  */
-export const useAssignments = (params?: {
-  agent?: string;
-  lead?: string;
-  status?: string;
-  page?: number;
-}) => {
+export const useAssignableLeads = () => {
   return useQuery({
-    queryKey: agentKeys.assignment(params || {}),
-    queryFn: () => agentService.getAssignments(params),
-    staleTime: 60 * 1000,
+    queryKey: agentKeys.assignableLeads(),
+    queryFn: () => agentService.getAssignableLeads(),
+    staleTime: 30000,
   });
 };
 
-// ==================== AGENT MUTATIONS ====================
+/**
+ * Get all assignments
+ * Used in assignments management page
+ */
+export const useAllAssignments = (params?: AssignmentListParams) => {
+  return useQuery({
+    queryKey: agentKeys.allAssignments(params),
+    queryFn: () => agentService.getAssignments(params),
+    staleTime: 30000,
+  });
+};
 
 /**
- * Hook to create a new agent
+ * Get available agents for lead assignment
+ * Used in AssignLeadModal
+ */
+export const useAvailableAgents = () => {
+  return useQuery({
+    queryKey: [...agentKeys.all, 'available'],
+    queryFn: () => agentService.getAvailableAgentsForLead(),
+    staleTime: 30000,
+  });
+};
+
+// =====================================================
+// MUTATIONS - Creating/Updating Data
+// =====================================================
+
+/**
+ * Create a new agent
+ * Used in AddAgentModal
  */
 export const useCreateAgent = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: (data: CreateAgentRequest) => agentService.createAgent(data),
     onSuccess: () => {
+      // Invalidate agents list to refetch
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
+    },
+    onError: (error) => {
+      console.error('[useCreateAgent] Error:', error);
     },
   });
 };
 
 /**
- * Hook to update an agent
+ * Update an agent
+ * Used in AgentDetailModal edit mode
  */
 export const useUpdateAgent = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: ({ agentId, data }: { agentId: string; data: UpdateAgentRequest }) =>
       agentService.updateAgent(agentId, data),
-    onSuccess: (_, { agentId }) => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
+    onSuccess: (data, variables) => {
+      // Update agent in cache
+      queryClient.setQueryData(agentKeys.detail(variables.agentId), data);
+      // Invalidate list to refetch
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
     },
   });
 };
 
 /**
- * Hook to remove an agent
+ * Patch an agent (partial update)
+ * Used for quick updates like availability toggle
+ */
+export const usePatchAgent = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ agentId, data }: { agentId: string; data: Partial<UpdateAgentRequest> }) =>
+      agentService.patchAgent(agentId, data),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(agentKeys.detail(variables.agentId), data);
+      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+    },
+  });
+};
+
+/**
+ * Remove an agent (soft delete)
+ * Used in AgentsPage action menu
  */
 export const useRemoveAgent = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: (agentId: string) => agentService.removeAgent(agentId),
-    onSuccess: () => {
+    onSuccess: (_, agentId) => {
+      // Remove from cache and refetch list
+      queryClient.removeQueries({ queryKey: agentKeys.detail(agentId) });
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
     },
@@ -142,30 +211,50 @@ export const useRemoveAgent = () => {
 };
 
 /**
- * Hook to toggle agent availability
+ * Toggle agent status (active/inactive)
+ * Used in AgentsPage action menu
+ */
+export const useToggleAgentStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (agentId: string) => agentService.toggleStatus(agentId),
+    onSuccess: (data, agentId) => {
+      queryClient.setQueryData(agentKeys.detail(agentId), data);
+      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
+    },
+  });
+};
+
+/**
+ * Toggle agent availability
+ * Used in AgentsPage action menu
  */
 export const useToggleAgentAvailability = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: (agentId: string) => agentService.toggleAvailability(agentId),
-    onSuccess: (_, agentId) => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
+    onSuccess: (data, agentId) => {
+      queryClient.setQueryData(agentKeys.detail(agentId), data);
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
     },
   });
 };
 
 /**
- * Hook to activate an agent
+ * Activate an agent
+ * Used in AgentsPage action menu
  */
 export const useActivateAgent = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: (agentId: string) => agentService.activateAgent(agentId),
-    onSuccess: (_, agentId) => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
+    onSuccess: (data, agentId) => {
+      queryClient.setQueryData(agentKeys.detail(agentId), data);
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
     },
@@ -173,75 +262,106 @@ export const useActivateAgent = () => {
 };
 
 /**
- * Hook to deactivate an agent
+ * Deactivate an agent
+ * Used in AgentsPage action menu
  */
 export const useDeactivateAgent = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: (agentId: string) => agentService.deactivateAgent(agentId),
-    onSuccess: (_, agentId) => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
+    onSuccess: (data, agentId) => {
+      queryClient.setQueryData(agentKeys.detail(agentId), data);
       queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
     },
   });
 };
 
-// ==================== ASSIGNMENT MUTATIONS ====================
+/**
+ * Verify agent (Aadhaar verification)
+ * Used in AgentDetailModal
+ */
+export const useVerifyAgent = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ agentId, data }: { agentId: string; data: AadhaarVerifyRequest }) =>
+      agentService.verifyAgent(agentId, data),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(agentKeys.detail(variables.agentId), data);
+      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
+    },
+  });
+};
+
+// =====================================================
+// ASSIGNMENT MUTATIONS
+// =====================================================
 
 /**
- * Hook to assign lead to agent
+ * Create a new assignment (assign lead to agent)
+ * Used in AssignLeadModal
  */
-export const useAssignLeadToAgent = () => {
+export const useCreateAssignment = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: ({ agentId, data }: { agentId: string; data: AssignLeadToAgentRequest }) =>
-      agentService.assignLeadToAgent(agentId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.assignments() });
-      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Invalidate leads too
+    mutationFn: (data: CreateAssignmentRequest) => agentService.createAssignment(data),
+    onSuccess: (_, variables) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: agentKeys.assignments(variables.agent_id) });
+      queryClient.invalidateQueries({ queryKey: agentKeys.assignableLeads() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.allAssignments() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.stats() });
     },
   });
 };
 
 /**
- * Hook to cancel assignment
+ * Cancel an assignment
+ * Used in assignment management
  */
 export const useCancelAssignment = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason: string }) =>
+    mutationFn: ({ assignmentId, reason }: { assignmentId: string; reason?: string }) =>
       agentService.cancelAssignment(assignmentId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.assignments() });
-      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.allAssignments() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.assignableLeads() });
     },
   });
 };
 
 /**
- * Hook to reassign lead
+ * Reassign lead to different agent
+ * Used in assignment management
  */
 export const useReassignLead = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: ({
-      assignmentId,
-      newAgentId,
-      notes,
-    }: {
-      assignmentId: string;
-      newAgentId: string;
-      notes?: string;
-    }) => agentService.reassignLead(assignmentId, newAgentId, notes),
+    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: ReassignLeadRequest }) =>
+      agentService.reassignLead(assignmentId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentKeys.assignments() });
-      queryClient.invalidateQueries({ queryKey: agentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.allAssignments() });
+      // Invalidate all agent assignments
+      queryClient.invalidateQueries({ queryKey: agentKeys.all });
     },
   });
+};
+
+// =====================================================
+// HELPER HOOKS
+// =====================================================
+
+/**
+ * Get agent by ID from cache or fetch
+ */
+export const useCachedAgent = (agentId: string): AgentProfile | undefined => {
+  const queryClient = useQueryClient();
+  return queryClient.getQueryData<AgentProfile>(agentKeys.detail(agentId));
 };

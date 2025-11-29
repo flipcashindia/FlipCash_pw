@@ -1,7 +1,9 @@
 // src/components/partner/agents/AddAgentModal.tsx
-// Modal for adding a new agent
+// Modal for adding a new agent to the partner's team
+// Uses: useCreateAgent hook from useAgents.ts
+// Backend: POST /api/v1/partner-agents/agents/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -13,25 +15,50 @@ import {
   BadgeCheck,
   AlertCircle,
   CheckCircle,
+  Hash,
+  Info,
 } from 'lucide-react';
 import { useCreateAgent } from '../../../hooks/useAgents';
 
 interface AddAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
+interface FormData {
+  phone: string;
+  name: string;
+  email: string;
+  employee_code: string;
+  max_concurrent_leads: number;
+  notes: string;
+}
+
+const initialFormData: FormData = {
+  phone: '',
+  name: '',
+  email: '',
+  employee_code: '',
+  max_concurrent_leads: 5,
+  notes: '',
+};
+
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    phone: '',
-    name: '',
-    email: '',
-    employee_code: '',
-  });
+  const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const createAgentMutation = useCreateAgent();
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(initialFormData);
+      setErrors({});
+      setSuccessMessage(null);
+    }
+  }, [isOpen]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -51,11 +78,23 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
       newErrors.name = 'Name is required';
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
+    } else if (formData.name.trim().length > 100) {
+      newErrors.name = 'Name must be less than 100 characters';
     }
 
     // Email validation (optional but if provided must be valid)
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    }
+
+    // Employee code validation (optional)
+    if (formData.employee_code && formData.employee_code.length > 50) {
+      newErrors.employee_code = 'Employee code must be less than 50 characters';
+    }
+
+    // Max concurrent leads validation
+    if (formData.max_concurrent_leads < 1 || formData.max_concurrent_leads > 20) {
+      newErrors.max_concurrent_leads = 'Must be between 1 and 20';
     }
 
     setErrors(newErrors);
@@ -76,21 +115,48 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
         name: formData.name.trim(),
         email: formData.email.trim() || undefined,
         employee_code: formData.employee_code.trim() || undefined,
+        max_concurrent_leads: formData.max_concurrent_leads,
+        notes: formData.notes.trim() || undefined,
       });
 
-      // Reset form
-      setFormData({ phone: '', name: '', email: '', employee_code: '' });
-      setErrors({});
-      onSuccess();
+      setSuccessMessage('Agent added successfully!');
+      
+      // Call onSuccess and close after brief delay
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 1500);
     } catch (err: any) {
-      setErrors({ submit: err.message || 'Failed to create agent' });
+      // Parse DRF validation errors
+      if (err.message) {
+        // Check if it's a field-specific error
+        const fieldErrors: Record<string, string> = {};
+        const errorMsg = err.message.toLowerCase();
+        
+        if (errorMsg.includes('phone') || errorMsg.includes('user with this phone')) {
+          fieldErrors.phone = err.message;
+        } else if (errorMsg.includes('email')) {
+          fieldErrors.email = err.message;
+        } else if (errorMsg.includes('employee')) {
+          fieldErrors.employee_code = err.message;
+        } else {
+          fieldErrors.submit = err.message;
+        }
+        
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ submit: 'Failed to create agent. Please try again.' });
+      }
     }
   };
 
   const handleClose = () => {
-    setFormData({ phone: '', name: '', email: '', employee_code: '' });
-    setErrors({});
-    onClose();
+    if (!createAgentMutation.isPending) {
+      setFormData(initialFormData);
+      setErrors({});
+      setSuccessMessage(null);
+      onClose();
+    }
   };
 
   const handlePhoneChange = (value: string) => {
@@ -98,6 +164,11 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
     const digits = value.replace(/\D/g, '').slice(0, 10);
     setFormData((prev) => ({ ...prev, phone: digits }));
     if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+  };
+
+  const handleInputChange = (field: keyof FormData, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   if (!isOpen) return null;
@@ -109,7 +180,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+          className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-[#FEC925] to-[#e5b520] p-6">
@@ -125,7 +196,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
               </div>
               <button
                 onClick={handleClose}
-                className="text-[#1C1C1B]/60 hover:text-[#1C1C1B] transition"
+                disabled={createAgentMutation.isPending}
+                className="text-[#1C1C1B]/60 hover:text-[#1C1C1B] transition disabled:opacity-50"
               >
                 <X size={24} />
               </button>
@@ -133,13 +205,29 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
+            {/* Success Message */}
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-[#1B8A05]/10 border-2 border-[#1B8A05] rounded-xl flex items-center gap-3"
+              >
+                <CheckCircle className="text-[#1B8A05]" size={20} />
+                <p className="text-[#1B8A05] font-semibold text-sm">{successMessage}</p>
+              </motion.div>
+            )}
+
             {/* Error Banner */}
             {errors.submit && (
-              <div className="p-4 bg-[#FF0000]/10 border-2 border-[#FF0000] rounded-xl flex items-center gap-3">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-[#FF0000]/10 border-2 border-[#FF0000] rounded-xl flex items-center gap-3"
+              >
                 <AlertCircle className="text-[#FF0000]" size={20} />
                 <p className="text-[#FF0000] font-semibold text-sm">{errors.submit}</p>
-              </div>
+              </motion.div>
             )}
 
             {/* Phone Number */}
@@ -157,7 +245,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
                   value={formData.phone}
                   onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="9876543210"
-                  className={`w-full pl-14 pr-12 py-3 border-2 rounded-xl focus:outline-none transition ${
+                  disabled={createAgentMutation.isPending}
+                  className={`w-full pl-14 pr-12 py-3 border-2 rounded-xl focus:outline-none transition disabled:bg-gray-100 ${
                     errors.phone
                       ? 'border-[#FF0000] focus:border-[#FF0000]'
                       : 'border-gray-200 focus:border-[#FEC925]'
@@ -185,12 +274,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => {
-                    setFormData((prev) => ({ ...prev, name: e.target.value }));
-                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
-                  }}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="Enter agent's full name"
-                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition ${
+                  disabled={createAgentMutation.isPending}
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition disabled:bg-gray-100 ${
                     errors.name
                       ? 'border-[#FF0000] focus:border-[#FF0000]'
                       : 'border-gray-200 focus:border-[#FEC925]'
@@ -215,12 +302,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => {
-                    setFormData((prev) => ({ ...prev, email: e.target.value }));
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-                  }}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="agent@example.com"
-                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition ${
+                  disabled={createAgentMutation.isPending}
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition disabled:bg-gray-100 ${
                     errors.email
                       ? 'border-[#FF0000] focus:border-[#FF0000]'
                       : 'border-gray-200 focus:border-[#FEC925]'
@@ -235,30 +320,73 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
               )}
             </div>
 
-            {/* Employee ID (Optional) */}
+            {/* Employee Code (Optional) */}
             <div>
               <label className="block font-bold text-[#1C1C1B] mb-2">
-                Employee ID <span className="text-gray-400 text-sm font-normal">(Optional)</span>
+                Employee Code <span className="text-gray-400 text-sm font-normal">(Optional)</span>
               </label>
               <div className="relative">
                 <BadgeCheck className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
                   value={formData.employee_code}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, employee_code: e.target.value }))}
+                  onChange={(e) => handleInputChange('employee_code', e.target.value)}
                   placeholder="e.g., EMP001"
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none transition"
+                  disabled={createAgentMutation.isPending}
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition disabled:bg-gray-100 ${
+                    errors.employee_code
+                      ? 'border-[#FF0000] focus:border-[#FF0000]'
+                      : 'border-gray-200 focus:border-[#FEC925]'
+                  }`}
                 />
               </div>
+              {errors.employee_code && (
+                <p className="text-[#FF0000] text-sm mt-1 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {errors.employee_code}
+                </p>
+              )}
               <p className="text-gray-500 text-xs mt-1">
-                Internal employee ID for your reference
+                Internal employee code for your reference
+              </p>
+            </div>
+
+            {/* Max Concurrent Leads */}
+            <div>
+              <label className="block font-bold text-[#1C1C1B] mb-2">
+                Max Concurrent Leads
+              </label>
+              <div className="relative">
+                <Hash className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={formData.max_concurrent_leads}
+                  onChange={(e) => handleInputChange('max_concurrent_leads', parseInt(e.target.value) || 5)}
+                  disabled={createAgentMutation.isPending}
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none transition disabled:bg-gray-100 ${
+                    errors.max_concurrent_leads
+                      ? 'border-[#FF0000] focus:border-[#FF0000]'
+                      : 'border-gray-200 focus:border-[#FEC925]'
+                  }`}
+                />
+              </div>
+              {errors.max_concurrent_leads && (
+                <p className="text-[#FF0000] text-sm mt-1 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {errors.max_concurrent_leads}
+                </p>
+              )}
+              <p className="text-gray-500 text-xs mt-1">
+                Maximum leads this agent can handle at once (1-20)
               </p>
             </div>
 
             {/* Info Box */}
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
               <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                <CheckCircle size={18} />
+                <Info size={18} />
                 What happens next?
               </h4>
               <ul className="text-sm text-blue-700 space-y-1">
@@ -280,13 +408,18 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, onSucces
               </button>
               <button
                 type="submit"
-                disabled={createAgentMutation.isPending}
+                disabled={createAgentMutation.isPending || !!successMessage}
                 className="flex-1 px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {createAgentMutation.isPending ? (
                   <>
                     <Loader2 className="animate-spin" size={20} />
                     Adding...
+                  </>
+                ) : successMessage ? (
+                  <>
+                    <CheckCircle size={20} />
+                    Added!
                   </>
                 ) : (
                   <>

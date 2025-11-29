@@ -324,3 +324,5 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 export default AgentProfilePage;
+
+

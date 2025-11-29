@@ -1,4 +1,7 @@
 // src/components/auth/PartnerRoute.tsx
+// Route guard for Partner-only routes
+// Protects /partner/* routes and redirects based on user role
+
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
@@ -11,28 +14,36 @@ interface PartnerRouteProps {
 export const PartnerRoute: React.FC<PartnerRouteProps> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuthStore();
   const location = useLocation();
-  // console.log('user: ', user);
-  
 
+  // Show loading spinner while checking auth
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-brand-gray-light">
-        <Loader2 className="w-12 h-12 animate-spin text-brand-yellow" />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-[#FEC925] mx-auto" />
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  // User is not logged in - redirect to homepage
   if (!isAuthenticated()) {
-    // User is not logged in, send them to the homepage to log in.
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (user?.role !== 'partner') { //
-    // User is logged in, but is a 'consumer' or other role.
-    // Redirect them to the Partner Signup page as requested.
+  // User is an agent - redirect to agent dashboard
+  if (user?.role === 'agent') {
+    return <Navigate to="/agent/dashboard" replace />;
+  }
+
+  // User is not a partner (consumer or undefined) - redirect to partner signup
+  if (user?.role !== 'partner') {
     return <Navigate to="/partner-signup" replace />;
   }
 
-  // If authenticated AND is a partner, show the page
+  // User is authenticated AND is a partner - allow access
   return <>{children}</>;
 };
+
+export default PartnerRoute;

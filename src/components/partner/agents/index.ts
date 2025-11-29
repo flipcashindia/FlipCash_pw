@@ -1,5 +1,5 @@
 // src/components/partner/agents/index.ts
-// Export all agent components
+// Export all partner agent management components
 
 export { default as AddAgentModal } from './AddAgentModal';
 export { default as AgentDetailModal } from './AgentDetailModal';
