@@ -1,5 +1,6 @@
 // src/pages/agent/AgentLeadDetailPage.tsx
-// Agent Lead Detail - Full workflow management for a single lead
+// Agent Lead Detail - COMPLETE FULL VERSION WITH KYC WORKFLOW
+// Includes: System pricing, customer acceptance, KYC verification, payment processing
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -33,6 +34,17 @@ import {
   Zap,
   Eye,
   ExternalLink,
+  CreditCard,
+  Wallet,
+  ThumbsUp,
+  ThumbsDown,
+  UserCheck,
+  Shield,
+  FileText,
+  // Upload,
+  Edit3,
+  Home,
+  // MapPin as MapPinIcon,
 } from 'lucide-react';
 import {
   useAgentAssignment,
@@ -43,13 +55,19 @@ import {
   useVerifyCode,
   useStartInspection,
   useSubmitInspection,
-  useCalculatePrice,
-  useCompleteDeal,
+  useCustomerAcceptance,    // EXISTING
+  useKYCVerification,       // NEW
+  usePaymentProcess,        // NEW
+  // useCompleteDeal,
   useCurrentLocation,
 } from '../../hooks/useAgentApp';
-import type { DeviceInspectionData } from '../../api/types/agentApp.types';
+import type { 
+  DeviceInspectionData,
+  KYCVerificationData,    // NEW
+  PaymentData,            // NEW
+  CustomerAddress,        // NEW
+} from '../../api/types/agentApp.types';
 import VerificationCodeEntry from '../../components/agent/VerificationCodeEntry';
-import DealCompletion from '../../components/agent/DealCompletion';
 import DeviceImageCapture from '../../components/agent/DeviceImageCapture';
 
 const AgentLeadDetailPage: React.FC = () => {
@@ -58,7 +76,7 @@ const AgentLeadDetailPage: React.FC = () => {
   
   const { data: assignment, isLoading, error, refetch } = useAgentAssignment(assignmentId || '');
   
-  // Mutations
+  // Mutations - UPDATED with new hooks
   const acceptMutation = useAcceptAssignment();
   const rejectMutation = useRejectAssignment();
   const startJourneyMutation = useStartJourney();
@@ -66,16 +84,19 @@ const AgentLeadDetailPage: React.FC = () => {
   const verifyCodeMutation = useVerifyCode();
   const startInspectionMutation = useStartInspection();
   const submitInspectionMutation = useSubmitInspection();
-  const calculatePriceMutation = useCalculatePrice();
-  const completeDealMutation = useCompleteDeal();
+  const customerAcceptanceMutation = useCustomerAcceptance();
+  const kycVerificationMutation = useKYCVerification();      // NEW
+  const paymentProcessMutation = usePaymentProcess();        // NEW
+  // const completeDealMutation = useCompleteDeal();
   const { getCurrentLocation } = useCurrentLocation();
 
-  // State for modals/forms
+  // State for modals/forms - UPDATED
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showVerifyCodeModal, setShowVerifyCodeModal] = useState(false);
   const [showInspectionForm, setShowInspectionForm] = useState(false);
-  const [showPriceReview, setShowPriceReview] = useState(false);
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showCustomerAcceptance, setShowCustomerAcceptance] = useState(false);
+  const [showKYCForm, setShowKYCForm] = useState(false);           // NEW
+  const [showPaymentScreen, setShowPaymentScreen] = useState(false); // NEW
   
   const [rejectReason, setRejectReason] = useState('');
   const [_verificationCode, setVerificationCode] = useState('');
@@ -109,7 +130,6 @@ const AgentLeadDetailPage: React.FC = () => {
     has_earphones: false,
     has_bill: false,
     notes: '',
-    // Image fields
     front_image: undefined,
     back_image: undefined,
     screen_image: undefined,
@@ -117,16 +137,65 @@ const AgentLeadDetailPage: React.FC = () => {
     defect_images: [],
   });
 
-  // Price calculation state
-  const [calculatedPrice, setCalculatedPrice] = useState<{
-    original_price: number;
-    calculated_price: number;
+  // System calculated final price state
+  const [systemCalculatedPrice, setSystemCalculatedPrice] = useState<{
+    final_price: number;
+    original_estimate: number;
     deductions: Array<{ reason: string; amount: number }>;
+    is_final: boolean;
   } | null>(null);
-  const [proposedPrice, setProposedPrice] = useState<number>(0);
 
-  // Complete deal state
-  // const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'bank_transfer'>('upi');
+  // Customer response state
+  const [customerResponse, setCustomerResponse] = useState<'accept' | 'reject' | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [customerSignature, setCustomerSignature] = useState<string>('');
+
+  // NEW: KYC verification state
+  const [kycData, setKycData] = useState<Partial<KYCVerificationData>>({
+    customer_full_name: '',
+    customer_father_name: '',
+    customer_date_of_birth: '',
+    customer_id_proof_type: 'aadhaar',
+    customer_id_number: '',
+    customer_address: {
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: ''
+    },
+    id_proof_photo: '',
+    customer_signature: '',
+    customer_selfie: '',
+    agent_declaration: false,
+    verification_notes: ''
+  });
+
+  // NEW: Captured images state for KYC
+  const [capturedImages, setCapturedImages] = useState({
+    id_proof: null as string | null,
+    signature: null as string | null,
+    selfie: null as string | null
+  });
+
+  // NEW: Payment processing state  
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'partner_wallet' | null>(null);
+  const [_cashConfirmation, setCashConfirmation] = useState({
+    amount_given: 0,
+    receipt_signature: null as string | null,
+    payment_notes: ''
+  });
+  const [completionNotes, setCompletionNotes] = useState('');
+
+  // Update KYC data when assignment loads
+  useEffect(() => {
+    if (assignment?.customer_name && !kycData.customer_full_name) {
+      setKycData(prev => ({
+        ...prev,
+        customer_full_name: assignment.customer_name
+      }));
+    }
+  }, [assignment?.customer_name, kycData.customer_full_name]);
 
   useEffect(() => {
     if (actionSuccess) {
@@ -142,7 +211,7 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   }, [actionError]);
 
-  // Action handlers
+  // Action handlers (existing)
   const handleAccept = async () => {
     if (!assignmentId) return;
     setActionError(null);
@@ -219,10 +288,7 @@ const AgentLeadDetailPage: React.FC = () => {
     if (!assignmentId) return;
     setActionError(null);
     try {
-      // This changes visit status from 'arrived' to 'in_progress'
       await startInspectionMutation.mutateAsync(assignmentId);
-      
-      // Now show the inspection form
       setShowInspectionForm(true);
       refetch();
     } catch (err: any) {
@@ -230,54 +296,173 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   };
 
+  // Inspection submission with system final price
+  // Inspection submission with system final price
   const handleSubmitInspection = async () => {
     if (!assignmentId) return;
 
     setActionError(null);
     try {
-      await submitInspectionMutation.mutateAsync({
+      const rawData = transformInspectionData(inspectionData);
+
+      // FIX: Create a clean object where undefined photos are filtered out
+      const backendInspectionData = {
+        ...rawData,
+        inspection_photos: (rawData.inspection_photos || []).filter((p): p is string => !!p)
+      };
+      
+      const inspectionResult = await submitInspectionMutation.mutateAsync({
         assignmentId,
-        data: inspectionData as DeviceInspectionData,
+        data: backendInspectionData,
       });
       
-      // Calculate price based on inspection
-      const priceResult = await calculatePriceMutation.mutateAsync({
-        assignmentId,
-        data: inspectionData as DeviceInspectionData,
-      });
+      if (inspectionResult.system_final_price) {
+        setSystemCalculatedPrice({
+          final_price: inspectionResult.system_final_price,
+          original_estimate: inspectionResult.original_estimate || 0,
+          deductions: inspectionResult.deductions ? 
+            Object.entries(inspectionResult.deductions).map(([reason, amount]) => ({ reason, amount })) : [],
+          is_final: inspectionResult.is_final || true
+        });
+      }
       
-      setCalculatedPrice(priceResult);
-      setProposedPrice(priceResult.calculated_price);
       setShowInspectionForm(false);
-      setShowPriceReview(true);
+      setShowCustomerAcceptance(true);
       refetch();
     } catch (err: any) {
       setActionError(err.message || 'Failed to submit inspection');
     }
   };
 
-  const handleCompleteDeal = async (data: {
-    payment_method: 'cash' | 'upi' | 'bank_transfer';
-    signature?: string;
-    notes?: string;
-  }) => {
-    if (!assignmentId) return;
+  // Handle customer acceptance/rejection
+  const handleCustomerAcceptance = async () => {
+    if (!assignmentId || !customerResponse) return;
+
+    setActionError(null);
     try {
-      await completeDealMutation.mutateAsync({
+      const requestData: any = {
+        customer_response: customerResponse
+      };
+
+      if (customerResponse === 'accept') {
+        if (customerSignature) {
+          requestData.customer_signature = customerSignature;
+        }
+      } else {
+        requestData.rejection_reason = rejectionReason || 'Customer rejected the price';
+      }
+
+      await customerAcceptanceMutation.mutateAsync({
         assignmentId,
-        data: {
-          final_price: proposedPrice || calculatedPrice?.calculated_price || 0,
-          payment_method: data.payment_method,
-          customer_signature: data.signature,
-          notes: data.notes,
-        },
+        data: requestData
       });
-      setShowCompleteModal(false);
-      setActionSuccess('Deal completed successfully!');
+
+      if (customerResponse === 'accept') {
+        setActionSuccess('Customer accepted! Now complete KYC verification.');
+        setShowCustomerAcceptance(false);
+        setShowKYCForm(true);  // NEW: Show KYC form instead of payment
+      } else {
+        setActionSuccess('Customer rejected the price. Visit will be cancelled.');
+        setShowCustomerAcceptance(false);
+        setTimeout(() => navigate('/agent/leads'), 2000);
+      }
+
+      refetch();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to process customer response');
+    }
+  };
+
+  // NEW: KYC verification handler
+  const handleKYCSubmission = async (data: KYCVerificationData) => {
+    if (!assignmentId) return;
+    setActionError(null);
+    try {
+      await kycVerificationMutation.mutateAsync({
+        assignmentId,
+        data
+      });
+
+      setActionSuccess('KYC verification completed! Now process payment.');
+      setShowKYCForm(false);
+      setShowPaymentScreen(true);
+      
+      // Set default cash amount
+      setCashConfirmation(prev => ({
+        ...prev,
+        amount_given: systemCalculatedPrice?.final_price || 0
+      }));
+      
+      refetch();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to complete KYC verification');
+    }
+  };
+
+  // NEW: Payment processing handler
+  const handlePaymentCompletion = async (data: PaymentData) => {
+    if (!assignmentId) return;
+    setActionError(null);
+    try {
+      await paymentProcessMutation.mutateAsync({
+        assignmentId,
+        data
+      });
+
+      setActionSuccess(`Payment completed successfully via ${data.payment_method}!`);
+      setShowPaymentScreen(false);
+      refetch();
+      
+      // Navigate to activity after short delay
       setTimeout(() => navigate('/agent/activity'), 2000);
     } catch (err: any) {
-      throw new Error(err.message || 'Failed to complete deal');
+      setActionError(err.message || 'Failed to process payment');
     }
+  };
+
+  // Data transformation function
+  const transformInspectionData = (frontendData: Partial<DeviceInspectionData>) => {
+    return {
+      inspection_notes: frontendData.notes || '',
+      inspection_photos: [
+        frontendData.front_image,
+        frontendData.back_image,
+        frontendData.screen_image,
+        frontendData.imei_image,
+        ...(frontendData.defect_images || [])
+      ].filter(Boolean),
+      verified_imei: frontendData.imei_number || '',
+      imei_matches: frontendData.imei_verified || false,
+      device_powers_on: frontendData.power_on || false,
+      
+      partner_assessment: {
+        screen_condition: frontendData.screen_condition || 'good',
+        body_condition: frontendData.body_condition || 'good',
+        battery_health: frontendData.battery_health || 0,
+        accessories: {
+          charger_available: frontendData.has_charger || false,
+          box_available: frontendData.has_box || false,
+          earphones_available: frontendData.has_earphones || false,
+          bill_available: frontendData.has_bill || false,
+        },
+        functional_issues: [
+          ...(!frontendData.touch_working ? ['touch'] : []),
+          ...(!frontendData.display_working ? ['display'] : []),
+          ...(!frontendData.speakers_working ? ['speakers'] : []),
+          ...(!frontendData.microphone_working ? ['microphone'] : []),
+          ...(!frontendData.cameras_working ? ['cameras'] : []),
+          ...(!frontendData.wifi_working ? ['wifi'] : []),
+          ...(!frontendData.bluetooth_working ? ['bluetooth'] : []),
+          ...(!frontendData.fingerprint_working ? ['fingerprint'] : []),
+          ...(!frontendData.buttons_working ? ['buttons'] : []),
+          ...(!frontendData.charging_port_working ? ['charging_port'] : []),
+          ...(!frontendData.sim_slot_working ? ['sim_slot'] : []),
+        ],
+        additional_notes: frontendData.notes || ''
+      },
+      
+      checklist_items: []
+    };
   };
 
   const openGoogleMaps = () => {
@@ -298,9 +483,25 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   };
 
-  // Get workflow stage
+  // UPDATED: Get workflow stage with KYC stage
   const getWorkflowStage = () => {
     if (!assignment) return 'loading';
+    
+    // Check if we have system calculated price and waiting for customer
+    if (systemCalculatedPrice && !customerResponse) {
+      return 'awaiting_customer';
+    }
+    
+    // NEW: Check if customer accepted and waiting for KYC
+    if (customerResponse === 'accept' && !kycData.agent_declaration) {
+      return 'kyc_verification';
+    }
+    
+    // NEW: Check if KYC completed and waiting for payment
+    if (customerResponse === 'accept' && kycData.agent_declaration && !selectedPaymentMethod) {
+      return 'payment_selection';
+    }
+
     switch (assignment.assignment_status) {
       case 'assigned': return 'pending';
       case 'accepted': return 'accepted';
@@ -342,15 +543,10 @@ const AgentLeadDetailPage: React.FC = () => {
 
   // Show inspection form
   if (showInspectionForm) {
-    // Simple image upload handler - in production, this would upload to S3/cloud storage
     const handleImageUpload = async (_key: string, file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          // Return base64 data URL for now
-          // In production, upload to backend and return the URL
-          resolve(reader.result as string);
-        };
+        reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       });
@@ -362,7 +558,7 @@ const AgentLeadDetailPage: React.FC = () => {
         onDataChange={setInspectionData}
         onSubmit={handleSubmitInspection}
         onCancel={() => setShowInspectionForm(false)}
-        isSubmitting={submitInspectionMutation.isPending || calculatePriceMutation.isPending}
+        isSubmitting={submitInspectionMutation.isPending}
         deviceInfo={{
           brand: assignment.device_brand,
           model: assignment.device_model,
@@ -373,36 +569,69 @@ const AgentLeadDetailPage: React.FC = () => {
     );
   }
 
-  // Show price review
-  if (showPriceReview && calculatedPrice) {
+  // Show customer acceptance UI
+  if (showCustomerAcceptance && systemCalculatedPrice) {
     return (
-      <PriceReviewScreen
-        originalPrice={parseFloat(assignment.estimated_price)}
-        calculatedPrice={calculatedPrice}
-        proposedPrice={proposedPrice}
-        onProposedPriceChange={setProposedPrice}
-        onConfirm={() => {
-          setShowPriceReview(false);
-          setShowCompleteModal(true);
+      <CustomerAcceptanceScreen
+        deviceInfo={{
+          brand: assignment.device_brand,
+          model: assignment.device_model,
+          storage: assignment.device_storage,
         }}
-        onCancel={() => setShowPriceReview(false)}
+        customerInfo={{
+          name: assignment.customer_name,
+          phone: assignment.customer_phone,
+        }}
+        pricing={systemCalculatedPrice}
+        customerResponse={customerResponse}
+        rejectionReason={rejectionReason}
+        customerSignature={customerSignature}
+        onCustomerResponseChange={setCustomerResponse}
+        onRejectionReasonChange={setRejectionReason}
+        onSignatureChange={setCustomerSignature}
+        onSubmit={handleCustomerAcceptance}
+        onCancel={() => setShowCustomerAcceptance(false)}
+        isSubmitting={customerAcceptanceMutation.isPending}
       />
     );
   }
 
-  // Show complete modal
-  if (showCompleteModal) {
+  // NEW: Show KYC verification form
+  if (showKYCForm && systemCalculatedPrice) {
     return (
-      <DealCompletion
-        leadNumber={assignment.lead_number}
-        deviceName={`${assignment.device_brand} ${assignment.device_model}`}
-        customerName={assignment.customer_name}
-        customerPhone={assignment.customer_phone}
-        finalPrice={proposedPrice || calculatedPrice?.calculated_price || parseFloat(assignment.estimated_price)}
-        onComplete={handleCompleteDeal}
-        onCancel={() => setShowCompleteModal(false)}
-        isLoading={completeDealMutation.isPending}
-        error={completeDealMutation.error?.message || null}
+      <AgentKYCVerificationScreen
+        customerInfo={{
+          name: assignment.customer_name,
+          phone: assignment.customer_phone,
+        }}
+        finalPrice={systemCalculatedPrice.final_price}
+        kycData={kycData}
+        setKycData={setKycData}
+        capturedImages={capturedImages}
+        setCapturedImages={setCapturedImages}
+        onSubmit={handleKYCSubmission}
+        onCancel={() => setShowKYCForm(false)}
+        isSubmitting={kycVerificationMutation.isPending}
+      />
+    );
+  }
+
+  // NEW: Show payment processing screen
+  if (showPaymentScreen && systemCalculatedPrice) {
+    return (
+      <AgentPaymentProcessingScreen
+        customerInfo={{
+          name: assignment.customer_name,
+          phone: assignment.customer_phone,
+        }}
+        finalAmount={systemCalculatedPrice.final_price}
+        selectedPaymentMethod={selectedPaymentMethod}
+        setSelectedPaymentMethod={setSelectedPaymentMethod}
+        completionNotes={completionNotes}
+        setCompletionNotes={setCompletionNotes}
+        onComplete={handlePaymentCompletion}
+        onCancel={() => setShowPaymentScreen(false)}
+        isProcessing={paymentProcessMutation.isPending}
       />
     );
   }
@@ -452,6 +681,38 @@ const AgentLeadDetailPage: React.FC = () => {
       {/* Status Badge */}
       <StatusBadge status={assignment.assignment_status} priority={assignment.assignment_priority} />
 
+      {/* System Final Price Display (if calculated) */}
+      {systemCalculatedPrice && (
+        <div className="bg-gradient-to-r from-[#1B8A05]/20 to-[#16a34a]/20 border border-[#1B8A05] rounded-2xl p-4 mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-[#1B8A05] flex items-center gap-2">
+              <BadgeCheck size={20} />
+              System Calculated Price
+            </h3>
+            <span className="bg-[#1B8A05] text-white px-2 py-1 rounded text-xs font-bold">
+              FINAL
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <IndianRupee size={24} className="text-[#1B8A05]" />
+            <span className="text-2xl font-bold text-[#1B8A05]">
+              {systemCalculatedPrice.final_price.toLocaleString('en-IN')}
+            </span>
+          </div>
+          {systemCalculatedPrice.deductions.length > 0 && (
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold">Deductions: </span>
+              {systemCalculatedPrice.deductions.map((d, i) => (
+                <span key={i}>
+                  {d.reason} (-₹{d.amount.toLocaleString('en-IN')})
+                  {i < systemCalculatedPrice.deductions.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Device Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
         <div className="flex items-center gap-4">
@@ -497,12 +758,12 @@ const AgentLeadDetailPage: React.FC = () => {
       </div>
 
       {/* Location Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
-        <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
-          <MapPin size={18} className="text-[#FEC925]" />
-          Pickup Location
-        </h3>
-        {assignment.pickup_address && (
+      {assignment.pickup_address && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+          <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
+            <MapPin size={18} className="text-[#FEC925]" />
+            Pickup Location
+          </h3>
           <div className="space-y-2">
             <p className="text-[#1C1C1B]">{assignment.pickup_address.line1}</p>
             {assignment.pickup_address.line2 && (
@@ -520,8 +781,8 @@ const AgentLeadDetailPage: React.FC = () => {
               <ExternalLink size={14} />
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Schedule Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
@@ -541,10 +802,10 @@ const AgentLeadDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Workflow Progress */}
+      {/* UPDATED: Workflow Progress with KYC stage */}
       <WorkflowProgress stage={stage} />
 
-      {/* Action Buttons - Fixed at Bottom */}
+      {/* UPDATED: Action Buttons with KYC workflow */}
       <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white border-t border-gray-200 p-4 z-40">
         <div className="max-w-2xl mx-auto">
           {/* Stage: Pending Acceptance */}
@@ -648,6 +909,39 @@ const AgentLeadDetailPage: React.FC = () => {
             </button>
           )}
 
+          {/* Stage: Awaiting Customer Response */}
+          {stage === 'awaiting_customer' && (
+            <button
+              onClick={() => setShowCustomerAcceptance(true)}
+              className="w-full py-4 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+            >
+              <UserCheck size={24} />
+              Customer Response Required
+            </button>
+          )}
+
+          {/* NEW: Stage: KYC Verification */}
+          {stage === 'kyc_verification' && (
+            <button
+              onClick={() => setShowKYCForm(true)}
+              className="w-full py-4 bg-[#1B8A05] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+            >
+              <Shield size={24} />
+              Complete KYC Verification
+            </button>
+          )}
+
+          {/* Stage: Payment Selection */}
+          {stage === 'payment_selection' && (
+            <button
+              onClick={() => setShowPaymentScreen(true)}
+              className="w-full py-4 bg-[#1B8A05] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+            >
+              <CreditCard size={24} />
+              Process Payment
+            </button>
+          )}
+
           {/* Stage: Completed */}
           {stage === 'completed' && (
             <div className="text-center">
@@ -666,7 +960,7 @@ const AgentLeadDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Reject Modal */}
+      {/* Modals */}
       <AnimatePresence>
         {showRejectModal && (
           <Modal onClose={() => setShowRejectModal(false)}>
@@ -697,10 +991,7 @@ const AgentLeadDetailPage: React.FC = () => {
             </div>
           </Modal>
         )}
-      </AnimatePresence>
 
-      {/* Verify Code Modal */}
-      <AnimatePresence>
         {showVerifyCodeModal && (
           <Modal onClose={() => setShowVerifyCodeModal(false)}>
             <VerificationCodeEntry
@@ -718,10 +1009,10 @@ const AgentLeadDetailPage: React.FC = () => {
 };
 
 // =====================================================
-// SUB COMPONENTS
+// SUB COMPONENTS - COMPLETE IMPLEMENTATIONS
 // =====================================================
 
-// Status Badge
+// Status Badge Component
 const StatusBadge: React.FC<{ status: string; priority: string }> = ({ status, priority }) => {
   const getStatusStyle = () => {
     const styles: Record<string, string> = {
@@ -769,9 +1060,12 @@ const StatusBadge: React.FC<{ status: string; priority: string }> = ({ status, p
   );
 };
 
-// Workflow Progress
+// UPDATED: Workflow Progress with KYC stage
 const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
-  const stages = ['pending', 'accepted', 'en_route', 'checked_in', 'inspecting', 'completed'];
+  const stages = [
+    'pending', 'accepted', 'en_route', 'checked_in', 'inspecting', 
+    'awaiting_customer', 'kyc_verification', 'payment_selection', 'completed'
+  ];
   const currentIndex = stages.indexOf(stage);
 
   const stageLabels: Record<string, string> = {
@@ -779,7 +1073,10 @@ const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
     accepted: 'Start',
     en_route: 'Check In',
     checked_in: 'Inspect',
-    inspecting: 'Price',
+    inspecting: 'Submit',
+    awaiting_customer: 'Customer',
+    kyc_verification: 'KYC',      // NEW
+    payment_selection: 'Payment',
     completed: 'Done',
   };
 
@@ -802,7 +1099,7 @@ const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
           return (
             <div key={s} className="flex flex-col items-center z-10">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   isCompleted
                     ? 'bg-[#1B8A05] text-white'
                     : isCurrent
@@ -844,7 +1141,7 @@ const Modal: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ c
   </motion.div>
 );
 
-// Inspection Form
+// COMPLETE Inspection Form Component
 interface InspectionFormProps {
   data: Partial<DeviceInspectionData>;
   onDataChange: (data: Partial<DeviceInspectionData>) => void;
@@ -868,7 +1165,6 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     onDataChange({ ...data, [key]: value });
   };
 
-  // Convert DeviceInspectionData image fields to Record format for DeviceImageCapture
   const images: Record<string, string> = {
     ...(data.front_image && { front: data.front_image }),
     ...(data.back_image && { back: data.back_image }),
@@ -886,10 +1182,8 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     });
   };
 
-  // Check if required images are captured (front, back, and imei are required)
   const requiredImagesCaptured = Boolean(images.front && images.back && images.imei);
   
-  // Check if form is valid for submission
   const isFormValid = requiredImagesCaptured && 
     data.imei_number && 
     data.imei_number.length >= 15 &&
@@ -1029,7 +1323,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
         </Section>
 
         {/* Notes */}
-        <Section title="Additional Notes (Required)">
+        <Section title="Inspection Notes (Required)">
           <textarea
             value={data.notes || ''}
             onChange={(e) => updateField('notes', e.target.value)}
@@ -1041,29 +1335,40 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           )}
         </Section>
 
+        {/* System pricing note */}
+        <div className="bg-[#FEC925]/10 border border-[#FEC925] rounded-xl p-4">
+          <h4 className="font-bold text-[#1C1C1B] mb-2 flex items-center gap-2">
+            <BadgeCheck size={18} className="text-[#b48f00]" />
+            System Will Calculate Final Price
+          </h4>
+          <p className="text-sm text-gray-600">
+            After you submit the inspection, our system will automatically calculate the final price based on the device condition and market data. This price cannot be adjusted and will be presented to the customer for acceptance.
+          </p>
+        </div>
+
         {/* Validation Summary */}
         {!isFormValid && (
-          <div className="bg-[#FEC925]/10 border border-[#FEC925] rounded-xl p-4">
-            <h4 className="font-bold text-[#1C1C1B] mb-2 flex items-center gap-2">
-              <AlertCircle size={18} className="text-[#b48f00]" />
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <h4 className="font-bold text-red-700 mb-2 flex items-center gap-2">
+              <AlertCircle size={18} />
               Complete Required Fields
             </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <ul className="text-sm text-red-600 space-y-1">
               {!requiredImagesCaptured && (
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                   Capture required photos (Front, Back, IMEI)
                 </li>
               )}
               {(!data.imei_number || data.imei_number.length < 15) && (
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                   Enter valid IMEI number (15 digits)
                 </li>
               )}
               {(!data.notes || data.notes.trim().length === 0) && (
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-[#FF0000] rounded-full" />
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                   Add inspection notes
                 </li>
               )}
@@ -1089,7 +1394,7 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
             ) : (
               <>
                 <CheckCircle2 size={20} />
-                Submit Inspection
+                Submit for System Pricing
               </>
             )}
           </button>
@@ -1104,89 +1409,164 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
   );
 };
 
-// Price Review Screen
-interface PriceReviewScreenProps {
-  originalPrice: number;
-  calculatedPrice: {
-    original_price: number;
-    calculated_price: number;
+// COMPLETE Customer Acceptance Screen Component
+interface CustomerAcceptanceScreenProps {
+  deviceInfo: { brand: string; model: string; storage: string };
+  customerInfo: { name: string; phone: string };
+  pricing: {
+    final_price: number;
+    original_estimate: number;
     deductions: Array<{ reason: string; amount: number }>;
+    is_final: boolean;
   };
-  proposedPrice: number;
-  onProposedPriceChange: (price: number) => void;
-  onConfirm: () => void;
+  customerResponse: 'accept' | 'reject' | null;
+  rejectionReason: string;
+  customerSignature: string;
+  onCustomerResponseChange: (response: 'accept' | 'reject' | null) => void;
+  onRejectionReasonChange: (reason: string) => void;
+  onSignatureChange: (signature: string) => void;
+  onSubmit: () => void;
   onCancel: () => void;
+  isSubmitting: boolean;
 }
 
-const PriceReviewScreen: React.FC<PriceReviewScreenProps> = ({
-  originalPrice,
-  calculatedPrice,
-  proposedPrice,
-  onProposedPriceChange,
-  onConfirm,
+const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
+  deviceInfo,
+  customerInfo,
+  pricing,
+  customerResponse,
+  rejectionReason,
+  customerSignature,
+  onCustomerResponseChange,
+  onRejectionReasonChange,
+  onSignatureChange,
+  onSubmit,
   onCancel,
+  isSubmitting,
 }) => {
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] p-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#1B8A05] to-[#16a34a] p-6">
         <div className="flex items-center gap-4 mb-4">
           <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
             <ArrowLeft size={24} className="text-white" />
           </button>
-          <span className="text-white font-bold">Price Review</span>
+          <span className="text-white font-bold">Customer Response</span>
+        </div>
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-white">System Final Price</h1>
+          <p className="text-white/80">Customer must accept or reject this price</p>
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Original Price */}
+      {/* Content */}
+      <div className="p-4 space-y-6 pb-24">
+        {/* Device Info */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Original Estimate</span>
-            <span className="font-bold text-lg flex items-center">
-              <IndianRupee size={18} />
-              {originalPrice.toLocaleString('en-IN')}
-            </span>
+          <div className="flex items-center gap-3 mb-3">
+            <Package className="text-[#FEC925]" size={24} />
+            <div>
+              <h3 className="font-bold text-[#1C1C1B]">{deviceInfo.brand} {deviceInfo.model}</h3>
+              <p className="text-sm text-gray-500">{deviceInfo.storage}</p>
+            </div>
           </div>
         </div>
 
-        {/* Deductions */}
-        {calculatedPrice.deductions.length > 0 && (
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <h3 className="font-bold text-[#1C1C1B] mb-3">Deductions</h3>
-            <div className="space-y-2">
-              {calculatedPrice.deductions.map((d, i) => (
+        {/* Customer Info */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <div className="flex items-center gap-3">
+            <User className="text-[#FEC925]" size={24} />
+            <div>
+              <h3 className="font-bold text-[#1C1C1B]">{customerInfo.name}</h3>
+              <p className="text-sm text-gray-500">{customerInfo.phone}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Final Price Display */}
+        <div className="bg-gradient-to-r from-[#1B8A05]/20 to-[#16a34a]/20 border border-[#1B8A05] rounded-xl p-6">
+          <div className="text-center mb-4">
+            <h2 className="text-lg font-bold text-[#1B8A05] mb-2">System Calculated Price</h2>
+            <div className="flex items-center justify-center gap-2">
+              <IndianRupee size={32} className="text-[#1B8A05]" />
+              <span className="text-4xl font-bold text-[#1B8A05]">
+                {pricing.final_price.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <p className="text-sm text-[#1B8A05] mt-2">
+              Original Estimate: ₹{pricing.original_estimate.toLocaleString('en-IN')}
+            </p>
+          </div>
+
+          {pricing.deductions.length > 0 && (
+            <div className="bg-white/50 rounded-lg p-3">
+              <h4 className="font-semibold text-[#1B8A05] mb-2 text-sm">Price Deductions:</h4>
+              {pricing.deductions.map((d, i) => (
                 <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-600">{d.reason}</span>
-                  <span className="text-red-500 font-semibold">-₹{d.amount.toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">{d.reason}</span>
+                  <span className="text-red-600 font-semibold">-₹{d.amount.toLocaleString('en-IN')}</span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Calculated Price */}
-        <div className="bg-[#1B8A05]/10 rounded-xl p-4 border border-[#1B8A05]">
-          <div className="flex justify-between items-center">
-            <span className="text-[#1B8A05] font-semibold">Calculated Price</span>
-            <span className="font-bold text-2xl text-[#1B8A05] flex items-center">
-              <IndianRupee size={22} />
-              {calculatedPrice.calculated_price.toLocaleString('en-IN')}
-            </span>
-          </div>
+          )}
         </div>
 
-        {/* Adjust Price */}
+        {/* Customer Response */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <label className="block font-bold text-[#1C1C1B] mb-2">Offer Price</label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
-            <input
-              type="number"
-              value={proposedPrice}
-              onChange={(e) => onProposedPriceChange(Number(e.target.value))}
-              className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-bold focus:border-[#FEC925] focus:outline-none"
-            />
+          <h3 className="font-bold text-[#1C1C1B] mb-4">Customer Response</h3>
+          
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              onClick={() => onCustomerResponseChange('accept')}
+              className={`p-4 rounded-xl border-2 transition flex items-center justify-center gap-3 ${
+                customerResponse === 'accept'
+                  ? 'border-[#1B8A05] bg-[#1B8A05]/10 text-[#1B8A05]'
+                  : 'border-gray-200 text-gray-600 hover:border-[#1B8A05] hover:text-[#1B8A05]'
+              }`}
+            >
+              <ThumbsUp size={24} />
+              <span className="font-bold">Accept</span>
+            </button>
+            
+            <button
+              onClick={() => onCustomerResponseChange('reject')}
+              className={`p-4 rounded-xl border-2 transition flex items-center justify-center gap-3 ${
+                customerResponse === 'reject'
+                  ? 'border-red-500 bg-red-50 text-red-600'
+                  : 'border-gray-200 text-gray-600 hover:border-red-500 hover:text-red-600'
+              }`}
+            >
+              <ThumbsDown size={24} />
+              <span className="font-bold">Reject</span>
+            </button>
           </div>
+
+          {customerResponse === 'accept' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Signature (Optional)</label>
+                <textarea
+                  value={customerSignature}
+                  onChange={(e) => onSignatureChange(e.target.value)}
+                  placeholder="Customer can sign here or use signature pad..."
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
+                />
+              </div>
+            </div>
+          )}
+
+          {customerResponse === 'reject' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Rejection Reason</label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => onRejectionReasonChange(e.target.value)}
+                placeholder="Why did the customer reject the price?"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1194,12 +1574,641 @@ const PriceReviewScreen: React.FC<PriceReviewScreenProps> = ({
       <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
         <div className="max-w-2xl mx-auto">
           <button
-            onClick={onConfirm}
-            className="w-full py-4 bg-[#1B8A05] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2"
+            onClick={onSubmit}
+            disabled={!customerResponse || isSubmitting}
+            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+              customerResponse && !isSubmitting
+                ? customerResponse === 'accept'
+                  ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+                  : 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
-            <BadgeCheck size={24} />
-            Proceed to Complete Deal
+            {isSubmitting ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                {customerResponse === 'accept' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                {customerResponse === 'accept' ? 'Customer Accepts Price' : 'Customer Rejects Price'}
+              </>
+            )}
           </button>
+          {!customerResponse && (
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Please select customer response
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// NEW: COMPLETE Agent KYC Verification Screen Component
+interface AgentKYCVerificationScreenProps {
+  customerInfo: { name: string; phone: string };
+  finalPrice: number;
+  kycData: Partial<KYCVerificationData>;
+  setKycData: React.Dispatch<React.SetStateAction<Partial<KYCVerificationData>>>;
+  capturedImages: { id_proof: string | null; signature: string | null; selfie: string | null };
+  setCapturedImages: React.Dispatch<React.SetStateAction<{ id_proof: string | null; signature: string | null; selfie: string | null }>>;
+  onSubmit: (data: KYCVerificationData) => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}
+
+const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
+  // customerInfo,
+  finalPrice,
+  kycData,
+  setKycData,
+  capturedImages,
+  setCapturedImages,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}) => {
+  const updateField = <K extends keyof KYCVerificationData>(key: K, value: KYCVerificationData[K]) => {
+    setKycData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateAddress = <K extends keyof CustomerAddress>(key: K, value: CustomerAddress[K]) => {
+    setKycData(prev => ({
+      ...prev,
+      customer_address: {
+        ...prev.customer_address,
+        [key]: value
+      } as CustomerAddress
+    }));
+  };
+
+  const captureImage = async (type: 'id_proof' | 'signature' | 'selfie') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          setCapturedImages(prev => ({ ...prev, [type]: base64 }));
+          
+          if (type === 'id_proof') updateField('id_proof_photo', base64);
+          if (type === 'signature') updateField('customer_signature', base64);
+          if (type === 'selfie') updateField('customer_selfie', base64);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    
+    input.click();
+  };
+
+  const isFormValid = () => {
+    return (
+      kycData.customer_id_proof_type &&
+      kycData.customer_id_number &&
+      kycData.customer_full_name &&
+      kycData.customer_father_name &&
+      kycData.customer_date_of_birth &&
+      kycData.customer_address?.line1 &&
+      kycData.customer_address?.city &&
+      kycData.customer_address?.state &&
+      kycData.customer_address?.pincode &&
+      capturedImages.id_proof &&
+      capturedImages.signature &&
+      capturedImages.selfie &&
+      kycData.agent_declaration
+    );
+  };
+
+  const handleSubmit = () => {
+    if (isFormValid()) {
+      onSubmit(kycData as KYCVerificationData);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#1B8A05] to-[#16a34a] p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
+            <ArrowLeft size={24} className="text-white" />
+          </button>
+          <span className="text-white font-bold">Customer KYC Verification</span>
+        </div>
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-white">Verify Customer Identity</h1>
+          <p className="text-white/80">Complete KYC for ₹{finalPrice.toLocaleString('en-IN')} transaction</p>
+        </div>
+      </div>
+
+      {/* KYC Form Content */}
+      <div className="p-4 space-y-6 pb-24">
+        {/* Customer Identification Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <FileText size={20} className="text-[#FEC925]" />
+            Customer Identification
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Proof Type</label>
+              <select
+                value={kycData.customer_id_proof_type || 'aadhaar'}
+                onChange={(e) => updateField('customer_id_proof_type', e.target.value as 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan_card')}
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white"
+              >
+                <option value="aadhaar">Aadhaar Card</option>
+                <option value="driving_license">Driving License</option>
+                <option value="passport">Passport</option>
+                <option value="voter_id">Voter ID</option>
+                <option value="pan_card">PAN Card</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Number</label>
+              <input
+                type="text"
+                value={kycData.customer_id_number || ''}
+                onChange={(e) => updateField('customer_id_number', e.target.value)}
+                placeholder="Enter ID number"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Proof Photo</label>
+              <button
+                onClick={() => captureImage('id_proof')}
+                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
+                  capturedImages.id_proof ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                }`}
+              >
+                {capturedImages.id_proof ? (
+                  <>
+                    <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                    <span className="text-sm font-semibold text-[#1B8A05]">ID Proof Captured</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="text-gray-400" size={24} />
+                    <span className="text-sm text-gray-600">Capture ID Proof Photo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Personal Details Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <User size={20} className="text-[#FEC925]" />
+            Personal Details
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={kycData.customer_full_name || ''}
+                onChange={(e) => updateField('customer_full_name', e.target.value)}
+                placeholder="Customer's full name as per ID"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Father's Name</label>
+              <input
+                type="text"
+                value={kycData.customer_father_name || ''}
+                onChange={(e) => updateField('customer_father_name', e.target.value)}
+                placeholder="Father's full name"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+              <input
+                type="date"
+                value={kycData.customer_date_of_birth || ''}
+                onChange={(e) => updateField('customer_date_of_birth', e.target.value)}
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Address Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <Home size={20} className="text-[#FEC925]" />
+            Customer Address
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Address Line 1</label>
+              <input
+                type="text"
+                value={kycData.customer_address?.line1 || ''}
+                onChange={(e) => updateAddress('line1', e.target.value)}
+                placeholder="House/Building number, Street"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Address Line 2 (Optional)</label>
+              <input
+                type="text"
+                value={kycData.customer_address?.line2 || ''}
+                onChange={(e) => updateAddress('line2', e.target.value)}
+                placeholder="Locality, Area"
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
+                <input
+                  type="text"
+                  value={kycData.customer_address?.city || ''}
+                  onChange={(e) => updateAddress('city', e.target.value)}
+                  placeholder="City"
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
+                <input
+                  type="text"
+                  value={kycData.customer_address?.state || ''}
+                  onChange={(e) => updateAddress('state', e.target.value)}
+                  placeholder="State"
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">PIN Code</label>
+              <input
+                type="text"
+                value={kycData.customer_address?.pincode || ''}
+                onChange={(e) => updateAddress('pincode', e.target.value)}
+                placeholder="6-digit PIN code"
+                maxLength={6}
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Document Capture Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <Camera size={20} className="text-[#FEC925]" />
+            Document Capture
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => captureImage('signature')}
+              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
+                capturedImages.signature ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+              }`}
+            >
+              {capturedImages.signature ? (
+                <>
+                  <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                  <span className="text-xs font-semibold text-[#1B8A05]">Signature Captured</span>
+                </>
+              ) : (
+                <>
+                  <Edit3 className="text-gray-400" size={24} />
+                  <span className="text-xs text-gray-600">Customer Signature</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => captureImage('selfie')}
+              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
+                capturedImages.selfie ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+              }`}
+            >
+              {capturedImages.selfie ? (
+                <>
+                  <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                  <span className="text-xs font-semibold text-[#1B8A05]">Selfie Captured</span>
+                </>
+              ) : (
+                <>
+                  <User className="text-gray-400" size={24} />
+                  <span className="text-xs text-gray-600">Selfie with Agent</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Verification Notes Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4">Verification Notes (Optional)</h3>
+          <textarea
+            value={kycData.verification_notes || ''}
+            onChange={(e) => updateField('verification_notes', e.target.value)}
+            placeholder="Add any additional notes about the verification process..."
+            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
+          />
+        </div>
+
+        {/* Agent Declaration Section */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <Shield size={20} className="text-[#FEC925]" />
+            Agent Declaration
+          </h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={kycData.agent_declaration || false}
+                onChange={(e) => updateField('agent_declaration', e.target.checked)}
+                className="mt-1 w-4 h-4 text-[#1B8A05] border-gray-300 rounded focus:ring-[#1B8A05]"
+              />
+              <div>
+                <p className="font-semibold text-blue-900 mb-2">I hereby declare that:</p>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• I have verified the customer's identity documents</li>
+                  <li>• The customer is present and has provided consent</li>
+                  <li>• All information captured is accurate and complete</li>
+                  <li>• The customer understands the transaction terms</li>
+                  <li>• The customer's identity has been confirmed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Validation Summary */}
+        {!isFormValid() && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <h4 className="font-bold text-red-700 mb-2 flex items-center gap-2">
+              <AlertCircle size={18} />
+              Complete Required Fields
+            </h4>
+            <ul className="text-sm text-red-600 space-y-1">
+              {!kycData.customer_full_name && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  Customer full name is required
+                </li>
+              )}
+              {!capturedImages.id_proof && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  ID proof photo is required
+                </li>
+              )}
+              {!capturedImages.signature && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  Customer signature is required
+                </li>
+              )}
+              {!capturedImages.selfie && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  Customer selfie with agent is required
+                </li>
+              )}
+              {!kycData.agent_declaration && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  Agent declaration must be confirmed
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={handleSubmit}
+            disabled={!isFormValid() || isSubmitting}
+            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+              isFormValid() && !isSubmitting
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isSubmitting ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                <Shield size={20} />
+                Complete KYC Verification
+              </>
+            )}
+          </button>
+          {!isFormValid() && (
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Complete all required fields and capture all documents
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// NEW: COMPLETE Agent Payment Processing Screen Component
+interface AgentPaymentProcessingScreenProps {
+  customerInfo: { name: string; phone: string };
+  finalAmount: number;
+  selectedPaymentMethod: 'cash' | 'partner_wallet' | null;
+  setSelectedPaymentMethod: React.Dispatch<React.SetStateAction<'cash' | 'partner_wallet' | null>>;
+  completionNotes: string;
+  setCompletionNotes: React.Dispatch<React.SetStateAction<string>>;
+  onComplete: (data: PaymentData) => void;
+  onCancel: () => void;
+  isProcessing: boolean;
+}
+
+const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> = ({
+  customerInfo,
+  finalAmount,
+  selectedPaymentMethod,
+  setSelectedPaymentMethod,
+  completionNotes,
+  setCompletionNotes,
+  onComplete,
+  onCancel,
+  isProcessing,
+}) => {
+  const handlePaymentProcess = () => {
+    const paymentData: PaymentData = {
+      payment_method: selectedPaymentMethod!,
+      completion_notes: completionNotes || `Payment completed via ${selectedPaymentMethod}`
+    };
+
+    if (selectedPaymentMethod === 'cash') {
+      paymentData.cash_payment_confirmation = {
+        amount_given: finalAmount,
+        payment_notes: 'Cash payment received from customer'
+      };
+    }
+
+    onComplete(paymentData);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
+            <ArrowLeft size={24} className="text-white" />
+          </button>
+          <span className="text-white font-bold">Process Payment</span>
+        </div>
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-white">Complete Transaction</h1>
+          <p className="text-white/80">Process ₹{finalAmount.toLocaleString('en-IN')} payment</p>
+        </div>
+      </div>
+
+      {/* Payment Content */}
+      <div className="p-4 space-y-6 pb-24">
+        {/* Transaction Summary */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-3">Transaction Summary</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Customer:</span>
+              <span className="font-semibold">{customerInfo.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Phone:</span>
+              <span className="font-semibold">{customerInfo.phone}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 mt-2">
+              <span className="font-bold text-[#1C1C1B]">Final Price:</span>
+              <span className="font-bold text-[#1B8A05] flex items-center">
+                <IndianRupee size={18} />
+                {finalAmount.toLocaleString('en-IN')}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Methods */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4">Select Payment Method</h3>
+          
+          <div className="space-y-3">
+            {/* Cash Payment */}
+            <button
+              onClick={() => setSelectedPaymentMethod('cash')}
+              className={`w-full p-4 rounded-xl border-2 transition flex items-center gap-4 ${
+                selectedPaymentMethod === 'cash'
+                  ? 'border-[#1B8A05] bg-[#1B8A05]/10'
+                  : 'border-gray-200 hover:border-[#1B8A05]'
+              }`}
+            >
+              <div className="w-12 h-12 bg-[#FEC925]/20 rounded-xl flex items-center justify-center">
+                <IndianRupee className="text-[#FEC925]" size={24} />
+              </div>
+              <div className="flex-1 text-left">
+                <h4 className="font-bold text-[#1C1C1B]">Cash Payment</h4>
+                <p className="text-sm text-gray-500">Customer pays in cash. Blocked amount will be re-credited to your wallet.</p>
+              </div>
+              {selectedPaymentMethod === 'cash' && (
+                <CheckCircle2 className="text-[#1B8A05]" size={24} />
+              )}
+            </button>
+
+            {/* Wallet Payment */}
+            <button
+              onClick={() => setSelectedPaymentMethod('partner_wallet')}
+              className={`w-full p-4 rounded-xl border-2 transition flex items-center gap-4 ${
+                selectedPaymentMethod === 'partner_wallet'
+                  ? 'border-[#1B8A05] bg-[#1B8A05]/10'
+                  : 'border-gray-200 hover:border-[#1B8A05]'
+              }`}
+            >
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Wallet className="text-blue-600" size={24} />
+              </div>
+              <div className="flex-1 text-left">
+                <h4 className="font-bold text-[#1C1C1B]">Partner Wallet</h4>
+                <p className="text-sm text-gray-500">Pay from your wallet. Amount will be deducted from blocked balance.</p>
+              </div>
+              {selectedPaymentMethod === 'partner_wallet' && (
+                <CheckCircle2 className="text-[#1B8A05]" size={24} />
+              )}
+            </button>
+          </div>
+
+          {/* Payment Method Explanation */}
+          {selectedPaymentMethod && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-1">
+                {selectedPaymentMethod === 'cash' ? 'Cash Payment Process:' : 'Wallet Payment Process:'}
+              </h4>
+              <p className="text-sm text-blue-800">
+                {selectedPaymentMethod === 'cash'
+                  ? 'The blocked amount will be returned to your available wallet balance since customer is paying in cash.'
+                  : 'The blocked amount will be deducted from your wallet as payment for the device purchase.'
+                }
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Completion Notes */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4">Completion Notes (Optional)</h3>
+          <textarea
+            value={completionNotes}
+            onChange={(e) => setCompletionNotes(e.target.value)}
+            placeholder="Add any notes about the deal completion..."
+            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={handlePaymentProcess}
+            disabled={!selectedPaymentMethod || isProcessing}
+            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+              selectedPaymentMethod && !isProcessing
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isProcessing ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                <CheckCircle2 size={20} />
+                Complete Transaction
+              </>
+            )}
+          </button>
+          {!selectedPaymentMethod && (
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Please select a payment method
+            </p>
+          )}
         </div>
       </div>
     </div>

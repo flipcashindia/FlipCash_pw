@@ -20,9 +20,9 @@ import {
 // };
 const getAvailableLeads = async (_filters: { [key: string]: any }): Promise<Paginated<AvailableLead>> => {
     // Corrected URL: /partner/leads/
-    const { data } = await privateApiClient.get('/leads/leads/', {
+    const { data } = await privateApiClient.get('/leads/partner/leads/', {
     });
-    console.log('leads data : ', data)
+    console.log('partner leads data : ', data)
     return data;
 };
 

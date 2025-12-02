@@ -21,9 +21,9 @@
 // - POST     /my-leads/{id}/visit/start/             - Start visit (en route)
 // - POST     /my-leads/{id}/visit/verify-code/       - Verify customer code
 // - POST     /my-leads/{id}/visit/start-inspection/  - Start inspection
-// - POST     /my-leads/{id}/visit/submit-inspection/ - Submit inspection with price re-estimation
-// - POST     /my-leads/{id}/visit/make-offer/        - Make price offer
-// - POST     /my-leads/{id}/visit/complete/          - Complete visit
+// - POST     /my-leads/{id}/visit/submit-inspection/ - Submit inspection with system price calculation
+// - POST     /my-leads/{id}/visit/customer-response/ - Customer acceptance/rejection (NEW)
+// - POST     /my-leads/{id}/visit/complete/          - Complete visit with payment method (UPDATED)
 // - POST     /my-leads/{id}/visit/cancel/            - Cancel visit
 // - POST     /my-leads/{id}/visit/breadcrumb/        - Record location breadcrumb
 
@@ -43,11 +43,21 @@ import type {
   LocationBreadcrumbRequest,
   UpdateLocationRequest,
   PriceReEstimationRequest,
-  CompleteDealRequest,
+  // CompleteDealRequest,
   AgentActionResponse,
   ActionResponse,
   DeviceInspectionData,
   AgentActivityLogsResponse,
+  // CustomerAddress,
+  KYCVerificationRequest,
+  KYCVerificationResponse,
+  // CashPaymentConfirmation,
+  PaymentProcessRequest,
+  PaymentProcessResponse,
+  // KYCVerificationData,
+  // PaymentData,
+  // CustomerAcceptanceRequest,
+  // CustomerAcceptanceResponse,
 } from '../types/agentApp.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -168,15 +178,14 @@ const transformInspectionData = (
   if (inspectionData.fingerprint_working === false) functionalIssues.push('fingerprint_not_working');
   if (inspectionData.face_id_working === false) functionalIssues.push('face_id_not_working');
 
-  // Collect all photo URLs/data
-  // Note: Backend expects URLField - for base64 images, backend needs to be updated
-  // to accept base64 or an image upload endpoint should be used first
-  const photos: string[] = [];
-  if (inspectionData.front_image) photos.push(inspectionData.front_image);
-  if (inspectionData.back_image) photos.push(inspectionData.back_image);
-  if (inspectionData.screen_image) photos.push(inspectionData.screen_image);
-  if (inspectionData.imei_image) photos.push(inspectionData.imei_image);
-  if (inspectionData.defect_images) photos.push(...inspectionData.defect_images);
+  // FIXED: Collect all photo URLs/data and filter out undefined values
+  const photos: string[] = [
+    inspectionData.front_image,
+    inspectionData.back_image,
+    inspectionData.screen_image,
+    inspectionData.imei_image,
+    ...(inspectionData.defect_images || [])
+  ].filter((photo): photo is string => Boolean(photo)); // Type guard to ensure only strings
   
   // Validate: Backend requires at least 1 photo (min_length=1)
   if (photos.length === 0) {
@@ -188,7 +197,7 @@ const transformInspectionData = (
     imei_matches: inspectionData.imei_verified ?? false,
     device_powers_on: inspectionData.power_on ?? true,
     inspection_notes: inspectionData.notes || '',
-    inspection_photos: photos,
+    inspection_photos: photos, // Now guaranteed to be string[]
     partner_assessment: {
       screen_condition: inspectionData.screen_condition || 'good',
       body_condition: inspectionData.body_condition || 'good',
@@ -435,19 +444,31 @@ export const agentAppService = {
   },
 
   /**
-   * Submit inspection with PRICE RE-ESTIMATION
+   * Submit inspection with SYSTEM PRICE CALCULATION (UPDATED)
    * POST /api/v1/partner-agents/my-leads/{id}/visit/submit-inspection/
    * 
-   * Transforms DeviceInspectionData (UI form) to SubmitInspectionRequest (backend API)
+   * Returns system_final_price (no agent adjustment allowed in new workflow)
    */
   submitInspection: async (
     assignmentId: string,
     data: SubmitInspectionRequest | DeviceInspectionData
-  ): Promise<ActionResponse & { calculated_price?: number; pricing?: any }> => {
+  ): Promise<ActionResponse & { 
+    system_final_price?: number;
+    original_estimate?: number;
+    deductions?: Record<string, number>;
+    is_final?: boolean;
+    no_adjustment_allowed?: boolean;
+  }> => {
     // Transform DeviceInspectionData to SubmitInspectionRequest if needed
     const payload = transformInspectionData(data);
     
-    return apiCall<ActionResponse & { calculated_price?: number; pricing?: any }>(
+    return apiCall<ActionResponse & {
+      system_final_price?: number;
+      original_estimate?: number;
+      deductions?: Record<string, number>;
+      is_final?: boolean;
+      no_adjustment_allowed?: boolean;
+    }>(
       `/partner-agents/my-leads/${assignmentId}/visit/submit-inspection/`,
       {
         method: 'POST',
@@ -457,7 +478,36 @@ export const agentAppService = {
   },
 
   /**
-   * Make price offer to customer
+   * Submit customer acceptance/rejection response (NEW WORKFLOW)
+   * POST /api/v1/partner-agents/my-leads/{id}/visit/customer-response/
+   */
+  submitCustomerAcceptance: async (
+    assignmentId: string,
+    data: {
+      customer_response: 'accept' | 'reject';
+      customer_signature?: string;
+      rejection_reason?: string;
+    }
+  ): Promise<ActionResponse & {
+    next_action?: string;
+    workflow_stage?: string;
+    payment_methods?: string[];
+  }> => {
+    return apiCall<ActionResponse & {
+      next_action?: string;
+      workflow_stage?: string; 
+      payment_methods?: string[];
+    }>(
+      `/partner-agents/my-leads/${assignmentId}/visit/customer-response/`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  /**
+   * Make price offer to customer (LEGACY - may be removed in new workflow)
    * POST /api/v1/partner-agents/my-leads/{id}/visit/make-offer/
    */
   makeOffer: async (
@@ -474,7 +524,7 @@ export const agentAppService = {
   },
 
   /**
-   * Complete visit after customer accepts
+   * Complete visit after customer accepts (LEGACY)
    * POST /api/v1/partner-agents/my-leads/{id}/visit/complete/
    */
   completeVisit: async (
@@ -580,22 +630,34 @@ export const agentAppService = {
   },
 
   /**
-   * Complete the deal with final price and payment
-   * Final step after customer accepts the offer
+   * Complete the deal with payment method selection (NEW WORKFLOW)
+   * POST /api/v1/partner-agents/my-leads/{id}/visit/complete/
+   * Final step with payment method choice
    */
   completeDeal: async (
     assignmentId: string,
-    data: CompleteDealRequest
-  ): Promise<AgentActionResponse> => {
-    return apiCall<AgentActionResponse>(
+    data: {
+      payment_method: 'cash' | 'partner_wallet';
+      completion_notes?: string;
+    }
+  ): Promise<ActionResponse & {
+    transaction_id?: string;
+    wallet_balance_after?: number;
+    blocked_balance_after?: number;
+    message?: string;
+  }> => {
+    return apiCall<ActionResponse & {
+      transaction_id?: string;
+      wallet_balance_after?: number;
+      blocked_balance_after?: number;
+      message?: string;
+    }>(
       `/partner-agents/my-leads/${assignmentId}/visit/complete/`,
       {
         method: 'POST',
         body: JSON.stringify({
-          final_price: data.final_price,
           payment_method: data.payment_method,
-          customer_signature_url: data.customer_signature,
-          completion_notes: data.notes,
+          completion_notes: data.completion_notes,
         }),
       }
     );
@@ -623,6 +685,48 @@ export const agentAppService = {
       formData
     );
   },
+
+
+  // ============================================================
+  // KYC VERIFICATION & PAYMENT PROCESSING (NEW)
+  // ============================================================
+
+  /**
+   * Submit KYC verification for customer during visit (NEW)
+   * POST /api/v1/partner-agents/my-leads/{assignment_id}/kyc-verification/
+   */
+  submitKYCVerification: async (
+    assignmentId: string,
+    data: KYCVerificationRequest
+  ): Promise<KYCVerificationResponse> => {
+    return apiCall<KYCVerificationResponse>(
+      `/partner-agents/my-leads/${assignmentId}/kyc-verification/`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  /**
+   * Process payment after KYC verification (NEW)
+   * POST /api/v1/partner-agents/my-leads/{assignment_id}/process-payment/
+   */
+  processPayment: async (
+    assignmentId: string,
+    data: PaymentProcessRequest
+  ): Promise<PaymentProcessResponse> => {
+    return apiCall<PaymentProcessResponse>(
+      `/partner-agents/my-leads/${assignmentId}/process-payment/`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+
+
 
   // ============================================================
   // ACTIVITY LOGS

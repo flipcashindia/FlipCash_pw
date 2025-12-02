@@ -14,7 +14,15 @@ import type {
   CancelVisitRequest,
   LocationBreadcrumbRequest,
   DeviceInspectionData,
-  CompleteDealRequest,
+  // CompleteDealRequest,
+  KYCVerificationRequest,
+  // KYCVerificationResponse,
+  PaymentProcessRequest,
+  // PaymentProcessResponse,
+  // CustomerAcceptanceRequest,
+  // CustomerAcceptanceResponse,
+  KYCVerificationData,
+  PaymentData,
 } from '../api/types/agentApp.types';
 
 // =====================================================
@@ -270,6 +278,29 @@ export const useSubmitInspection = () => {
 };
 
 /**
+ * Submit customer acceptance/rejection response (NEW WORKFLOW)
+ * Used in CustomerAcceptanceScreen component
+ */
+export const useCustomerAcceptance = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ assignmentId, data }: { 
+      assignmentId: string; 
+      data: {
+        customer_response: 'accept' | 'reject';
+        customer_signature?: string;
+        rejection_reason?: string;
+      }
+    }) => agentAppService.submitCustomerAcceptance(assignmentId, data),
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
+    },
+  });
+};
+
+/**
  * Calculate price based on inspection
  * Used in PriceBreakdown component
  */
@@ -317,15 +348,20 @@ export const useCompleteVisit = () => {
 };
 
 /**
- * Complete deal with final price and payment
- * Used in DealCompletion component
+ * Complete deal with payment method selection (UPDATED NEW WORKFLOW)
+ * Used in PaymentMethodScreen component
  */
 export const useCompleteDeal = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ assignmentId, data }: { assignmentId: string; data: CompleteDealRequest }) =>
-      agentAppService.completeDeal(assignmentId, data),
+    mutationFn: ({ assignmentId, data }: { 
+      assignmentId: string; 
+      data: {
+        payment_method: 'cash' | 'partner_wallet';
+        completion_notes?: string;
+      }
+    }) => agentAppService.completeDeal(assignmentId, data),
     onSuccess: (_, { assignmentId }) => {
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
@@ -471,13 +507,103 @@ export const useCurrentLocation = () => {
   };
 };
 
+
+
 // =====================================================
-// COMBINED WORKFLOW HOOK
+// NEW WORKFLOW MUTATIONS (KYC & PAYMENT)
 // =====================================================
 
 /**
- * Combined hook for lead workflow management
- * Provides all the mutations needed for the complete workflow
+ * Submit customer acceptance/rejection response (UPDATED)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/customer-response/
+ * Used in CustomerAcceptanceScreen component
+ */
+// export const useCustomerAcceptance = () => {
+//   const queryClient = useQueryClient();
+  
+//   return useMutation({
+//     mutationFn: ({ assignmentId, data }: { 
+//       assignmentId: string; 
+//       data: CustomerAcceptanceRequest
+//     }) => agentAppService.submitCustomerAcceptance(assignmentId, data),
+//     onSuccess: (_, { assignmentId }) => {
+//       queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+//       queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
+//     },
+//   });
+// };
+
+/**
+ * Submit KYC verification for customer (NEW)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/kyc-verification/
+ * Used in AgentKYCVerificationScreen component
+ */
+export const useKYCVerification = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ assignmentId, data }: { 
+      assignmentId: string; 
+      data: KYCVerificationRequest | KYCVerificationData
+    }) => {
+      // Transform KYCVerificationData to KYCVerificationRequest if needed
+      const requestData = data as KYCVerificationRequest;
+      return agentAppService.submitKYCVerification(assignmentId, requestData);
+    },
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
+    },
+  });
+};
+
+/**
+ * Process payment after KYC verification (NEW)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/process-payment/
+ * Used in AgentPaymentProcessingScreen component
+ */
+export const usePaymentProcess = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ assignmentId, data }: { 
+      assignmentId: string; 
+      data: PaymentProcessRequest | PaymentData
+    }) => {
+      // Transform PaymentData to PaymentProcessRequest if needed
+      const requestData = data as PaymentProcessRequest;
+      return agentAppService.processPayment(assignmentId, requestData);
+    },
+    onSuccess: (_, { assignmentId }) => {
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.visit(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.assignments() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: agentAppKeys.profile() });
+    },
+  });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+// =====================================================
+// UPDATED COMBINED WORKFLOW HOOK (with KYC)
+// =====================================================
+
+/**
+ * Combined hook for lead workflow management (UPDATED)
+ * Provides all the mutations needed for the complete workflow including KYC
  */
 export const useLeadWorkflow = (assignmentId: string) => {
   const assignment = useAgentAssignment(assignmentId);
@@ -488,6 +614,9 @@ export const useLeadWorkflow = (assignmentId: string) => {
   const verifyCode = useVerifyCode();
   const startInspection = useStartInspection();
   const submitInspection = useSubmitInspection();
+  const customerAcceptance = useCustomerAcceptance(); // UPDATED
+  const kycVerification = useKYCVerification();         // NEW
+  const paymentProcess = usePaymentProcess();           // NEW
   const calculatePrice = useCalculatePrice();
   const makeOffer = useMakeOffer();
   const completeDeal = useCompleteDeal();
@@ -502,6 +631,9 @@ export const useLeadWorkflow = (assignmentId: string) => {
     verifyCode.isPending ||
     startInspection.isPending ||
     submitInspection.isPending ||
+    customerAcceptance.isPending ||
+    kycVerification.isPending ||      // NEW
+    paymentProcess.isPending ||       // NEW
     calculatePrice.isPending ||
     makeOffer.isPending ||
     completeDeal.isPending ||
@@ -516,6 +648,9 @@ export const useLeadWorkflow = (assignmentId: string) => {
     verifyCode,
     startInspection,
     submitInspection,
+    customerAcceptance,
+    kycVerification,      // NEW
+    paymentProcess,       // NEW
     calculatePrice,
     makeOffer,
     completeDeal,
@@ -524,3 +659,10 @@ export const useLeadWorkflow = (assignmentId: string) => {
     isLoading,
   };
 };
+
+// Export the new hooks
+// export {
+//   useCustomerAcceptance,
+//   useKYCVerification,
+//   usePaymentProcess,
+// };
