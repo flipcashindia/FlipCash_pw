@@ -171,7 +171,7 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
                     View Details & Claim
                 </Link>
             )}
-            {lead.status === 'partner_assigned' && (
+            {lead.status != 'booked' && (
                 <div 
                     className="mt-2 block w-full text-center px-4 py-2.5 font-bold rounded-lg cursor-not-allowed opacity-75"
                     style={{ 

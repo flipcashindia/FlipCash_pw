@@ -481,3 +481,324 @@ export interface AgentActivityLogsResponse {
   previous: string | null;
   results: AgentActivityLogEntry[];
 }
+
+
+
+
+
+// =====================================================
+// KYC VERIFICATION & PAYMENT PROCESSING (NEW)
+// =====================================================
+
+/**
+ * Customer address for KYC verification
+ */
+export interface CustomerAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+/**
+ * KYC verification request
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/kyc-verification/
+ */
+export interface KYCVerificationRequest {
+  // Customer identification
+  customer_id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan_card';
+  customer_id_number: string;
+  
+  // Customer personal details
+  customer_full_name: string;
+  customer_father_name: string;
+  customer_date_of_birth: string; // YYYY-MM-DD format
+  customer_address: CustomerAddress;
+  
+  // Document images (base64 encoded)
+  id_proof_photo: string;
+  customer_signature: string;
+  customer_selfie: string;
+  
+  // Agent verification
+  agent_declaration: boolean;
+  verification_notes?: string;
+}
+
+/**
+ * KYC verification response
+ */
+export interface KYCVerificationResponse {
+  success: boolean;
+  message: string;
+  customer_name: string;
+  verification_id: string;
+  verified_at: string;
+  next_action: string;
+  workflow_stage: string;
+  available_payment_methods: string[];
+  final_amount: number;
+}
+
+/**
+ * Cash payment confirmation details
+ */
+export interface CashPaymentConfirmation {
+  amount_given: number;
+  customer_receipt_signature?: string; // base64 encoded
+  payment_notes?: string;
+}
+
+/**
+ * Payment processing request
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/process-payment/
+ */
+export interface PaymentProcessRequest {
+  payment_method: 'cash' | 'partner_wallet';
+  cash_payment_confirmation?: CashPaymentConfirmation;
+  completion_notes?: string;
+}
+
+/**
+ * Payment processing response
+ */
+export interface PaymentProcessResponse {
+  success: boolean;
+  message: string;
+  transaction_details: {
+    lead_number: string;
+    customer_name: string;
+    final_amount: number;
+    payment_method: string;
+    transaction_id: string;
+    completed_at: string;
+  };
+  next_action: string;
+  workflow_stage: string;
+}
+
+/**
+ * KYC verification data (for UI form)
+ */
+export interface KYCVerificationData {
+  customer_id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan_card';
+  customer_id_number: string;
+  customer_full_name: string;
+  customer_father_name: string;
+  customer_date_of_birth: string;
+  customer_address: CustomerAddress;
+  id_proof_photo: string;
+  customer_signature: string;
+  customer_selfie: string;
+  agent_declaration: boolean;
+  verification_notes?: string;
+}
+
+/**
+ * Payment data (for UI form)
+ */
+export interface PaymentData {
+  payment_method: 'cash' | 'partner_wallet';
+  cash_payment_confirmation?: CashPaymentConfirmation;
+  completion_notes?: string;
+}
+
+// =====================================================
+// CUSTOMER ACCEPTANCE (EXISTING - for reference)
+// =====================================================
+
+/**
+ * Customer acceptance request
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/customer-response/
+ */
+export interface CustomerAcceptanceRequest {
+  customer_response: 'accept' | 'reject';
+  customer_signature?: string; // base64 encoded
+  rejection_reason?: string;
+}
+
+/**
+ * Customer acceptance response
+ */
+export interface CustomerAcceptanceResponse {
+  success: boolean;
+  message: string;
+  next_action?: string;
+  workflow_stage?: string;
+  payment_methods?: string[];
+}
+
+// Export all new types
+// export {
+//   CustomerAddress,
+//   KYCVerificationRequest,
+//   KYCVerificationResponse,
+//   CashPaymentConfirmation,
+//   PaymentProcessRequest,
+//   PaymentProcessResponse,
+//   KYCVerificationData,
+//   PaymentData,
+//   CustomerAcceptanceRequest,
+//   CustomerAcceptanceResponse,
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
