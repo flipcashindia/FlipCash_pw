@@ -94,15 +94,25 @@ export interface AgentAssignedLead {
   inspection_started_at: string | null;
   completed_at: string | null;
   expected_completion_at: string | null;
+  status: string;
+  status_history: [];
 }
 
+// ✅ COMPLETE: All assignment statuses from backend AgentLeadAssignment.Status
 export type AssignmentStatus = 
   | 'assigned'
   | 'accepted'
   | 'rejected'
   | 'en_route'
   | 'checked_in'
+  | 'code_verified'
   | 'inspecting'
+  | 'inspection_submitted'
+  | 'awaiting_customer_response'
+  | 'customer_accepted'
+  | 'customer_rejected'
+  | 'kyc_completed'
+  | 'payment_processed'
   | 'completed'
   | 'cancelled';
 
@@ -621,13 +631,259 @@ export interface CustomerAcceptanceRequest {
 /**
  * Customer acceptance response
  */
+// export interface CustomerAcceptanceResponse {
+//   success: boolean;
+//   message: string;
+//   next_action?: string;
+//   workflow_stage?: string;
+//   payment_methods?: string[];
+// }
+
+
+// =====================================================
+// NEW WORKFLOW TYPES
+// =====================================================
+
+/**
+ * KYC Document Upload Request (NEW)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/kyc-documents/
+ * 
+ * Uses multipart/form-data
+ * Backend: AgentKYCDocumentUploadSerializer
+ */
+export interface KYCDocumentUploadRequest {
+  // Required fields
+  id_proof_type: 'aadhaar' | 'pan' | 'driving_license' | 'passport' | 'voter_id';
+  id_number: string;
+  customer_confirmed: boolean;
+  
+  // Required files
+  id_proof_front: File | Blob;          // Always required
+  customer_signature: File | Blob;       // Always required
+  
+  // Conditionally required
+  id_proof_back?: File | Blob;          // Required for Aadhaar, optional for others
+  
+  // Optional fields
+  address_proof_type?: 'utility_bill' | 'bank_statement' | 'rental_agreement';
+  address_proof?: File | Blob;
+  
+  // Optional device documents
+  device_bill?: File | Blob;
+  device_warranty?: File | Blob;
+  device_box?: File | Blob;
+  
+  // Optional notes
+  verification_notes?: string;
+}
+
+/**
+ * KYC Document Upload Response (NEW)
+ * Backend: AgentKYCDocumentUploadView response
+ */
+export interface KYCDocumentUploadResponse {
+  success: boolean;
+  message: string;
+  documents_uploaded: number;
+  assignment_status: string;
+  lead_status: string;
+  visit_status: string;
+  next_action: string;
+  final_price: number;
+  customer_name: string;
+  customer_phone: string;
+}
+
+/**
+ * Payment Processing Request (NEW)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/process-payment/
+ * 
+ * Backend: AgentPaymentProcessSerializer
+ */
+export interface PaymentProcessRequest {
+  payment_method: 'cash' | 'partner_wallet';
+  
+  // Required if payment_method === 'cash'
+  cash_amount_given?: number;
+  
+  // Optional
+  receipt_signature?: string;  // base64 or blob
+  payment_notes?: string;
+}
+
+/**
+ * Payment Processing Response (NEW)
+ * Backend: PaymentResultSerializer + AgentPaymentProcessView response
+ */
+export interface PaymentProcessResponse {
+  success: boolean;
+  message: string;
+  transaction_id: string;
+  payment_method: string;
+  amount_paid: number;
+  wallet_balance_before: number;
+  wallet_balance_after: number;
+  amount_unblocked?: number;  // Only for cash payments
+  invoice_generated: boolean;
+  invoice_number?: string;
+  assignment_status: string;
+  lead_status: string;
+  visit_status: string;
+  next_action: string;
+}
+
+/**
+ * Final Completion Request (NEW)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/final-complete/
+ * 
+ * No body required typically
+ */
+export interface FinalCompleteRequest {
+  completion_notes?: string;
+}
+
+/**
+ * Final Completion Response (NEW)
+ * Backend: VisitCompletionResponseSerializer
+ */
+export interface FinalCompleteResponse {
+  success: boolean;
+  message: string;
+  visit_id: string;
+  lead_id: string;
+  assignment_id: string;
+  visit_status: string;
+  lead_status: string;
+  assignment_status: string;
+  completed_at: string;
+  final_price: number;
+  kyc_documents_count: number;
+  payment_transaction_id: string;
+  invoice_number?: string;
+}
+
+/**
+ * Workflow Status Response (NEW)
+ * GET /api/v1/partner-agents/my-leads/{assignment_id}/visit/workflow-status/
+ * 
+ * Backend: WorkflowStatusSerializer
+ */
+export interface WorkflowStatusResponse {
+  assignment_status: string;
+  visit_status: string;
+  lead_status: string;
+  stages_completed: string[];
+  current_stage: string;
+  next_stage?: string;
+  requirements: {
+    documents_needed?: string[];
+    payment_methods_available?: string[];
+    minimum_documents?: number;
+  };
+  can_proceed: boolean;
+  blocking_issues: string[];
+}
+
+// =====================================================
+// UPDATED: Customer Acceptance Types (for reference)
+// =====================================================
+
+/**
+ * Customer Acceptance Request (EXISTING)
+ * POST /api/v1/partner-agents/my-leads/{assignment_id}/visit/customer-response/
+ */
+export interface CustomerAcceptanceRequest {
+  customer_response: 'accept' | 'reject';
+  customer_signature?: string; // base64 encoded
+  rejection_reason?: string;
+}
+
+/**
+ * Customer Acceptance Response (EXISTING)
+ */
 export interface CustomerAcceptanceResponse {
   success: boolean;
   message: string;
-  next_action?: string;
-  workflow_stage?: string;
-  payment_methods?: string[];
+  customer_response: string;
+  final_price: number;
+  next_action: string;
+  workflow_stage: string;
+  available_actions: string[];
+  assignment_status: string;
+  lead_status: string;
+  visit_status: string;
 }
+
+// =====================================================
+// HELPER TYPES FOR UI
+// =====================================================
+
+/**
+ * KYC Form Data (for UI state management)
+ */
+export interface KYCFormData {
+  idProofType: 'aadhaar' | 'pan' | 'driving_license' | 'passport' | 'voter_id';
+  idNumber: string;
+  idProofFrontFile: File | null;
+  idProofBackFile: File | null;
+  customerSignatureFile: File | null;
+  addressProofType?: 'utility_bill' | 'bank_statement' | 'rental_agreement';
+  addressProofFile: File | null;
+  deviceBillFile: File | null;
+  deviceWarrantyFile: File | null;
+  deviceBoxFile: File | null;
+  verificationNotes: string;
+  customerConfirmed: boolean;
+}
+
+/**
+ * Payment Form Data (for UI state management)
+ */
+export interface PaymentFormData {
+  paymentMethod: 'cash' | 'partner_wallet' | null;
+  cashAmountGiven: number;
+  receiptSignature: string | null;
+  paymentNotes: string;
+}
+
+/**
+ * Workflow Stage enum
+ */
+export const WorkflowStage = {
+  ASSIGNED: 'assigned',
+  ACCEPTED: 'accepted',
+  EN_ROUTE: 'en_route',
+  CHECKED_IN: 'checked_in',
+  CODE_VERIFIED: 'code_verified',
+  INSPECTING: 'inspecting',
+  INSPECTION_SUBMITTED: 'inspection_submitted',
+  AWAITING_CUSTOMER_RESPONSE: 'awaiting_customer_response',
+  CUSTOMER_ACCEPTED: 'customer_accepted',
+  CUSTOMER_REJECTED: 'customer_rejected',
+  KYC_COMPLETED: 'kyc_completed',
+  PAYMENT_PROCESSED: 'payment_processed',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+} as const;
+
+/**
+ * Document upload status
+ */
+export interface DocumentUploadStatus {
+  type: string;
+  file: File | null;
+  preview: string | null;
+  uploaded: boolean;
+  url?: string;
+  error?: string;
+}
+
+
+
+
+
+
+
 
 // Export all new types
 // export {

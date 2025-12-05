@@ -85,7 +85,7 @@ const getAddressDisplay = (address: Address | null | undefined): { short: string
 
 // Card for "New Leads" tab (Available Leads)
 const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
-    // console.log('Rendering AvailableLeadCard with lead:', lead);
+    console.log('Rendering AvailableLeadCard with lead:', lead);
     
     const deviceName = getDeviceName(lead.device_model, lead.brand_name);
     const addressInfo = getAddressDisplay(lead.pickup_address);
@@ -97,6 +97,8 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
         : lead.age_hours 
             ? `${lead.age_hours} hrs ago` 
             : 'New';
+
+    console.log('lead status: ', lead.status)
 
     return (
         <div 
@@ -120,7 +122,7 @@ const AvailableLeadCard: React.FC<{ lead: AvailableLead }> = ({ lead }) => {
                 </h3>
                 {(lead.storage || lead.color) && (
                     <p className="text-sm text-gray-500 mt-0.5">
-                        {[lead.storage, lead.color].filter(Boolean).join(' • ')}
+                        {[lead.storage].filter(Boolean).join(' • ')}
                     </p>
                 )}
             </div>
