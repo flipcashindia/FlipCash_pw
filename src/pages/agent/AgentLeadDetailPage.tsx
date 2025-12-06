@@ -56,6 +56,7 @@ import {
   Boxes,
   CheckSquare,
   XSquare,
+  RefreshCw,
 } from 'lucide-react';
 
 // ✅ UPDATED IMPORTS - NEW 3-STEP WORKFLOW
@@ -82,6 +83,8 @@ import type {
   PaymentProcessRequest,       // ✅ NEW
   // CustomerAddress,
 } from '../../api/types/agentApp.types';
+import { useAuthStore } from '../../stores/authStore';
+
 
 import VerificationCodeEntry from '../../components/agent/VerificationCodeEntry';
 import DeviceImageCapture from '../../components/agent/DeviceImageCapture';
@@ -144,6 +147,9 @@ const AgentLeadDetailPage: React.FC = () => {
   
   const { data: assignment, isLoading, error, refetch } = useAgentAssignment(assignmentId || '');
   
+  console.log('[AgentLeadDetailPage] Assignment data:', assignment);
+  
+
   // ✅ UPDATED MUTATIONS - NEW 3-STEP WORKFLOW
   const acceptMutation = useAcceptAssignment();
   const rejectMutation = useRejectAssignment();
@@ -299,10 +305,10 @@ const AgentLeadDetailPage: React.FC = () => {
 
   // Load status logs from assignment data
   useEffect(() => {
-    if (assignment?.status_history) {
-      setStatusLogs(assignment.status_history);
+    if (assignment?.status) {
+      setStatusLogs(assignment.status_history || []);
     }
-  }, [assignment?.status_history]);
+  }, [assignment?.status]);
 
   // Action handlers
   const handleAccept = async () => {
@@ -356,8 +362,14 @@ const AgentLeadDetailPage: React.FC = () => {
         },
       });
       setActionSuccess('Checked in successfully! Now verify with customer code.');
+      
+      // Refetch data before showing modal
+      await Promise.all([
+        refetch(),
+        workflowStatusQuery.refetch()
+      ]);
+      
       setShowVerifyCodeModal(true);
-      refetch();
     } catch (err: any) {
       setActionError(err.message || 'Failed to check in. Make sure location is enabled.');
     }
@@ -371,9 +383,67 @@ const AgentLeadDetailPage: React.FC = () => {
       setActionSuccess('Code verified! You can now start inspection.');
       setShowVerifyCodeModal(false);
       setVerificationCode('');
-      refetch();
+      
+      // Critical: Refetch both queries to update workflow stage
+      const [assignmentResult, workflowResult] = await Promise.all([
+        refetch(),
+        workflowStatusQuery.refetch()
+      ]);
+      
+      console.log('[VerifyCode] Refetch complete:', {
+        assignmentStatus: assignmentResult.data?.assignment_status,
+        workflowStage: workflowResult.data?.current_stage
+      });
     } catch (err: any) {
       throw new Error(err.message || 'Invalid verification code');
+    }
+  };
+
+  // # ============================================================
+  // # STEP 1: Add regenerate function (add after other handlers)
+  // # ============================================================
+
+  // Add this function around line 600 (after handleFinalComplete)
+  const handleRegenerateCode = async () => {
+    if (!assignmentId) return;
+    
+    setActionError(null);
+    
+    try {
+      // Get token from localStorage (adjust if you store it differently)
+      // const token = localStorage.getItem('token'); // or sessionStorage.getItem('token')
+      const token = useAuthStore.getState().accessToken;
+      if (!token) {
+        setActionError('Authentication token not found');
+        return;
+      }
+      
+      // Call API directly
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/regenerate-code/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to regenerate code');
+      }
+      
+      // Show success message with new code
+      setActionSuccess(`New code generated get from the customer`);
+      
+      // Refetch assignment data
+      refetch();
+      
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to regenerate verification code');
     }
   };
 
@@ -404,6 +474,8 @@ const AgentLeadDetailPage: React.FC = () => {
         assignmentId,
         data: backendInspectionData,
       });
+
+      console.log('[SubmitInspection] Received inspection result:', inspectionResult);
       
       // ✅ FIXED: Use correct property names from backend
       if (inspectionResult.calculated_price) {
@@ -1271,6 +1343,18 @@ const AgentLeadDetailPage: React.FC = () => {
               error={verifyCodeMutation.error?.message || null}
               customerName={assignment.customer_name}
             />
+            
+            {/* Regenerate Code Button */}
+            <button
+              type="button"
+              onClick={handleRegenerateCode}
+              disabled={isLoading}
+              className="w-full mt-3 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={18} />
+              Regenerate Code
+            </button>
+
           </Modal>
         )}
 
