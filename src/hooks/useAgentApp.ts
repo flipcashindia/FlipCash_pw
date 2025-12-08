@@ -1254,3 +1254,14 @@ export const useLeadWorkflow = (assignmentId: string) => {
     isLoading,
   };
 };
+
+
+// // Add new hook for polling customer response
+// export const useCustomerResponseStatus = (assignmentId: string, enabled: boolean = false) => {
+//   return useQuery({
+//     queryKey: ['customerResponseStatus', assignmentId],
+//     queryFn: () => agentAppApi.getCustomerResponseStatus(assignmentId),
+//     enabled: enabled && !!assignmentId,
+//     refetchInterval: enabled ? 3000 : false, // Poll every 3 seconds when enabled
+//   });
+// };

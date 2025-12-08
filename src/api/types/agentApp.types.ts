@@ -35,10 +35,240 @@ export interface AgentSelfProfile {
   created_at: string;
 }
 
+
+// =====================================================
+// INSPECTION & VERIFICATION RESULTS
+// =====================================================
+
+/**
+ * Status log entry for timeline display
+ */
+export interface StatusLog {
+  status: string;
+  timestamp: string;
+  changed_by: string;
+  notes?: string;
+  gps_coordinates?: { latitude: number; longitude: number };
+  attached_photos?: string[];
+}
+
+/**
+ * Verified device conditions from agent inspection
+ */
+export interface VerifiedConditions {
+  screen_condition: string;
+  body_condition: string;
+  battery_health: number | null;
+  accessories: Record<string, boolean>;
+  functional_issues: string[];
+  device_powers_on?: boolean;
+  display_working?: boolean;
+  touch_working?: boolean;
+  camera_working?: boolean;
+  speaker_working?: boolean;
+  microphone_working?: boolean;
+  wifi_working?: boolean;
+  bluetooth_working?: boolean;
+  icloud_locked?: boolean;
+  water_damage?: boolean;
+  physical_damage?: boolean;
+}
+
+/**
+ * System pricing breakdown
+ */
+export interface PricingBreakdown {
+  base_price: string;
+  deductions: Array<{
+    reason: string;
+    amount: string;
+    type: string;
+  }>;
+  additions?: Array<{
+    reason: string;
+    amount: string;
+    type: string;
+  }>;
+  total_deductions: string;
+  total_additions?: string;
+  final_price: string;
+  calculation_method?: string;
+}
+
+/**
+ * Complete visit data from backend
+ */
+export interface VisitData {
+  inspection_notes: string;
+  inspection_photos: string[];
+  verified_imei: string;
+  verified_conditions: VerifiedConditions;
+  pricing_breakdown: PricingBreakdown;
+  partner_recommended_price: string;
+  full_assessment: any;
+  inspection_completed_at: string;
+}
+
+/**
+ * Customer response to price offer
+ */
+export interface CustomerResponseData {
+  response: 'accepted' | 'rejected';
+  responded_at: string;
+  final_price?: string;
+  rejection_reason?: string;
+}
+
+/**
+ * System calculated price with deductions
+ */
+export interface SystemCalculatedPrice {
+  final_price: number;
+  original_estimate: number;
+  deductions: Array<{
+    reason: string;
+    amount: string | number;
+    type?: string;
+  }>;
+  additions?: Array<{
+    reason: string;
+    amount: string | number;
+    type?: string;
+  }>;
+  is_final: boolean;
+}
+
+/**
+ * Inspection result for display
+ */
+export interface InspectionResult {
+  screen_condition: string;
+  body_condition: string;
+  battery_health: number | null;
+  accessories: {
+    charger_available: boolean;
+    box_available: boolean;
+    earphones_available: boolean;
+    bill_available: boolean;
+  };
+  functional_issues: string[];
+  inspection_photos: string[];
+  inspection_notes: string;
+  verified_imei: string;
+  submitted_at: string;
+}
+
+/**
+ * KYC documents for display
+ */
+export interface KYCDocuments {
+  id_proof_type: string;
+  id_number: string;
+  id_proof_photo: string;
+  customer_signature: string;
+  customer_selfie: string;
+  verified_at: string;
+}
+
+/**
+ * Payment details for display
+ */
+export interface PaymentDetails {
+  payment_method: string;
+  amount: number;
+  transaction_id?: string;
+  processed_at: string;
+  wallet_balance_before?: number;
+  wallet_balance_after?: number;
+}
+
+/**
+ * KYC data stored in assignment
+ */
+export interface KYCData {
+  kyc_completed: boolean;
+  id_proof_type?: string;
+  id_number?: string;
+  verified_at?: string;
+  documents?: any[];
+}
+
+/**
+ * Payment data stored in assignment
+ */
+export interface PaymentData {
+  payment_completed: boolean;
+  payment_method: 'cash' | 'partner_wallet';
+  amount?: string;
+  transaction_id?: string;
+  processed_at?: string;
+  wallet_balance_before?: string;
+  wallet_balance_after?: string;
+}
+
 // =====================================================
 // ASSIGNED LEAD (AgentAssignedLeadsView)
 // GET /api/v1/partner-agents/my-leads/
 // =====================================================
+
+// export interface AgentAssignedLead {
+//   // Assignment info
+//   assignment_id: string;
+//   assignment_status: AssignmentStatus;
+//   assignment_priority: 'low' | 'normal' | 'high' | 'urgent';
+//   assignment_notes: string;
+  
+//   // Lead info
+//   lead: string;                       // lead UUID
+//   lead_number: string;
+  
+//   // Device info
+//   device_name: string;
+//   device_category: string;
+//   device_brand: string;
+//   device_model: string;
+//   device_storage: string;
+//   device_color: string;
+//   condition_responses?: Record<string, any>;
+  
+//   // Customer info
+//   customer_name: string;
+//   customer_phone: string;
+  
+//   // Pricing
+//   estimated_price: string;
+//   quoted_price: string | null;
+//   final_price: string | null;
+  
+//   // Pickup
+//   pickup_address: {
+//     id: string;
+//     line1: string;
+//     line2: string;
+//     city: string;
+//     state: string;
+//     postal_code: string;
+//     latitude: number | null;
+//     longitude: number | null;
+//   } | null;
+//   preferred_date: string;
+//   preferred_time_slot: string;
+  
+//   // Notes
+//   customer_notes: string;
+  
+//   // Timestamps
+//   assigned_at: string;
+//   accepted_at: string | null;
+//   started_at: string | null;
+//   checked_in_at: string | null;
+//   inspection_started_at: string | null;
+//   completed_at: string | null;
+//   expected_completion_at: string | null;
+//   status: string;
+//   status_history: [];
+// }
+
 
 export interface AgentAssignedLead {
   // Assignment info
@@ -48,7 +278,7 @@ export interface AgentAssignedLead {
   assignment_notes: string;
   
   // Lead info
-  lead: string;                       // lead UUID
+  lead: string;
   lead_number: string;
   
   // Device info
@@ -58,11 +288,13 @@ export interface AgentAssignedLead {
   device_model: string;
   device_storage: string;
   device_color: string;
-  condition_responses?: Record<string, any>;
   
   // Customer info
   customer_name: string;
   customer_phone: string;
+  
+  // 🔥 ADD: Customer's original condition responses
+  customer_condition_responses?: Record<string, any>;
   
   // Pricing
   estimated_price: string;
@@ -86,6 +318,18 @@ export interface AgentAssignedLead {
   // Notes
   customer_notes: string;
   
+  // 🔥 ADD: Visit data from inspection
+  visit_data?: VisitData;
+  
+  // 🔥 ADD: Customer response to price
+  customer_response_data?: CustomerResponseData;
+  
+  // 🔥 ADD: KYC verification data
+  kyc_data?: KYCData;
+  
+  // 🔥 ADD: Payment processing data
+  payment_data?: PaymentData;
+  
   // Timestamps
   assigned_at: string;
   accepted_at: string | null;
@@ -94,9 +338,16 @@ export interface AgentAssignedLead {
   inspection_started_at: string | null;
   completed_at: string | null;
   expected_completion_at: string | null;
+  
+  // Status
   status: string;
-  status_history: [];
+  
+  // 🔥 FIX: Change from [] to StatusLog[]
+  status_history: StatusLog[];
 }
+
+
+
 
 // ✅ COMPLETE: All assignment statuses from backend AgentLeadAssignment.Status
 export type AssignmentStatus = 
@@ -586,6 +837,7 @@ export interface PaymentProcessResponse {
   };
   next_action: string;
   workflow_stage: string;
+  generate_invoice?: boolean;
 }
 
 /**
@@ -880,7 +1132,40 @@ export interface DocumentUploadStatus {
 
 
 
+// =====================================================
+// COMPONENT PROP TYPES (for better type safety)
+// =====================================================
 
+export interface ConditionComparisonProps {
+  customerClaimed: any;
+  agentVerified: VerifiedConditions;
+}
+
+export interface FunctionalIssuesProps {
+  customerIssues: string[];
+  verifiedIssues: string[];
+}
+
+export interface AccessoriesComparisonProps {
+  customerAccessories: Record<string, boolean>;
+  verifiedAccessories: Record<string, boolean>;
+}
+
+export interface PricingBreakdownDisplayProps {
+  breakdown: PricingBreakdown;
+  originalEstimate?: string;
+}
+
+export interface InspectionResultsDisplayProps {
+  inspection: InspectionResult;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onImageClick: (image: string) => void;
+  assignment?: AgentAssignedLead;
+  systemCalculatedPrice?: SystemCalculatedPrice | null;
+  customerResponse?: 'accept' | 'reject' | null;
+  rejectionReason?: string;
+}
 
 
 
