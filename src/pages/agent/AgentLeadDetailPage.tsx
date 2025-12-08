@@ -69,7 +69,7 @@ import {
   useVerifyCode,
   useStartInspection,
   useSubmitInspection,
-  useCustomerAcceptance,
+  // useCustomerAcceptance,
   useUploadKYCDocuments,      // ✅ NEW
   useProcessPayment,           // ✅ NEW
   useFinalComplete,            // ✅ NEW
@@ -134,6 +134,451 @@ interface PaymentDetails {
   wallet_balance_after?: number;
 }
 
+// ⬇️ INSERT NEW CODE HERE (After line 136) ⬇️
+
+interface SystemCalculatedPrice {
+  final_price: number;
+  original_estimate: number;
+  deductions: Array<{
+    reason: string;
+    amount: string | number;
+    type?: string;
+  }>;
+  additions?: Array<{
+    reason: string;
+    amount: string | number;
+    type?: string;
+  }>;
+  is_final: boolean;
+}
+
+interface VerifiedConditions {
+  screen_condition: string;
+  body_condition: string;
+  battery_health: number | null;
+  accessories: Record<string, boolean>;
+  functional_issues: string[];
+  device_powers_on?: boolean;
+  display_working?: boolean;
+  touch_working?: boolean;
+  camera_working?: boolean;
+  speaker_working?: boolean;
+  microphone_working?: boolean;
+  wifi_working?: boolean;
+  bluetooth_working?: boolean;
+  icloud_locked?: boolean;
+  water_damage?: boolean;
+  physical_damage?: boolean;
+}
+
+interface PricingBreakdown {
+  base_price: string;
+  deductions: Array<{
+    reason: string;
+    amount: string;
+    type: string;
+  }>;
+  additions?: Array<{
+    reason: string;
+    amount: string;
+    type: string;
+  }>;
+  total_deductions: string;
+  total_additions?: string;
+  final_price: string;
+  calculation_method?: string;
+}
+
+// interface VisitData {
+//   inspection_notes: string;
+//   inspection_photos: string[];
+//   verified_imei: string;
+//   verified_conditions: VerifiedConditions;
+//   pricing_breakdown: PricingBreakdown;
+//   partner_recommended_price: string;
+//   full_assessment: any;
+//   inspection_completed_at: string;
+// }
+
+// interface CustomerResponseData {
+//   response: 'accepted' | 'rejected';
+//   responded_at: string;
+//   final_price?: string;
+//   rejection_reason?: string;
+// }
+
+// ⬆️ END OF NEW CODE ⬆️
+
+// Component 1: Condition Comparison Table
+interface ConditionComparisonProps {
+  customerClaimed: any;
+  agentVerified: VerifiedConditions;
+}
+
+const ConditionComparisonTable: React.FC<ConditionComparisonProps> = ({
+  customerClaimed,
+  agentVerified
+}) => {
+  const conditions = [
+    { key: 'screen_condition', label: 'Screen Condition' },
+    { key: 'body_condition', label: 'Body Condition' },
+    { key: 'battery_health', label: 'Battery Health', suffix: '%' },
+  ];
+
+  const hasDifference = (key: string) => {
+    return customerClaimed?.[key as keyof typeof customerClaimed] !== agentVerified?.[key as keyof typeof agentVerified];
+  };
+
+  const getValueDisplay = (value: any, suffix?: string) => {
+    if (value === null || value === undefined) return '-';
+    return `${value}${suffix || ''}`;
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Condition
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Customer Claimed
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Agent Verified
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {conditions.map(({ key, label, suffix }) => {
+            const isDifferent = hasDifference(key);
+            const customerValue = customerClaimed?.[key];
+            const verifiedValue = agentVerified?.[key as keyof typeof agentVerified];
+            
+            return (
+              <tr key={key} className={isDifferent ? 'bg-yellow-50' : ''}>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  {label}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-700">
+                  {getValueDisplay(customerValue, suffix)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                  {getValueDisplay(verifiedValue, suffix)}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {isDifferent ? (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Differs
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Matches
+                    </span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Component 2: Functional Issues Display
+interface FunctionalIssuesProps {
+  customerIssues: string[];
+  verifiedIssues: string[];
+}
+
+const FunctionalIssuesDisplay: React.FC<FunctionalIssuesProps> = ({
+  customerIssues = [],
+  verifiedIssues = []
+}) => {
+  const allIssues = [...new Set([...customerIssues, ...verifiedIssues])];
+  
+  const getIssueIcon = (issue: string) => {
+    const icons: Record<string, any> = {
+      wifi: Wifi,
+      bluetooth: Bluetooth,
+      speaker: Volume2,
+      microphone: Mic,
+      camera: Camera,
+      display: Eye,
+      touch: Smartphone,
+      charging: Zap,
+    };
+    const Icon = icons[issue.toLowerCase()] || AlertCircle;
+    return <Icon className="w-4 h-4" />;
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <AlertCircle className="w-4 h-4" />
+        Functional Issues
+      </h4>
+      
+      {allIssues.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg">
+          <CheckCircle2 className="w-4 h-4" />
+          No functional issues reported
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {allIssues.map((issue) => {
+            const customerReported = customerIssues.includes(issue);
+            const agentFound = verifiedIssues.includes(issue);
+            
+            return (
+              <div
+                key={issue}
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  customerReported && agentFound
+                    ? 'bg-green-50 border-green-200'
+                    : !customerReported && agentFound
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-yellow-50 border-yellow-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {getIssueIcon(issue)}
+                  <span className="text-sm font-medium text-gray-900 capitalize">
+                    {issue.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className={`flex items-center gap-1 ${customerReported ? 'text-gray-700' : 'text-gray-400'}`}>
+                    Customer: {customerReported ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  </span>
+                  <span className={`flex items-center gap-1 font-medium ${agentFound ? 'text-red-600' : 'text-green-600'}`}>
+                    Agent: {agentFound ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Component 3: Accessories Comparison
+interface AccessoriesComparisonProps {
+  customerAccessories: Record<string, boolean>;
+  verifiedAccessories: Record<string, boolean>;
+}
+
+const AccessoriesComparison: React.FC<AccessoriesComparisonProps> = ({
+  customerAccessories = {},
+  verifiedAccessories = {}
+}) => {
+  const accessories = [
+    { key: 'charger', label: 'Charger', icon: '🔌' },
+    { key: 'box', label: 'Original Box', icon: '📦' },
+    { key: 'earphones', label: 'Earphones', icon: '🎧' },
+    { key: 'bill', label: 'Bill/Invoice', icon: '🧾' },
+  ];
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <Boxes className="w-4 h-4" />
+        Accessories Verification
+      </h4>
+      
+      <div className="grid grid-cols-2 gap-3">
+        {accessories.map(({ key, label, icon }) => {
+          const customerHas = customerAccessories[key] === true || customerAccessories[`${key}_available`] === true;
+          const agentVerified = verifiedAccessories[key] === true || verifiedAccessories[`${key}_available`] === true;
+          const matches = customerHas === agentVerified;
+          
+          return (
+            <div
+              key={key}
+              className={`p-3 rounded-lg border-2 transition-all ${
+                matches
+                  ? agentVerified
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-gray-200 bg-gray-50'
+                  : 'border-yellow-200 bg-yellow-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl">{icon}</span>
+                {matches ? (
+                  <CheckSquare className="w-4 h-4 text-green-600" />
+                ) : (
+                  <XSquare className="w-4 h-4 text-yellow-600" />
+                )}
+              </div>
+              <div className="text-sm font-medium text-gray-900 mb-2">
+                {label}
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className={customerHas ? 'text-green-600' : 'text-gray-400'}>
+                  Claimed: {customerHas ? '✓' : '✗'}
+                </span>
+                <span className={agentVerified ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                  Found: {agentVerified ? '✓' : '✗'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Component 4: Pricing Breakdown Display
+interface PricingBreakdownDisplayProps {
+  breakdown: PricingBreakdown;
+  originalEstimate?: string;
+}
+
+const PricingBreakdownDisplay: React.FC<PricingBreakdownDisplayProps> = ({
+  breakdown,
+  originalEstimate
+}) => {
+  const getDeductionIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      cosmetic: '🎨',
+      battery: '🔋',
+      functional: '⚡',
+      accessory: '📦',
+      storage: '💾',
+      physical: '🔨',
+    };
+    return icons[type.toLowerCase()] || '•';
+  };
+
+  const getDeductionColor = (type: string) => {
+    const colors: Record<string, string> = {
+      cosmetic: 'text-orange-600',
+      battery: 'text-blue-600',
+      functional: 'text-red-600',
+      accessory: 'text-purple-600',
+      storage: 'text-cyan-600',
+      physical: 'text-amber-600',
+    };
+    return colors[type.toLowerCase()] || 'text-gray-600';
+  };
+
+  const parseAmount = (amount: string | number): number => {
+    if (typeof amount === 'number') return amount;
+    return parseFloat(amount) || 0;
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+      {/* Original Estimate */}
+      <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+        <span className="text-sm font-medium text-gray-700">
+          Original Estimate
+        </span>
+        <span className="text-lg font-semibold text-gray-900">
+          ₹{parseFloat(originalEstimate || breakdown.base_price).toLocaleString('en-IN')}
+        </span>
+      </div>
+
+      {/* Deductions */}
+      {breakdown.deductions && breakdown.deductions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-semibold text-gray-700">
+              Deductions Applied:
+            </span>
+          </div>
+          
+          {breakdown.deductions.map((deduction, index) => (
+            <div
+              key={index}
+              className="flex items-start justify-between pl-6 py-2 hover:bg-gray-50 rounded transition-colors"
+            >
+              <div className="flex items-start gap-2 flex-1">
+                <span className="text-base leading-none">
+                  {getDeductionIcon(deduction.type)}
+                </span>
+                <span className={`text-sm ${getDeductionColor(deduction.type)}`}>
+                  {deduction.reason}
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-red-600 whitespace-nowrap ml-4">
+                -₹{parseAmount(deduction.amount).toLocaleString('en-IN')}
+              </span>
+            </div>
+          ))}
+          
+          {/* Total Deductions */}
+          <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
+            <span className="text-sm font-semibold text-gray-700">
+              Total Deductions
+            </span>
+            <span className="text-base font-bold text-red-600">
+              -₹{parseAmount(breakdown.total_deductions).toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Additions (if any) */}
+      {breakdown.additions && breakdown.additions.length > 0 && (
+        <div className="space-y-2 pt-2 border-t border-gray-200">
+          <span className="text-sm font-semibold text-gray-700">
+            Additions:
+          </span>
+          {breakdown.additions.map((addition, index) => (
+            <div
+              key={index}
+              className="flex items-start justify-between pl-6 py-1"
+            >
+              <span className="text-sm text-green-600">{addition.reason}</span>
+              <span className="text-sm font-semibold text-green-600">
+                +₹{parseAmount(addition.amount).toLocaleString('en-IN')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Final Price */}
+      <div className="flex items-center justify-between pt-3 mt-3 border-t-2 border-gray-300">
+        <div>
+          <div className="text-base font-bold text-gray-900">
+            Final Offer Price
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            System calculated
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-green-600">
+            ₹{parseAmount(breakdown.final_price).toLocaleString('en-IN')}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+
+
+
+
+
+
 // ✅ NEW: Helper function to convert base64 to File
 const base64ToFile = async (base64: string, filename: string): Promise<File> => {
   const response = await fetch(base64);
@@ -158,7 +603,7 @@ const AgentLeadDetailPage: React.FC = () => {
   const verifyCodeMutation = useVerifyCode();
   const startInspectionMutation = useStartInspection();
   const submitInspectionMutation = useSubmitInspection();
-  const customerAcceptanceMutation = useCustomerAcceptance();
+  // const customerAcceptanceMutation = useCustomerAcceptance();
   const uploadKYCMutation = useUploadKYCDocuments();         // ✅ NEW
   const processPaymentMutation = useProcessPayment();        // ✅ NEW
   const finalCompleteMutation = useFinalComplete();          // ✅ NEW
@@ -230,45 +675,32 @@ const AgentLeadDetailPage: React.FC = () => {
   // Customer response state
   const [customerResponse, setCustomerResponse] = useState<'accept' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [customerSignature, setCustomerSignature] = useState<string>('');
+  // const [customerSignature, setCustomerSignature] = useState<string>('');
 
   // KYC verification state (still using old structure for UI)
+  // ✅ NEW - Use this
   const [kycData, setKycData] = useState<{
-    customer_full_name: string;
-    customer_father_name: string;
-    customer_date_of_birth: string;
-    customer_id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
-    customer_id_number: string;
-    customer_address: {
-      line1: string;
-      line2: string;
-      city: string;
-      state: string;
-      pincode: string;
-    };
+    id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
+    id_number: string;
+    address_proof_type?: 'utility_bill' | 'bank_statement' | 'rental_agreement';  // ✅ REMOVED: 'aadhaar' | 'passport'
+    verification_notes: string;
   }>({
-    customer_full_name: '',
-    customer_father_name: '',
-    customer_date_of_birth: '',
-    customer_id_proof_type: 'aadhaar',
-    customer_id_number: '',
-    customer_address: {
-      line1: '',
-      line2: '',
-      city: '',
-      state: '',
-      pincode: ''
-    }
+    id_proof_type: 'aadhaar',
+    id_number: '',
+    address_proof_type: undefined,
+    verification_notes: ''
   });
 
-  // Captured images state for KYC
+  // Captured images state for KYC PaymentProcessRequest
+  // ✅ NEW - Use this
   const [capturedImages, setCapturedImages] = useState({
-    id_proof: null as string | null,
-    id_proof_back: null as string | null,  // ✅ NEW for Aadhaar back
+    id_proof_front: null as string | null,
+    id_proof_back: null as string | null,
     signature: null as string | null,
-    selfie: null as string | null
+    address_proof: null as string | null,
+    device_bill: null as string | null,
+    device_warranty: null as string | null,
   });
-
   // Payment processing state  
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'partner_wallet' | null>(null);
   const [completionNotes, setCompletionNotes] = useState('');
@@ -280,15 +712,17 @@ const AgentLeadDetailPage: React.FC = () => {
   const [statusLogs, setStatusLogs] = useState<StatusLog[]>([]);
 
   // Update KYC data when assignment loads
-  useEffect(() => {
-    if (assignment?.customer_name && !kycData.customer_full_name) {
-      setKycData(prev => ({
-        ...prev,
-        customer_full_name: assignment.customer_name
-      }));
-    }
-  }, [assignment?.customer_name, kycData.customer_full_name]);
+  // useEffect(() => {
+  //   if (assignment?.customer_name && !kycData.customer_full_name) {
+  //     setKycData(prev => ({
+  //       ...prev,
+  //       customer_full_name: assignment.customer_name
+  //     }));
+  //   }
+  // }, [assignment?.customer_name]);
 
+
+ // handleKYCSubmission
   useEffect(() => {
     if (actionSuccess) {
       const timer = setTimeout(() => setActionSuccess(null), 3000);
@@ -309,6 +743,104 @@ const AgentLeadDetailPage: React.FC = () => {
       setStatusLogs(assignment.status_history || []);
     }
   }, [assignment?.status]);
+
+
+
+  // ⬇️ INSERT NEW CODE HERE (After line 311) ⬇️
+
+  // ============================================================================
+  // NEW: DATA LOADING HOOKS FOR PERSISTENCE
+  // ============================================================================
+
+  // Load inspection results when assignment loads
+  useEffect(() => {
+    if (!assignment?.visit_data) return;
+    
+    console.log('[DataLoad] Loading visit data:', assignment.visit_data);
+    
+    const visit = assignment.visit_data;
+    
+    if (visit.verified_conditions) {
+      setSubmittedInspection({
+        screen_condition: visit.verified_conditions.screen_condition || 'good',
+        body_condition: visit.verified_conditions.body_condition || 'good',
+        battery_health: visit.verified_conditions.battery_health || null,
+        accessories: {
+          charger_available: visit.verified_conditions.accessories?.charger || false,
+          box_available: visit.verified_conditions.accessories?.box || false,
+          earphones_available: visit.verified_conditions.accessories?.earphones || false,
+          bill_available: visit.verified_conditions.accessories?.bill || false,
+        },
+        functional_issues: visit.verified_conditions.functional_issues || [],
+        inspection_photos: visit.inspection_photos || [],
+        inspection_notes: visit.inspection_notes || '',
+        verified_imei: visit.verified_imei || '',
+        submitted_at: visit.inspection_completed_at || new Date().toISOString(),
+      });
+      setShowInspectionResults(true);
+    }
+    
+    if (visit.pricing_breakdown) {
+      setSystemCalculatedPrice({
+        final_price: parseFloat(visit.pricing_breakdown.final_price),
+        original_estimate: parseFloat(assignment.estimated_price || '0'),
+        deductions: (visit.pricing_breakdown.deductions || []).map(d => ({
+          ...d,
+          amount: typeof d.amount === 'string' ? parseFloat(d.amount) : d.amount
+        })),
+        is_final: true,
+      });
+    }
+  }, [assignment]);
+
+  // Load customer response when assignment loads
+  useEffect(() => {
+    if (!assignment?.customer_response_data) return;
+    
+    console.log('[DataLoad] Loading customer response:', assignment.customer_response_data);
+    
+    const response = assignment.customer_response_data;
+    
+    if (response.response === 'accepted') {
+      setCustomerResponse('accept');
+    } else if (response.response === 'rejected') {
+      setCustomerResponse('reject');
+      if (response.rejection_reason) {
+        setRejectionReason(response.rejection_reason);
+      }
+    }
+  }, [assignment]);
+
+  // Load KYC data when assignment loads
+  useEffect(() => {
+    if (!assignment?.kyc_data?.kyc_completed) return;
+    
+    console.log('[DataLoad] Loading KYC data:', assignment.kyc_data);
+    
+    setShowKYCDocuments(true);
+  }, [assignment]);
+
+  // Load payment data when assignment loads  
+  useEffect(() => {
+    if (!assignment?.payment_data?.payment_completed) return;
+    
+    console.log('[DataLoad] Loading payment data:', assignment.payment_data);
+    
+    const payment = assignment.payment_data;
+    
+    setCompletedPayment({
+      payment_method: 'cash',
+      amount: parseFloat(payment.amount || '0'),
+      transaction_id: payment.transaction_id || '',
+      processed_at: payment.processed_at || new Date().toISOString(),
+      wallet_balance_before: payment.wallet_balance_before ? parseFloat(payment.wallet_balance_before) : undefined,
+      wallet_balance_after: payment.wallet_balance_after ? parseFloat(payment.wallet_balance_after) : undefined,
+    });
+    setShowPaymentDetails(true);
+  }, [assignment]);
+
+  // ⬆️ END OF NEW HOOKS ⬆️
+
 
   // Action handlers
   const handleAccept = async () => {
@@ -524,67 +1056,88 @@ const AgentLeadDetailPage: React.FC = () => {
     }
   };
 
-  const handleCustomerAcceptance = async () => {
-    if (!assignmentId || !customerResponse) return;
+  // const handleCustomerAcceptance = async () => {
+  //   if (!assignmentId || !customerResponse) return;
 
-    setActionError(null);
-    try {
-      const requestData: any = {
-        customer_response: customerResponse
-      };
+  //   setActionError(null);
+  //   try {
+  //     const requestData: any = {
+  //       customer_response: customerResponse
+  //     };
 
-      if (customerResponse === 'accept') {
-        if (customerSignature) {
-          requestData.customer_signature = customerSignature;
-        }
-      } else {
-        requestData.rejection_reason = rejectionReason || 'Customer rejected the price';
-      }
+  //     if (customerResponse === 'accept') {
+  //       if (customerSignature) {
+  //         requestData.customer_signature = customerSignature;
+  //       }
+  //     } else {
+  //       requestData.rejection_reason = rejectionReason || 'Customer rejected the price';
+  //     }
 
-      await customerAcceptanceMutation.mutateAsync({
-        assignmentId,
-        data: requestData
-      });
+  //     await customerAcceptanceMutation.mutateAsync({
+  //       assignmentId,
+  //       data: requestData
+  //     });
 
-      if (customerResponse === 'accept') {
-        setActionSuccess('Customer accepted! Now complete KYC verification.');
-        setShowCustomerAcceptance(false);
-        setShowKYCForm(true);
-      } else {
-        setActionSuccess('Customer rejected the price. Visit will be cancelled.');
-        setShowCustomerAcceptance(false);
-        setTimeout(() => navigate('/agent/leads'), 2000);
-      }
+  //     if (customerResponse === 'accept') {
+  //       setActionSuccess('Customer accepted! Now complete KYC verification.');
+  //       setShowCustomerAcceptance(false);
+  //       setShowKYCForm(true);
+  //     } else {
+  //       setActionSuccess('Customer rejected the price. Visit will be cancelled.');
+  //       setShowCustomerAcceptance(false);
+  //       setTimeout(() => navigate('/agent/leads'), 2000);
+  //     }
 
-      refetch();
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to process customer response');
-    }
-  };
+  //     refetch();
+  //   } catch (err: any) {
+  //     setActionError(err.message || 'Failed to process customer response');
+  //   }
+  // };
 
+  // CustomerAcceptanceScreenProps
   // ✅ UPDATED: KYC Handler for NEW 3-step workflow
+  // REPLACE handleKYCSubmission with this improved version:
   const handleKYCSubmission = async () => {
     if (!assignmentId) return;
     setActionError(null);
     
     try {
       // Convert base64 strings to File objects
-      const idProofFrontFile = await base64ToFile(capturedImages.id_proof!, 'id-proof-front.jpg');
+      const idProofFrontFile = await base64ToFile(capturedImages.id_proof_front!, 'id-proof-front.jpg');
       const signatureFile = await base64ToFile(capturedImages.signature!, 'signature.jpg');
 
-      // Build KYC request matching NEW backend structure
+      // Build KYC request matching backend structure
       const kycRequest: KYCDocumentUploadRequest = {
-        id_proof_type: kycData.customer_id_proof_type,
-        id_number: kycData.customer_id_number,
+        id_proof_type: kycData.id_proof_type,
+        id_number: kycData.id_number,
         customer_confirmed: true,
+        verification_notes: kycData.verification_notes || 'KYC verified by agent',
         id_proof_front: idProofFrontFile,
         customer_signature: signatureFile,
       };
 
       // Add back image if Aadhaar
-      if (kycData.customer_id_proof_type === 'aadhaar' && capturedImages.id_proof_back) {
+      if (kycData.id_proof_type === 'aadhaar' && capturedImages.id_proof_back) {
         const idProofBackFile = await base64ToFile(capturedImages.id_proof_back, 'id-proof-back.jpg');
         kycRequest.id_proof_back = idProofBackFile;
+      }
+
+      // Add address proof if captured
+      if (capturedImages.address_proof && kycData.address_proof_type) {
+        const addressProofFile = await base64ToFile(capturedImages.address_proof, 'address-proof.jpg');
+        kycRequest.address_proof_type = kycData.address_proof_type;
+        kycRequest.address_proof = addressProofFile;
+      }
+
+      // Add device documents if captured
+      if (capturedImages.device_bill) {
+        const billFile = await base64ToFile(capturedImages.device_bill, 'device-bill.jpg');
+        kycRequest.device_bill = billFile;
+      }
+      
+      if (capturedImages.device_warranty) {
+        const warrantyFile = await base64ToFile(capturedImages.device_warranty, 'device-warranty.jpg');
+        kycRequest.device_warranty = warrantyFile;
       }
 
       await uploadKYCMutation.mutateAsync({
@@ -594,38 +1147,43 @@ const AgentLeadDetailPage: React.FC = () => {
 
       // Store submitted KYC for display
       setSubmittedKYC({
-        id_proof_type: kycData.customer_id_proof_type,
-        id_number: kycData.customer_id_number,
-        id_proof_photo: capturedImages.id_proof!,
+        id_proof_type: kycData.id_proof_type,
+        id_number: kycData.id_number,
+        id_proof_photo: capturedImages.id_proof_front!,
         customer_signature: capturedImages.signature!,
-        customer_selfie: capturedImages.selfie || '',
+        customer_selfie: '', // Not captured in this flow
         verified_at: new Date().toISOString(),
       });
 
-      setActionSuccess('KYC documents uploaded! Now process payment.');
+      setActionSuccess('KYC documents uploaded successfully! Processing payment...');
       setShowKYCForm(false);
-      setShowPaymentScreen(true);
+      
+      // Wait a moment then show payment screen
+      setTimeout(() => {
+        setShowPaymentScreen(true);
+      }, 1500);
+      
       refetch();
     } catch (err: any) {
       setActionError(err.message || 'Failed to upload KYC documents');
     }
-  };
-
+  };   
   // ✅ UPDATED: Payment Handler for NEW 3-step workflow
   const handlePaymentCompletion = async () => {
     if (!assignmentId || !selectedPaymentMethod) return;
     setActionError(null);
     
     try {
-      // Build payment request matching NEW backend structure
+      // Build payment request matching backend structure
       const paymentRequest: PaymentProcessRequest = {
         payment_method: selectedPaymentMethod,
-        payment_notes: completionNotes || `Payment completed via ${selectedPaymentMethod}`,
+        payment_notes: completionNotes || `Payment completed via ${selectedPaymentMethod === 'cash' ? 'Cash' : 'Partner Wallet'}`,
+        // generate_invoice: true, // Always generate invoice
       };
 
       // Add cash_amount_given if cash payment
-      if (selectedPaymentMethod === 'cash') {
-        paymentRequest.cash_amount_given = systemCalculatedPrice?.final_price || 0;
+      if (selectedPaymentMethod === 'cash' && systemCalculatedPrice) {
+        paymentRequest.cash_amount_given = systemCalculatedPrice.final_price;
       }
 
       const result = await processPaymentMutation.mutateAsync({
@@ -643,15 +1201,19 @@ const AgentLeadDetailPage: React.FC = () => {
         wallet_balance_after: result.wallet_balance_after,
       });
 
-      setActionSuccess(`Payment processed! Now completing the deal...`);
+      setActionSuccess(`Payment processed successfully! Completing deal...`);
       setShowPaymentScreen(false);
       
-      // Call final completion
-      await handleFinalComplete();
+      // Automatically call final completion
+      setTimeout(async () => {
+        await handleFinalComplete();
+      }, 1500);
+      
     } catch (err: any) {
       setActionError(err.message || 'Failed to process payment');
     }
   };
+
 
   // ✅ NEW: Final Completion Handler
   const handleFinalComplete = async () => {
@@ -798,10 +1360,61 @@ const AgentLeadDetailPage: React.FC = () => {
         return 'unknown';
     }
   };
-
+// Waiting for Customer
   const stage = getWorkflowStage();
 
-  if (isLoading) {
+   // Add after existing useEffect blocks
+
+  // Fetch customer response status
+  // Update the polling useEffect to handle auto-progression
+  useEffect(() => {
+    const checkCustomerResponse = async () => {
+      if (!assignmentId || stage !== 'awaiting_customer') return;
+      
+      try {
+        const token = useAuthStore.getState().accessToken;
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/partner-agents/my-leads/${assignmentId}/customer-response/`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }
+        );
+        const data = await response.json();
+        console.log('[CustomerResponse] Fetched data:', data);
+        
+        if (data.has_responded) {
+          if (data.response === 'accepted') {
+            setCustomerResponse('accept');
+            setActionSuccess('Customer accepted! Proceeding to KYC.');
+            // Refetch to update workflow stage
+            await Promise.all([
+              refetch(),
+              workflowStatusQuery.refetch()
+            ]);
+          } else if (data.response === 'rejected') {
+            setCustomerResponse('reject');
+            setRejectionReason(data.rejection_reason || 'Customer rejected');
+            setActionSuccess('Customer rejected the price.');
+            await Promise.all([
+              refetch(),
+              workflowStatusQuery.refetch()
+            ]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check customer response:', err);
+      }
+    };
+    
+    // Check immediately and then every 5 seconds
+    checkCustomerResponse();
+    const interval = setInterval(checkCustomerResponse, 5000);
+    return () => clearInterval(interval);
+  }, [assignmentId, stage, refetch, workflowStatusQuery]);
+
+
+
+  if (isLoading) { 
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-12 h-12 animate-spin text-[#FEC925]" />
@@ -854,33 +1467,25 @@ const AgentLeadDetailPage: React.FC = () => {
   }
 
   // Show customer acceptance UI
-  if (showCustomerAcceptance && systemCalculatedPrice) {
-    return (
-      <CustomerAcceptanceScreen
-        deviceInfo={{
-          brand: assignment.device_brand,
-          model: assignment.device_model,
-          storage: assignment.device_storage,
-        }}
-        customerInfo={{
-          name: assignment.customer_name,
-          phone: assignment.customer_phone,
-        }}
-        pricing={systemCalculatedPrice}
-        customerResponse={customerResponse}
-        rejectionReason={rejectionReason}
-        customerSignature={customerSignature}
-        onCustomerResponseChange={setCustomerResponse}
-        onRejectionReasonChange={setRejectionReason}
-        onSignatureChange={setCustomerSignature}
-        onSubmit={handleCustomerAcceptance}
-        onCancel={() => setShowCustomerAcceptance(false)}
-        isSubmitting={customerAcceptanceMutation.isPending}
-      />
-    );
-  }
+  {showCustomerAcceptance && systemCalculatedPrice && (
+    <CustomerAcceptanceScreen
+      deviceInfo={{
+        brand: assignment.device_brand,
+        model: assignment.device_model,
+        storage: assignment.device_storage,
+      }}
+      customerInfo={{
+        name: assignment.customer_name,
+        phone: assignment.customer_phone,
+      }}
+      pricing={systemCalculatedPrice}
+      customerResponse={customerResponse}
+      rejectionReason={rejectionReason}
+      onCancel={() => setShowCustomerAcceptance(false)}
+    />
+  )}
 
-  // Show KYC verification form
+  // Show KYC verification form 
   if (showKYCForm && systemCalculatedPrice) {
     return (
       <AgentKYCVerificationScreen
@@ -900,7 +1505,7 @@ const AgentLeadDetailPage: React.FC = () => {
     );
   }
 
-  // Show payment processing screen
+  // Show payment processing screen 
   if (showPaymentScreen && systemCalculatedPrice) {
     return (
       <AgentPaymentProcessingScreen
@@ -919,6 +1524,8 @@ const AgentLeadDetailPage: React.FC = () => {
       />
     );
   }
+
+
 
   return (
     <div className="max-w-2xl mx-auto pb-24">
@@ -1099,12 +1706,18 @@ const AgentLeadDetailPage: React.FC = () => {
       )}
 
       {/* NEW: Inspection Results Display (Expandable) */}
+      {/* // ⬇️ REPLACE WITH THIS ⬇️ */}
+
       {submittedInspection && (
         <InspectionResultsDisplay
           inspection={submittedInspection}
           isExpanded={showInspectionResults}
           onToggle={() => setShowInspectionResults(!showInspectionResults)}
           onImageClick={setSelectedImage}
+          assignment={assignment}  // ✨ NEW
+          systemCalculatedPrice={systemCalculatedPrice}  // ✨ NEW
+          customerResponse={customerResponse}  // ✨ NEW
+          rejectionReason={rejectionReason}  // ✨ NEW
         />
       )}
 
@@ -1519,11 +2132,18 @@ const VisitTimelineDisplay: React.FC<VisitTimelineDisplayProps> = ({
 };
 
 // Inspection Results Display Component
+
+// ⬇️ REPLACE WITH THIS ⬇️
+
 interface InspectionResultsDisplayProps {
   inspection: InspectionResult;
   isExpanded: boolean;
   onToggle: () => void;
   onImageClick: (image: string) => void;
+  assignment?: any;  // ✨ NEW
+  systemCalculatedPrice?: SystemCalculatedPrice | null;  // ✨ NEW
+  customerResponse?: 'accept' | 'reject' | null;  // ✨ NEW
+  rejectionReason?: string;  // ✨ NEW
 }
 
 const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
@@ -1531,6 +2151,10 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
   isExpanded,
   onToggle,
   onImageClick,
+  assignment,  // ✨ NEW
+  systemCalculatedPrice,  // ✨ NEW
+  customerResponse,  // ✨ NEW
+  rejectionReason,  // ✨ NEW
 }) => {
   const getConditionColor = (condition: string) => {
     const colors: Record<string, string> = {
@@ -1661,6 +2285,137 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                 <p className="text-sm text-gray-700">{inspection.inspection_notes}</p>
               </div>
             )}
+
+            {/* ═══════════════════════════════════════════════════ */}
+            {/* NEW: CONDITION MATRIX COMPARISON SECTION            */}
+            {/* ═══════════════════════════════════════════════════ */}
+
+            {/* Condition Comparison */}
+            {assignment?.customer_condition_responses && assignment?.visit_data?.verified_conditions && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px flex-1 bg-gray-300" />
+                  <h4 className="font-bold text-[#1C1C1B] text-sm">
+                    VERIFICATION DETAILS
+                  </h4>
+                  <div className="h-px flex-1 bg-gray-300" />
+                </div>
+
+                {/* Condition Comparison Table */}
+                <div>
+                  <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <RefreshCw size={14} />
+                    Condition Verification
+                  </h5>
+                  <ConditionComparisonTable
+                    customerClaimed={assignment.customer_condition_responses}
+                    agentVerified={assignment.visit_data.verified_conditions}
+                  />
+                </div>
+
+                {/* Functional Issues Comparison */}
+                <FunctionalIssuesDisplay
+                  customerIssues={assignment.customer_condition_responses?.functional_issues || []}
+                  verifiedIssues={assignment.visit_data.verified_conditions?.functional_issues || []}
+                />
+
+                {/* Accessories Comparison */}
+                <AccessoriesComparison
+                  customerAccessories={assignment.customer_condition_responses?.accessories || {}}
+                  verifiedAccessories={assignment.visit_data.verified_conditions?.accessories || {}}
+                />
+              </div>
+            )}
+
+            {/* System Calculated Price with Breakdown */}
+            {systemCalculatedPrice && assignment?.visit_data?.pricing_breakdown && (
+              <div>
+                <div className="flex items-center gap-2 mb-3 mt-4">
+                  <div className="h-px flex-1 bg-gray-300" />
+                  <h4 className="font-bold text-[#1C1C1B] text-sm">
+                    PRICE CALCULATION
+                  </h4>
+                  <div className="h-px flex-1 bg-gray-300" />
+                </div>
+                
+                <PricingBreakdownDisplay
+                  breakdown={assignment.visit_data.pricing_breakdown}
+                  originalEstimate={assignment.estimated_price}
+                />
+              </div>
+            )}
+
+            {/* Customer Response Badge */}
+            {customerResponse && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px flex-1 bg-gray-300" />
+                  <h4 className="font-bold text-[#1C1C1B] text-sm">
+                    CUSTOMER DECISION
+                  </h4>
+                  <div className="h-px flex-1 bg-gray-300" />
+                </div>
+                
+                <div className={`p-4 rounded-xl border-2 ${
+                  customerResponse === 'accept'
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700">
+                      Customer Response:
+                    </span>
+                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
+                      customerResponse === 'accept'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-red-600 text-white'
+                    }`}>
+                      {customerResponse === 'accept' ? (
+                        <>
+                          <ThumbsUp className="w-4 h-4 mr-2" />
+                          ACCEPTED
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsDown className="w-4 h-4 mr-2" />
+                          REJECTED
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {customerResponse === 'accept' && systemCalculatedPrice && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-green-700">
+                          Agreed Price:
+                        </span>
+                        <span className="text-xl font-bold text-green-600">
+                          ₹{systemCalculatedPrice.final_price.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {customerResponse === 'reject' && rejectionReason && (
+                    <div className="mt-3 pt-3 border-t border-red-200">
+                      <span className="text-xs text-red-600 font-medium">
+                        Reason:
+                      </span>
+                      <p className="text-sm text-red-700 mt-1">
+                        {rejectionReason}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════ */}
+            {/* END: CONDITION MATRIX COMPARISON SECTION            */}
+            {/* ═══════════════════════════════════════════════════ */}
+
+
 
             {/* IMEI */}
             <div className="bg-gray-50 rounded-xl p-3">
@@ -2353,8 +3108,10 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
     </div>
   );
 };
+// 
+// 
+// REPLACE entire CustomerAcceptanceScreen component with this simple version:
 
-// Customer Acceptance Screen Component
 interface CustomerAcceptanceScreenProps {
   deviceInfo: { brand: string; model: string; storage: string };
   customerInfo: { name: string; phone: string };
@@ -2362,17 +3119,12 @@ interface CustomerAcceptanceScreenProps {
     final_price: number;
     original_estimate: number;
     deductions: Array<{ reason: string; amount: number }>;
-    is_final: boolean;
   };
   customerResponse: 'accept' | 'reject' | null;
-  rejectionReason: string;
-  customerSignature: string;
-  onCustomerResponseChange: (response: 'accept' | 'reject' | null) => void;
-  onRejectionReasonChange: (reason: string) => void;
-  onSignatureChange: (signature: string) => void;
-  onSubmit: () => void;
+  rejectionReason?: string;
+  customerSignature?: string | null;
   onCancel: () => void;
-  isSubmitting: boolean;
+  onContinue?: () => void;  // New: for auto-progression
 }
 
 const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
@@ -2381,33 +3133,50 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
   pricing,
   customerResponse,
   rejectionReason,
-  customerSignature,
-  onCustomerResponseChange,
-  onRejectionReasonChange,
-  onSignatureChange,
-  onSubmit,
   onCancel,
-  isSubmitting,
+  onContinue,
 }) => {
+  // Auto-progress after customer responds
+  useEffect(() => {
+    if (customerResponse === 'accept' && onContinue) {
+      const timer = setTimeout(() => {
+        onContinue();
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else if (customerResponse === 'reject') {
+      const timer = setTimeout(() => {
+        onCancel();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [customerResponse, onContinue, onCancel]);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#1B8A05] to-[#16a34a] p-6">
+      {/* Header - Dynamic based on response */}
+      <div className={`p-6 ${
+        customerResponse === 'accept' 
+          ? 'bg-gradient-to-r from-[#1B8A05] to-[#16a34a]'
+          : customerResponse === 'reject'
+          ? 'bg-gradient-to-r from-red-500 to-red-600'
+          : 'bg-gradient-to-r from-blue-500 to-blue-600'
+      }`}>
         <div className="flex items-center gap-4 mb-4">
           <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
             <ArrowLeft size={24} className="text-white" />
           </button>
-          <span className="text-white font-bold">Customer Response</span>
-        </div>
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-white">System Final Price</h1>
-          <p className="text-white/80">Customer must accept or reject this price</p>
+          <span className="text-white font-bold">
+            {customerResponse === 'accept' 
+              ? 'Customer Accepted!' 
+              : customerResponse === 'reject'
+              ? 'Customer Rejected'
+              : 'Waiting for Customer'}
+          </span>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-6 pb-24">
-        {/* Device Info */}
+      <div className="p-4 space-y-6">
+        {/* Device & Customer Info */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <div className="flex items-center gap-3 mb-3">
             <Package className="text-[#FEC925]" size={24} />
@@ -2416,11 +3185,7 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
               <p className="text-sm text-gray-500">{deviceInfo.storage}</p>
             </div>
           </div>
-        </div>
-
-        {/* Customer Info */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-3 border-t">
             <UserCircle className="text-[#FEC925]" size={24} />
             <div>
               <h3 className="font-bold text-[#1C1C1B]">{customerInfo.name}</h3>
@@ -2429,176 +3194,197 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
           </div>
         </div>
 
-        {/* Final Price Display */}
-        <div className="bg-gradient-to-r from-[#1B8A05]/20 to-[#16a34a]/20 border border-[#1B8A05] rounded-xl p-6">
-          <div className="text-center mb-4">
-            <h2 className="text-lg font-bold text-[#1B8A05] mb-2">System Calculated Price</h2>
-            <div className="flex items-center justify-center gap-2">
-              <IndianRupee size={32} className="text-[#1B8A05]" />
-              <span className="text-4xl font-bold text-[#1B8A05]">
-                {pricing.final_price.toLocaleString('en-IN')}
-              </span>
-            </div>
-            <p className="text-sm text-[#1B8A05] mt-2">
-              Original Estimate: ₹{pricing.original_estimate.toLocaleString('en-IN')}
-            </p>
+        {/* Price Display */}
+        <div className={`border rounded-xl p-6 text-center ${
+          customerResponse === 'accept'
+            ? 'bg-gradient-to-r from-[#1B8A05]/20 to-[#16a34a]/20 border-[#1B8A05]'
+            : customerResponse === 'reject'
+            ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
+            : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300'
+        }`}>
+          <h2 className={`text-lg font-bold mb-2 ${
+            customerResponse === 'accept'
+              ? 'text-[#1B8A05]'
+              : customerResponse === 'reject'
+              ? 'text-red-600'
+              : 'text-blue-600'
+          }`}>
+            Offered Price
+          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <IndianRupee size={32} className={
+              customerResponse === 'accept'
+                ? 'text-[#1B8A05]'
+                : customerResponse === 'reject'
+                ? 'text-red-600'
+                : 'text-blue-600'
+            } />
+            <span className={`text-4xl font-bold ${
+              customerResponse === 'accept'
+                ? 'text-[#1B8A05]'
+                : customerResponse === 'reject'
+                ? 'text-red-600'
+                : 'text-blue-600'
+            }`}>
+              {pricing.final_price.toLocaleString('en-IN')}
+            </span>
           </div>
-
-          {pricing.deductions.length > 0 && (
-            <div className="bg-white/50 rounded-lg p-3">
-              <h4 className="font-semibold text-[#1B8A05] mb-2 text-sm">Price Deductions:</h4>
-              {pricing.deductions.map((d, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-700">{d.reason}</span>
-                  <span className="text-red-600 font-semibold">-₹{d.amount.toLocaleString('en-IN')}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Customer Response */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <h3 className="font-bold text-[#1C1C1B] mb-4">Customer Response</h3>
-          
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <button
-              onClick={() => onCustomerResponseChange('accept')}
-              className={`p-4 rounded-xl border-2 transition flex items-center justify-center gap-3 ${
-                customerResponse === 'accept'
-                  ? 'border-[#1B8A05] bg-[#1B8A05]/10 text-[#1B8A05]'
-                  : 'border-gray-200 text-gray-600 hover:border-[#1B8A05] hover:text-[#1B8A05]'
-              }`}
+        {/* Status Card - Changes based on response */}
+        <AnimatePresence mode="wait">
+          {customerResponse === null && (
+            <motion.div
+              key="waiting"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-white rounded-xl p-6 border border-gray-200 text-center"
             >
-              <ThumbsUp size={24} />
-              <span className="font-bold">Accept</span>
-            </button>
-            
-            <button
-              onClick={() => onCustomerResponseChange('reject')}
-              className={`p-4 rounded-xl border-2 transition flex items-center justify-center gap-3 ${
-                customerResponse === 'reject'
-                  ? 'border-red-500 bg-red-50 text-red-600'
-                  : 'border-gray-200 text-gray-600 hover:border-red-500 hover:text-red-600'
-              }`}
-            >
-              <ThumbsDown size={24} />
-              <span className="font-bold">Reject</span>
-            </button>
-          </div>
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="text-blue-600 animate-spin" size={32} />
+              </div>
+              <h3 className="font-bold text-[#1C1C1B] mb-2">Waiting for Customer Response</h3>
+              <p className="text-gray-600 mb-4">Customer will accept or reject on their app</p>
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                <Clock size={16} />
+                <span>Checking for response...</span>
+              </div>
+            </motion.div>
+          )}
 
           {customerResponse === 'accept' && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Signature (Optional)</label>
-                <textarea
-                  value={customerSignature}
-                  onChange={(e) => onSignatureChange(e.target.value)}
-                  placeholder="Customer can sign here or use signature pad..."
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
-                />
+            <motion.div
+              key="accepted"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-xl p-6 border-2 border-[#1B8A05] text-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 bg-[#1B8A05]/20 rounded-full flex items-center justify-center mx-auto mb-4"
+              >
+                <ThumbsUp className="text-[#1B8A05]" size={40} />
+              </motion.div>
+              <h3 className="font-bold text-[#1B8A05] text-xl mb-2">Customer Accepted!</h3>
+              <p className="text-gray-600 mb-4">
+                Deal price: ₹{pricing.final_price.toLocaleString('en-IN')} confirmed
+              </p>
+              <div className="bg-[#1B8A05]/10 rounded-lg p-3">
+                <p className="text-sm text-[#1B8A05] font-semibold">
+                  Proceeding to KYC verification in 3 seconds...
+                </p>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {customerResponse === 'reject' && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Rejection Reason</label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => onRejectionReasonChange(e.target.value)}
-                placeholder="Why did the customer reject the price?"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
-              />
-            </div>
+            <motion.div
+              key="rejected"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-xl p-6 border-2 border-red-500 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"
+              >
+                <ThumbsDown className="text-red-600" size={40} />
+              </motion.div>
+              <h3 className="font-bold text-red-600 text-xl mb-2">Customer Rejected</h3>
+              <p className="text-gray-600 mb-4">
+                Customer declined the offer of ₹{pricing.final_price.toLocaleString('en-IN')}
+              </p>
+              {rejectionReason && (
+                <div className="bg-red-50 rounded-lg p-3 mb-4">
+                  <p className="text-xs font-semibold text-red-700 mb-1">Reason:</p>
+                  <p className="text-sm text-red-600">{rejectionReason}</p>
+                </div>
+              )}
+              <div className="bg-gray-100 rounded-lg p-3">
+                <p className="text-sm text-gray-700 font-semibold">
+                  Returning to leads in 5 seconds...
+                </p>
+              </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+        </AnimatePresence>
 
-      {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
-        <div className="max-w-2xl mx-auto">
-          <button
-            onClick={onSubmit}
-            disabled={!customerResponse || isSubmitting}
-            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
-              customerResponse && !isSubmitting
-                ? customerResponse === 'accept'
-                  ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
-                  : 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isSubmitting ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                {customerResponse === 'accept' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
-                {customerResponse === 'accept' ? 'Customer Accepts Price' : 'Customer Rejects Price'}
-              </>
+        {/* Manual Action Buttons */}
+        {customerResponse && (
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
+            >
+              Back to Leads
+            </button>
+            {customerResponse === 'accept' && onContinue && (
+              <button
+                onClick={onContinue}
+                className="flex-1 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#157004] transition flex items-center justify-center gap-2"
+              >
+                <Shield size={20} />
+                Continue to KYC
+              </button>
             )}
-          </button>
-          {!customerResponse && (
-            <p className="text-center text-sm text-gray-500 mt-2">
-              Please select customer response
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 // Agent KYC Verification Screen Component
+// ✅ NEW AgentKYCVerificationScreenProps (simplified)
 interface AgentKYCVerificationScreenProps {
   customerInfo: { name: string; phone: string };
   finalPrice: number;
   kycData: {
-    customer_full_name: string;
-    customer_father_name: string;
-    customer_date_of_birth: string;
-    customer_id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
-    customer_id_number: string;
-    customer_address: {
-      line1: string;
-      line2: string;
-      city: string;
-      state: string;
-      pincode: string;
-    };
+    id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
+    id_number: string;
+    address_proof_type?: 'utility_bill' | 'bank_statement' | 'rental_agreement';  // ✅ FIXED
+    verification_notes: string;
   };
   setKycData: React.Dispatch<React.SetStateAction<{
-    customer_full_name: string;
-    customer_father_name: string;
-    customer_date_of_birth: string;
-    customer_id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
-    customer_id_number: string;
-    customer_address: {
-      line1: string;
-      line2: string;
-      city: string;
-      state: string;
-      pincode: string;
-    };
+    id_proof_type: 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan';
+    id_number: string;
+    address_proof_type?: 'utility_bill' | 'bank_statement' | 'rental_agreement';  // ✅ FIXED
+    verification_notes: string;
   }>>;
   capturedImages: { 
-    id_proof: string | null; 
+    id_proof_front: string | null; 
     id_proof_back: string | null;
-    signature: string | null; 
-    selfie: string | null;
+    signature: string | null;
+    address_proof: string | null;
+    device_bill: string | null;
+    device_warranty: string | null;
   };
   setCapturedImages: React.Dispatch<React.SetStateAction<{ 
-    id_proof: string | null; 
+    id_proof_front: string | null; 
     id_proof_back: string | null;
-    signature: string | null; 
-    selfie: string | null;
+    signature: string | null;
+    address_proof: string | null;
+    device_bill: string | null;
+    device_warranty: string | null;
   }>>;
   onSubmit: () => void;
   onCancel: () => void;
   isSubmitting: boolean;
 }
 
+// ============================================================================
+// STEP 5: Simplified Agent KYC Verification Screen
+// ============================================================================
+
 const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
+  customerInfo,
   finalPrice,
   kycData,
   setKycData,
@@ -2612,20 +3398,7 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
     setKycData(prev => ({ ...prev, [key]: value }));
   };
 
-  const updateAddress = <K extends keyof typeof kycData.customer_address>(
-    key: K, 
-    value: typeof kycData.customer_address[K]
-  ) => {
-    setKycData(prev => ({
-      ...prev,
-      customer_address: {
-        ...prev.customer_address,
-        [key]: value
-      }
-    }));
-  };
-
-  const captureImage = async (type: 'id_proof' | 'id_proof_back' | 'signature' | 'selfie') => {
+  const captureImage = async (type: 'id_proof_front' | 'id_proof_back' | 'signature' | 'address_proof' | 'device_bill' | 'device_warranty') => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -2648,18 +3421,13 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
 
   const isFormValid = () => {
     const requiredFields = 
-      kycData.customer_id_proof_type &&
-      kycData.customer_id_number &&
-      kycData.customer_full_name &&
-      kycData.customer_address?.line1 &&
-      kycData.customer_address?.city &&
-      kycData.customer_address?.state &&
-      kycData.customer_address?.pincode &&
-      capturedImages.id_proof &&
+      kycData.id_proof_type &&
+      kycData.id_number &&
+      capturedImages.id_proof_front &&
       capturedImages.signature;
 
     // For Aadhaar, require back image
-    if (kycData.customer_id_proof_type === 'aadhaar') {
+    if (kycData.id_proof_type === 'aadhaar') {
       return requiredFields && capturedImages.id_proof_back;
     }
 
@@ -2674,74 +3442,83 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
           <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
             <ArrowLeft size={24} className="text-white" />
           </button>
-          <span className="text-white font-bold">Customer KYC Verification</span>
+          <span className="text-white font-bold">KYC Verification</span>
         </div>
         <div className="text-center">
-          <h1 className="text-xl font-bold text-white">Verify Customer Identity</h1>
-          <p className="text-white/80">Complete KYC for ₹{finalPrice.toLocaleString('en-IN')} transaction</p>
+          <h1 className="text-xl font-bold text-white">Verify Customer Documents</h1>
+          <p className="text-white/80">For ₹{finalPrice.toLocaleString('en-IN')} transaction with {customerInfo.name}</p>
         </div>
       </div>
 
       {/* KYC Form Content */}
-      <div className="p-4 space-y-6 pb-24">
-        {/* Customer Identification Section */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
+      <div className="p-4 space-y-6 pb-32">
+        {/* ID Proof Section */}
+        <div className="bg-white rounded-xl p-6 border-2 border-[#FEC925]">
           <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
             <FileText size={20} className="text-[#FEC925]" />
-            Customer Identification
+            ID Proof (Required)
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Proof Type</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Type</label>
               <select
-                value={kycData.customer_id_proof_type}
-                onChange={(e) => updateField('customer_id_proof_type', e.target.value as 'aadhaar' | 'driving_license' | 'passport' | 'voter_id' | 'pan')}
+                value={kycData.id_proof_type}
+                onChange={(e) => updateField('id_proof_type', e.target.value as any)}
                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white"
               >
                 <option value="aadhaar">Aadhaar Card</option>
+                <option value="pan">PAN Card</option>
                 <option value="driving_license">Driving License</option>
                 <option value="passport">Passport</option>
                 <option value="voter_id">Voter ID</option>
-                <option value="pan">PAN Card</option>
               </select>
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">ID Number</label>
               <input
                 type="text"
-                value={kycData.customer_id_number}
-                onChange={(e) => updateField('customer_id_number', e.target.value)}
+                value={kycData.id_number}
+                onChange={(e) => updateField('id_number', e.target.value)}
                 placeholder="Enter ID number"
                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
               />
             </div>
+
+            {/* ID Proof Front */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">ID Proof Front Photo</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                ID Proof - Front Side *
+              </label>
               <button
-                onClick={() => captureImage('id_proof')}
+                type="button"
+                onClick={() => captureImage('id_proof_front')}
                 className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                  capturedImages.id_proof ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                  capturedImages.id_proof_front ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
                 }`}
               >
-                {capturedImages.id_proof ? (
+                {capturedImages.id_proof_front ? (
                   <>
                     <CheckCircle2 className="text-[#1B8A05]" size={24} />
-                    <span className="text-sm font-semibold text-[#1B8A05]">ID Proof Front Captured</span>
+                    <span className="text-sm font-semibold text-[#1B8A05]">ID Front Captured ✓</span>
                   </>
                 ) : (
                   <>
                     <Camera className="text-gray-400" size={24} />
-                    <span className="text-sm text-gray-600">Capture ID Proof Front</span>
+                    <span className="text-sm text-gray-600">Capture ID Front</span>
                   </>
                 )}
               </button>
             </div>
             
-            {/* Show back image capture for Aadhaar only */}
-            {kycData.customer_id_proof_type === 'aadhaar' && (
+            {/* ID Proof Back - Only for Aadhaar */}
+            {kycData.id_proof_type === 'aadhaar' && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Aadhaar Back Photo (Required)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Aadhaar - Back Side * (Required for Aadhaar)
+                </label>
                 <button
+                  type="button"
                   onClick={() => captureImage('id_proof_back')}
                   className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
                     capturedImages.id_proof_back ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
@@ -2750,7 +3527,7 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
                   {capturedImages.id_proof_back ? (
                     <>
                       <CheckCircle2 className="text-[#1B8A05]" size={24} />
-                      <span className="text-sm font-semibold text-[#1B8A05]">Aadhaar Back Captured</span>
+                      <span className="text-sm font-semibold text-[#1B8A05]">Aadhaar Back Captured ✓</span>
                     </>
                   ) : (
                     <>
@@ -2764,176 +3541,168 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
           </div>
         </div>
 
-        {/* Personal Details Section */}
+        {/* Customer Signature - Required */}
+        <div className="bg-white rounded-xl p-6 border-2 border-[#FEC925]">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <Edit3 size={20} className="text-[#FEC925]" />
+            Customer Signature (Required)
+          </h3>
+          <button
+            type="button"
+            onClick={() => captureImage('signature')}
+            className={`w-full p-6 border-2 border-dashed rounded-xl flex flex-col items-center gap-3 transition ${
+              capturedImages.signature ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+            }`}
+          >
+            {capturedImages.signature ? (
+              <>
+                <CheckCircle2 className="text-[#1B8A05]" size={32} />
+                <span className="text-base font-semibold text-[#1B8A05]">Signature Captured ✓</span>
+                <span className="text-xs text-gray-500">Click to recapture</span>
+              </>
+            ) : (
+              <>
+                <Edit3 className="text-gray-400" size={32} />
+                <span className="text-base text-gray-600 font-medium">Capture Customer Signature</span>
+                <span className="text-xs text-gray-500">On blank paper or tablet screen</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Optional: Address Proof */}
         <div className="bg-white rounded-xl p-6 border border-gray-200">
           <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
-            <User size={20} className="text-[#FEC925]" />
-            Personal Details
+            <Home size={20} className="text-gray-400" />
+            Address Proof (Optional)
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-              <input
-                type="text"
-                value={kycData.customer_full_name}
-                onChange={(e) => updateField('customer_full_name', e.target.value)}
-                placeholder="Customer's full name as per ID"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Address Proof Type</label>
+              <select
+                value={kycData.address_proof_type || ''}
+                onChange={(e) => updateField('address_proof_type', e.target.value as any || undefined)}
+                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white"
+              >
+                <option value="">Not providing address proof</option>
+                <option value="utility_bill">Utility Bill</option>
+                <option value="bank_statement">Bank Statement</option>
+                <option value="rental_agreement">Rental Agreement</option>
+                <option value="aadhaar">Aadhaar Card</option>
+                <option value="passport">Passport</option>
+              </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Father's Name (Optional)</label>
-              <input
-                type="text"
-                value={kycData.customer_father_name}
-                onChange={(e) => updateField('customer_father_name', e.target.value)}
-                placeholder="Father's full name"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth (Optional)</label>
-              <input
-                type="date"
-                value={kycData.customer_date_of_birth}
-                onChange={(e) => updateField('customer_date_of_birth', e.target.value)}
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
-            </div>
+
+            {kycData.address_proof_type && (
+              <button
+                type="button"
+                onClick={() => captureImage('address_proof')}
+                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
+                  capturedImages.address_proof ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                }`}
+              >
+                {capturedImages.address_proof ? (
+                  <>
+                    <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                    <span className="text-sm font-semibold text-[#1B8A05]">Address Proof Captured ✓</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="text-gray-400" size={24} />
+                    <span className="text-sm text-gray-600">Capture Address Proof</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Address Section */}
+        {/* Optional: Device Documents */}
         <div className="bg-white rounded-xl p-6 border border-gray-200">
           <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
-            <Home size={20} className="text-[#FEC925]" />
-            Customer Address
+            <Package size={20} className="text-gray-400" />
+            Device Documents (Optional)
           </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Address Line 1</label>
-              <input
-                type="text"
-                value={kycData.customer_address.line1}
-                onChange={(e) => updateAddress('line1', e.target.value)}
-                placeholder="House/Building number, Street"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Address Line 2 (Optional)</label>
-              <input
-                type="text"
-                value={kycData.customer_address.line2}
-                onChange={(e) => updateAddress('line2', e.target.value)}
-                placeholder="Locality, Area"
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
-                <input
-                  type="text"
-                  value={kycData.customer_address.city}
-                  onChange={(e) => updateAddress('city', e.target.value)}
-                  placeholder="City"
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
-                <input
-                  type="text"
-                  value={kycData.customer_address.state}
-                  onChange={(e) => updateAddress('state', e.target.value)}
-                  placeholder="State"
-                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">PIN Code</label>
-              <input
-                type="text"
-                value={kycData.customer_address.pincode}
-                onChange={(e) => updateAddress('pincode', e.target.value)}
-                placeholder="6-digit PIN code"
-                maxLength={6}
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Document Capture Section */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
-            <Camera size={20} className="text-[#FEC925]" />
-            Additional Documents
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Device Bill */}
             <button
-              onClick={() => captureImage('signature')}
+              type="button"
+              onClick={() => captureImage('device_bill')}
               className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                capturedImages.signature ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                capturedImages.device_bill ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
               }`}
             >
-              {capturedImages.signature ? (
+              {capturedImages.device_bill ? (
                 <>
-                  <CheckCircle2 className="text-[#1B8A05]" size={24} />
-                  <span className="text-xs font-semibold text-[#1B8A05]">Signature Captured</span>
+                  <CheckCircle2 className="text-[#1B8A05]" size={20} />
+                  <span className="text-xs font-semibold text-[#1B8A05] text-center">Bill Captured</span>
                 </>
               ) : (
                 <>
-                  <Edit3 className="text-gray-400" size={24} />
-                  <span className="text-xs text-gray-600">Customer Signature</span>
+                  <Receipt className="text-gray-400" size={20} />
+                  <span className="text-xs text-gray-600 text-center">Device Bill</span>
                 </>
               )}
             </button>
 
+            {/* Device Warranty */}
             <button
-              onClick={() => captureImage('selfie')}
+              type="button"
+              onClick={() => captureImage('device_warranty')}
               className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                capturedImages.selfie ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                capturedImages.device_warranty ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
               }`}
             >
-              {capturedImages.selfie ? (
+              {capturedImages.device_warranty ? (
                 <>
-                  <CheckCircle2 className="text-[#1B8A05]" size={24} />
-                  <span className="text-xs font-semibold text-[#1B8A05]">Selfie Captured</span>
+                  <CheckCircle2 className="text-[#1B8A05]" size={20} />
+                  <span className="text-xs font-semibold text-[#1B8A05] text-center">Warranty Captured</span>
                 </>
               ) : (
                 <>
-                  <User className="text-gray-400" size={24} />
-                  <span className="text-xs text-gray-600">Selfie (Optional)</span>
+                  <Shield className="text-gray-400" size={20} />
+                  <span className="text-xs text-gray-600 text-center">Warranty Card</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Form Validation Summary */}
+        {/* Verification Notes */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <FileText size={20} className="text-gray-400" />
+            Verification Notes (Optional)
+          </h3>
+          <textarea
+            value={kycData.verification_notes}
+            onChange={(e) => updateField('verification_notes', e.target.value)}
+            placeholder="Add any notes about KYC verification..."
+            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
+          />
+        </div>
+
+        {/* Validation Summary */}
         {!isFormValid() && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
             <h4 className="font-bold text-red-700 mb-2 flex items-center gap-2">
               <AlertCircle size={18} />
-              Complete Required Fields
+              Required Fields Missing
             </h4>
             <ul className="text-sm text-red-600 space-y-1">
-              {!kycData.customer_full_name && (
+              {!kycData.id_number && (
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                  Customer full name is required
+                  ID number is required
                 </li>
               )}
-              {!capturedImages.id_proof && (
+              {!capturedImages.id_proof_front && (
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                   ID proof front photo is required
                 </li>
               )}
-              {kycData.customer_id_proof_type === 'aadhaar' && !capturedImages.id_proof_back && (
+              {kycData.id_proof_type === 'aadhaar' && !capturedImages.id_proof_back && (
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                   Aadhaar back photo is required
@@ -2945,41 +3714,38 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
                   Customer signature is required
                 </li>
               )}
-              {!kycData.customer_address.line1 && (
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                  Address is required
-                </li>
-              )}
             </ul>
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
-        <div className="max-w-2xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white shadow-lg">
+        <div className="max-w-2xl mx-auto space-y-2">
           <button
             onClick={onSubmit}
             disabled={!isFormValid() || isSubmitting}
-            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
               isFormValid() && !isSubmitting
-                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004] shadow-lg'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (
-              <Loader2 className="animate-spin" size={20} />
+              <>
+                <Loader2 className="animate-spin" size={24} />
+                <span>Uploading Documents...</span>
+              </>
             ) : (
               <>
-                <Shield size={20} />
-                Upload KYC Documents
+                <Shield size={24} />
+                <span>Submit KYC Documents</span>
               </>
             )}
           </button>
           {!isFormValid() && (
-            <p className="text-center text-sm text-gray-500 mt-2">
-              Complete all required fields and capture documents
+            <p className="text-center text-sm text-red-600 font-medium">
+              Complete all required fields to continue
             </p>
           )}
         </div>
@@ -2987,6 +3753,7 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
     </div>
   );
 };
+
 
 // Agent Payment Processing Screen Component
 interface AgentPaymentProcessingScreenProps {
@@ -3000,6 +3767,10 @@ interface AgentPaymentProcessingScreenProps {
   onCancel: () => void;
   isProcessing: boolean;
 }
+
+// ============================================================================
+// STEP 6: Payment Processing Screen (Already matches API well, minor improvements)
+// ============================================================================
 
 const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> = ({
   customerInfo,
@@ -3020,19 +3791,22 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
           <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
             <ArrowLeft size={24} className="text-white" />
           </button>
-          <span className="text-white font-bold">Process Payment</span>
+          <span className="text-white font-bold">Payment Processing</span>
         </div>
         <div className="text-center">
           <h1 className="text-xl font-bold text-white">Complete Transaction</h1>
-          <p className="text-white/80">Process ₹{finalAmount.toLocaleString('en-IN')} payment</p>
+          <p className="text-white/80">Final step: Process ₹{finalAmount.toLocaleString('en-IN')} payment</p>
         </div>
       </div>
 
       {/* Payment Content */}
-      <div className="p-4 space-y-6 pb-24">
+      <div className="p-4 space-y-6 pb-32">
         {/* Transaction Summary */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <h3 className="font-bold text-[#1C1C1B] mb-3">Transaction Summary</h3>
+        <div className="bg-white rounded-xl p-4 border-2 border-[#FEC925]">
+          <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
+            <Receipt size={20} className="text-[#FEC925]" />
+            Transaction Summary
+          </h3>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Customer:</span>
@@ -3042,10 +3816,10 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
               <span className="text-gray-600">Phone:</span>
               <span className="font-semibold">{customerInfo.phone}</span>
             </div>
-            <div className="flex justify-between border-t pt-2 mt-2">
-              <span className="font-bold text-[#1C1C1B]">Final Price:</span>
-              <span className="font-bold text-[#1B8A05] flex items-center">
-                <IndianRupee size={18} />
+            <div className="flex justify-between border-t-2 pt-2 mt-2">
+              <span className="font-bold text-[#1C1C1B]">Final Amount:</span>
+              <span className="font-bold text-[#1B8A05] flex items-center text-xl">
+                <IndianRupee size={20} />
                 {finalAmount.toLocaleString('en-IN')}
               </span>
             </div>
@@ -3059,57 +3833,60 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
           <div className="space-y-3">
             {/* Cash Payment */}
             <button
+              type="button"
               onClick={() => setSelectedPaymentMethod('cash')}
-              className={`w-full p-4 rounded-xl border-2 transition flex items-center gap-4 ${
+              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${
                 selectedPaymentMethod === 'cash'
                   ? 'border-[#1B8A05] bg-[#1B8A05]/10'
                   : 'border-gray-200 hover:border-[#1B8A05]'
               }`}
             >
-              <div className="w-12 h-12 bg-[#FEC925]/20 rounded-xl flex items-center justify-center">
-                <IndianRupee className="text-[#FEC925]" size={24} />
+              <div className="w-14 h-14 bg-[#FEC925]/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <IndianRupee className="text-[#FEC925]" size={28} />
               </div>
               <div className="flex-1 text-left">
-                <h4 className="font-bold text-[#1C1C1B]">Cash Payment</h4>
-                <p className="text-sm text-gray-500">Customer pays in cash. Blocked amount will be re-credited to your wallet.</p>
+                <h4 className="font-bold text-[#1C1C1B] mb-1">Cash Payment</h4>
+                <p className="text-sm text-gray-600">Customer pays cash. Blocked wallet amount returns to you.</p>
               </div>
               {selectedPaymentMethod === 'cash' && (
-                <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                <CheckCircle2 className="text-[#1B8A05] flex-shrink-0" size={28} />
               )}
             </button>
 
             {/* Wallet Payment */}
             <button
+              type="button"
               onClick={() => setSelectedPaymentMethod('partner_wallet')}
-              className={`w-full p-4 rounded-xl border-2 transition flex items-center gap-4 ${
+              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${
                 selectedPaymentMethod === 'partner_wallet'
                   ? 'border-[#1B8A05] bg-[#1B8A05]/10'
                   : 'border-gray-200 hover:border-[#1B8A05]'
               }`}
             >
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Wallet className="text-blue-600" size={24} />
+              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Wallet className="text-blue-600" size={28} />
               </div>
               <div className="flex-1 text-left">
-                <h4 className="font-bold text-[#1C1C1B]">Partner Wallet</h4>
-                <p className="text-sm text-gray-500">Pay from your wallet. Amount will be deducted from blocked balance.</p>
+                <h4 className="font-bold text-[#1C1C1B] mb-1">Partner Wallet</h4>
+                <p className="text-sm text-gray-600">Pay from wallet. Amount deducted from blocked balance.</p>
               </div>
               {selectedPaymentMethod === 'partner_wallet' && (
-                <CheckCircle2 className="text-[#1B8A05]" size={24} />
+                <CheckCircle2 className="text-[#1B8A05] flex-shrink-0" size={28} />
               )}
             </button>
           </div>
 
           {/* Payment Method Explanation */}
           {selectedPaymentMethod && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-1">
-                {selectedPaymentMethod === 'cash' ? 'Cash Payment Process:' : 'Wallet Payment Process:'}
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <AlertCircle size={16} />
+                {selectedPaymentMethod === 'cash' ? 'Cash Payment Details' : 'Wallet Payment Details'}
               </h4>
               <p className="text-sm text-blue-800">
                 {selectedPaymentMethod === 'cash'
-                  ? 'The blocked amount will be returned to your available wallet balance since customer is paying in cash.'
-                  : 'The blocked amount will be deducted from your wallet as payment for the device purchase.'
+                  ? '✓ Customer pays you cash directly\n✓ Your blocked wallet amount will be released\n✓ Transaction completes immediately'
+                  : '✓ Amount deducted from your wallet\n✓ Blocked balance will be used\n✓ Instant transaction completion'
                 }
               </p>
             </div>
@@ -3118,40 +3895,67 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
 
         {/* Completion Notes */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <h3 className="font-bold text-[#1C1C1B] mb-4">Completion Notes (Optional)</h3>
+          <h3 className="font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+            <FileText size={20} className="text-gray-400" />
+            Transaction Notes (Optional)
+          </h3>
           <textarea
             value={completionNotes}
             onChange={(e) => setCompletionNotes(e.target.value)}
-            placeholder="Add any notes about the deal completion..."
+            placeholder="Add any notes about payment or transaction..."
             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-20"
           />
+        </div>
+
+        {/* Important Notice */}
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+          <h4 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+            <AlertCircle size={18} />
+            Before Completing Payment
+          </h4>
+          <ul className="text-sm text-amber-800 space-y-1 ml-1">
+            <li>✓ Verify customer details are correct</li>
+            <li>✓ Ensure all documents are captured</li>
+            <li>✓ Confirm payment method with customer</li>
+            {selectedPaymentMethod === 'cash' && (
+              <li className="font-semibold">✓ Collect cash from customer before proceeding</li>
+            )}
+          </ul>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
-        <div className="max-w-2xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white shadow-lg">
+        <div className="max-w-2xl mx-auto space-y-2">
           <button
             onClick={onComplete}
             disabled={!selectedPaymentMethod || isProcessing}
-            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
               selectedPaymentMethod && !isProcessing
-                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004] shadow-lg'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
             {isProcessing ? (
-              <Loader2 className="animate-spin" size={20} />
+              <>
+                <Loader2 className="animate-spin" size={24} />
+                <span>Processing Payment...</span>
+              </>
             ) : (
               <>
-                <CheckCircle2 size={20} />
-                Process Payment & Complete
+                <CheckCircle2 size={24} />
+                <span>Process Payment & Complete Deal</span>
               </>
             )}
           </button>
           {!selectedPaymentMethod && (
-            <p className="text-center text-sm text-gray-500 mt-2">
+            <p className="text-center text-sm text-red-600 font-medium">
               Please select a payment method
+            </p>
+          )}
+          {selectedPaymentMethod && (
+            <p className="text-center text-xs text-gray-500">
+              This will finalize the transaction and mark the visit as complete
             </p>
           )}
         </div>
@@ -3159,6 +3963,7 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
     </div>
   );
 };
+
 
 // Helper Components
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (

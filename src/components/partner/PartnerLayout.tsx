@@ -49,8 +49,8 @@ export const PartnerLayout: React.FC = () => {
                     className={({ isActive }) => `
                       flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all
                       ${isActive 
-                        ? 'bg-brand-yellow/20 text-brand-black' // [cite: Color Theme Guidelines]
-                        : 'text-gray-700 hover:bg-brand-gray-light' // [cite: Color Theme Guidelines]
+                        ? 'bg-brand-yellow/20 text-brand-black' 
+                        : 'text-gray-700 hover:bg-brand-gray-light' 
                       }
                     `}
                   >
