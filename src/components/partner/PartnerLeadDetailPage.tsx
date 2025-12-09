@@ -21,6 +21,7 @@ import { useAuthStore } from '../../stores/authStore';
 
 // Import Agent Assignment Modal
 import AssignAgentModal from '../../components/partner/agents/AssignAgentModal';
+// import LeadTransactionsView from '../../pages/partner/LeadTransactionsView';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -816,6 +817,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                   <p className="font-bold text-[#1B8A05]">{formatCurrency(walletInfo.available_balance)}</p>
                 </div>
               </div>
+              
             </div>
           </motion.div>
         )}
@@ -1250,6 +1252,12 @@ export const PartnerLeadDetailPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Lead Transactions View */}
+      {/* <LeadTransactionsView 
+        leadId={leadId}
+        // leadNumber="LEAD-001"  // Optional
+      /> */}
 
       {/* Make Offer Modal */}
       <AnimatePresence>
