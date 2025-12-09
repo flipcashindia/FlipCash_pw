@@ -19,6 +19,7 @@ import {
   Button 
 } from '../../components/shared';
 import type { Transaction, TransactionType, TransactionCategory, CashfreePayment } from '../../api/types/finance.types';
+import LeadTransactionsView from './LeadTransactionsView';
 
 type ActiveTab = 'transactions' | 'payments';
 
@@ -214,7 +215,7 @@ export const PartnerWalletPage: React.FC = () => {
             }`}
           >
             <History className="w-4 h-4 inline mr-2" />
-            Transactions ({safeTransactions.length})
+            Transactions
           </button>
           <button
             onClick={() => setActiveTab('payments')}
@@ -225,13 +226,17 @@ export const PartnerWalletPage: React.FC = () => {
             }`}
           >
             <CreditCard className="w-4 h-4 inline mr-2" />
-            Payments ({safePayments.length})
+            Payments 
           </button>
         </div>
 
         {/* Tab Content */}
         {activeTab === 'transactions' && (
           <>
+            <LeadTransactionsView 
+              leadId={'xyz'}
+              // leadNumber="LEAD-001"  // Optional
+            />
             <TransactionFilters
               selectedType={typeFilter}
               selectedCategory={categoryFilter}
@@ -245,6 +250,7 @@ export const PartnerWalletPage: React.FC = () => {
               hasMore={safePagination.next !== null}
               onLoadMore={loadMore}
             />
+            
           </>
         )}
 
