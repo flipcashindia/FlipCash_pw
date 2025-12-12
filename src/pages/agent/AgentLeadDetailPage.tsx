@@ -810,23 +810,23 @@ const AgentLeadDetailPage: React.FC = () => {
 
   // Fetch device attributes manually
 useEffect(() => {
-  console.log('=== Device Attributes Effect Triggered ===');
-  console.log('Assignment ID:', assignmentId);
-  console.log('Assignment Status:', assignment?.assignment_status);
-  console.log('Assignment Data:', assignment);
+  // console.log('=== Device Attributes Effect Triggered ===');
+  // console.log('Assignment ID:', assignmentId);
+  // console.log('Assignment Status:', assignment?.assignment_status);
+  // console.log('Assignment Data:', assignment);
   
   const fetchDeviceAttributes = async () => {
     if (!assignmentId) {
-      console.log('❌ No assignmentId - skipping fetch');
+      // console.log('❌ No assignmentId - skipping fetch');
       return;
     }
     
     if (!assignment) {
-      console.log('❌ No assignment data yet - skipping fetch');
+      // console.log('❌ No assignment data yet - skipping fetch');
       return;
     }
     
-    console.log('✅ Conditions met - fetching device attributes...');
+    // console.log('✅ Conditions met - fetching device attributes...');
     
     setIsLoadingAttributes(true);
     setAttributesError(null);
@@ -838,7 +838,7 @@ useEffect(() => {
         throw new Error('Authentication token not found');
       }
       
-      console.log('Fetching from URL:', `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`);
+      // console.log('Fetching from URL:', `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`);
       
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
@@ -851,8 +851,8 @@ useEffect(() => {
         }
       );
       
-      console.log('[DeviceAttributes] Response status:', response.status);
-      console.log('[DeviceAttributes] Response headers:', response.headers);
+      // console.log('[DeviceAttributes] Response status:', response.status);
+      // console.log('[DeviceAttributes] Response headers:', response.headers);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -861,7 +861,7 @@ useEffect(() => {
       }
       
       const data = await response.json();
-      console.log('[DeviceAttributes] ✅ Fetched successfully:', data);
+      // console.log('[DeviceAttributes] ✅ Fetched successfully:', data);
       
       setDeviceAttributes(data);
     } catch (err: any) {
@@ -875,10 +875,10 @@ useEffect(() => {
   // ✅ FIXED: Fetch when assignment is loaded (not just when status is 'code_verified')
   // This will attempt to fetch whenever we have an assignmentId and assignment data
   if (assignmentId && assignment) {
-    console.log('🚀 Starting fetch...');
+    // console.log('🚀 Starting fetch...');
     fetchDeviceAttributes();
   } else {
-    console.log('⏳ Waiting for assignment data...');
+    // console.log('⏳ Waiting for assignment data...');
   }
 }, [assignmentId, assignment]); // ✅ FIXED: Simplified dependencies
 
@@ -1529,8 +1529,8 @@ const handleSubmitInspection = async () => {
     setShowCustomerAcceptance(true);
     refetch();
   } catch (err: any) {
-    console.error('❌ Submission Error:', err);
-    console.error('Error details:', err.response?.data || err.message);
+    // console.error('❌ Submission Error:', err);
+    // console.error('Error details:', err.response?.data || err.message);
     setActionError(err.message || 'Failed to submit inspection');
   }
 };
@@ -2235,9 +2235,12 @@ if (showInspectionForm) {
   // }
 
 
+  // console.log('showCustomerAcceptance', showCustomerAcceptance);
+  // console.log('systemCalculatedPrice', systemCalculatedPrice);
 
   // Show customer acceptance UI
-  {showCustomerAcceptance && systemCalculatedPrice && (
+  if (showCustomerAcceptance && systemCalculatedPrice ){
+    return(
     <CustomerAcceptanceScreen
       deviceInfo={{
         brand: assignment.device_brand,
@@ -2252,8 +2255,8 @@ if (showInspectionForm) {
       customerResponse={customerResponse}
       rejectionReason={rejectionReason}
       onCancel={() => setShowCustomerAcceptance(false)}
-    />
-  )}
+    />)
+  }
 
   // Show KYC verification form 
   if (showKYCForm && systemCalculatedPrice) {
@@ -2295,9 +2298,7 @@ if (showInspectionForm) {
     );
   }
 
-  console.log('showCustomerAcceptance', showCustomerAcceptance);
-  console.log('systemCalculatedPrice', systemCalculatedPrice);
-
+  
 
 
 

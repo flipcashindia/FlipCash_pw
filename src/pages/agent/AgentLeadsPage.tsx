@@ -60,7 +60,7 @@ const AgentLeadsPage: React.FC = () => {
   });
 
   const assignments = assignmentsData?.results || [];
-  console.log(assignments);
+  // console.log(assignments);
   
   // Filter by search query
   const filteredAssignments = assignments.filter(assignment => {

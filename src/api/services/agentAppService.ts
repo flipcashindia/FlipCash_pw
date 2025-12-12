@@ -858,7 +858,7 @@ const apiCall = async <T>(
 ): Promise<T> => {
   const url = `${API_BASE_URL}${endpoint}`;
   
-  console.log(`[AgentAppService] ${options.method || 'GET'} ${url}`);
+  // console.log(`[AgentAppService] ${options.method || 'GET'} ${url}`);
   
   const response = await fetch(url, {
     ...options,

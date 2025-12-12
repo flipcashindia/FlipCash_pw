@@ -41,7 +41,7 @@ const AgentProfilePage: React.FC = () => {
       try {
         await updateAvailabilityMutation.mutateAsync(!profile.is_available);
       } catch (err) {
-        console.error('Failed to update availability:', err);
+        // console.error('Failed to update availability:', err);
       }
     }
   };
