@@ -721,6 +721,8 @@ export interface AgentActionResponse {
   message: string;
   data?: Record<string, any>;
   error?: string;
+  system_final_price?: number;
+  original_estimate?: number;
 }
 
 // =====================================================
@@ -1168,21 +1170,6 @@ export interface InspectionResultsDisplayProps {
 }
 
 
-
-
-// Export all new types
-// export {
-//   CustomerAddress,
-//   KYCVerificationRequest,
-//   KYCVerificationResponse,
-//   CashPaymentConfirmation,
-//   PaymentProcessRequest,
-//   PaymentProcessResponse,
-//   KYCVerificationData,
-//   PaymentData,
-//   CustomerAcceptanceRequest,
-//   CustomerAcceptanceResponse,
-// };
 
 
 
