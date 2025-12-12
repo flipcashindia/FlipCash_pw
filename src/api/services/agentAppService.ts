@@ -1121,27 +1121,61 @@ export const agentAppService = {
     );
   },
 
-  submitInspection: async (
-    assignmentId: string,
-    data: SubmitInspectionRequest | DeviceInspectionData
-  ): Promise<AgentActionResponse & { 
+  // submitInspection: async (
+  //   assignmentId: string,
+  //   data: SubmitInspectionRequest | DeviceInspectionData
+  // ): Promise<AgentActionResponse & { 
+  //   calculated_price?: number; 
+  //   original_price?: number;
+  //   deductions?: Array<{ reason: string; amount: number }>;
+  // }> => {
+  //   const transformed = transformInspectionData(data);
+  //   return apiCall<AgentActionResponse & { 
+  //     calculated_price?: number; 
+  //     original_price?: number;
+  //     deductions?: Array<{ reason: string; amount: number }>;
+  //   }>(
+  //     `/partner-agents/my-leads/${assignmentId}/visit/submit-inspection/`,
+  //     {
+  //       method: 'POST',
+  //       body: JSON.stringify(transformed),
+  //     }
+  //   );
+  // },
+
+
+
+submitInspection: async (
+  assignmentId: string,
+  data: SubmitInspectionRequest | DeviceInspectionData
+): Promise<AgentActionResponse & { 
+  calculated_price?: number; 
+  original_price?: number;
+  deductions?: Array<{ reason: string; amount: number }>;
+}> => {
+  // ✅ Check if data has attribute_responses (dynamic form)
+  const isDynamicForm = 'attribute_responses' in data;
+  
+  // Only transform static form data
+  const payload = isDynamicForm ? data : transformInspectionData(data);
+  
+  return apiCall<AgentActionResponse & { 
     calculated_price?: number; 
     original_price?: number;
     deductions?: Array<{ reason: string; amount: number }>;
-  }> => {
-    const transformed = transformInspectionData(data);
-    return apiCall<AgentActionResponse & { 
-      calculated_price?: number; 
-      original_price?: number;
-      deductions?: Array<{ reason: string; amount: number }>;
-    }>(
-      `/partner-agents/my-leads/${assignmentId}/visit/submit-inspection/`,
-      {
-        method: 'POST',
-        body: JSON.stringify(transformed),
-      }
-    );
-  },
+  }>(
+    `/partner-agents/my-leads/${assignmentId}/visit/submit-inspection/`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+},
+
+
+
+
+
 
   /**
    * Customer acceptance/rejection of system-calculated price (EXISTING)
