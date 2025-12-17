@@ -378,53 +378,6 @@ const LeadDetailComplete: React.FC = () => {
                 <span className={`px-4 py-2 rounded-full text-sm font-bold ${STATUS_COLORS[leadDetails.status] || 'bg-gray-200 text-gray-800'}`}>
                   {leadDetails.status_display}
                 </span>
-
-                {/* {showRateButton && (
-                  <button 
-                    onClick={() => setIsRateModalOpen(true)}
-                    className="px-4 py-2 bg-[#1B8A05] text-white rounded-lg font-bold hover:bg-[#156d04] transition flex items-center gap-2"
-                  >
-                    <Star size={16} />
-                    Rate Service
-                  </button>
-                )}
-
-                {leadDetails.status === 'completed' && hasRated && (
-                  <div className="px-4 py-2 bg-[#1B8A05]/20 text-[#1B8A05] rounded-lg font-bold flex items-center gap-2">
-                    <CheckCircle size={16} />
-                    Rated
-                  </div>
-                )}
-
-                {canReschedule && (
-                  <button 
-                    onClick={() => setIsRescheduleModalOpen(true)}
-                    className="px-4 py-2 bg-[#FEC925]/20 text-[#1C1C1B] rounded-lg font-bold hover:bg-[#FEC925] transition flex items-center gap-2"
-                  >
-                    <Calendar size={16} />
-                    Reschedule
-                  </button>
-                )}
-
-                {canCancel && (
-                  <button 
-                    onClick={() => setIsCancelModalOpen(true)}
-                    className="px-4 py-2 bg-[#FF0000]/10 text-[#FF0000] rounded-lg font-bold hover:bg-[#FF0000] hover:text-white transition flex items-center gap-2"
-                  >
-                    <XCircle size={16} />
-                    Cancel
-                  </button>
-                )}
-
-                {!['cancelled', 'completed'].includes(leadDetails.status) && (
-                  <button 
-                    onClick={() => setIsDisputeModalOpen(true)}
-                    className="px-4 py-2 bg-[#FF0000]/10 text-[#FF0000] rounded-lg font-bold hover:bg-[#FF0000] hover:text-white transition flex items-center gap-2"
-                  >
-                    <AlertTriangle size={16} />
-                    Report Issue
-                  </button>
-                )} */}
               </div>
             </div>
           </div>
