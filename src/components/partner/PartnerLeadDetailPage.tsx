@@ -380,38 +380,46 @@ export const PartnerLeadDetailPage: React.FC = () => {
     }
   };
 
-  const handleStartVisit = async () => {
-    if (!leadDetails || !visitDetails) return;
+
+
+
+
+  // const handleStartVisit = async () => {
+  //   if (!leadDetails || !visitDetails) return;
     
-    try {
-      setActionLoading(true);
-      setError(null);
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
-      const token = useAuthStore.getState().accessToken;
-      if (!token) throw new Error('Authentication required');
+  //     const token = useAuthStore.getState().accessToken;
+  //     if (!token) throw new Error('Authentication required');
 
-      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_journey/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_journey/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || 'Failed to start journey');
-      }
+  //     if (!res.ok) {
+  //       const err = await res.json().catch(() => ({}));
+  //       throw new Error(err.detail || err.error || 'Failed to start journey');
+  //     }
 
-      loadLeadDetails(leadDetails.id);
+  //     loadLeadDetails(leadDetails.id);
       
-    } catch (err: any) {
-      console.error('Start journey error:', err);
-      setError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  //   } catch (err: any) {
+  //     console.error('Start journey error:', err);
+  //     setError(err.message);
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // };
+
+
+
+
 
   const handleCheckIn = async () => {
     if (!leadDetails || !visitDetails) return;
@@ -683,7 +691,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                 )}
 
                 {/* Start Journey Button */}
-                {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && !leadDetails.assigned_agent && (
+                {/* {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && !leadDetails.assigned_agent && (
                   <button 
                     onClick={handleStartVisit}
                     disabled={actionLoading}
@@ -692,7 +700,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Navigation size={20} />}
                     Start Journey
                   </button>
-                )}
+                )} */}
 
                 {/* Check In Button */}
                 {leadDetails.status === LeadStatus.EN_ROUTE && (
