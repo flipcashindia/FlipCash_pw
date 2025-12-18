@@ -51,7 +51,7 @@ import { PartnerBankPage } from './components/partner/profile/PartnerBankPage';
 import { PartnerAreaPage } from './components/partner/profile/PartnerAreaPage';
 
 // --- Catalog Pages & Partner Dashboard ---
-import DashboardPage from './pages/partner/DashboardPage';
+// import DashboardPage from './pages/partner/DashboardPage';
 import CategoriesPage from './pages/partner/catalog/CategoriesPage';
 import BrandsPage from './pages/partner/catalog/BrandsPage';
 import ModelsPage from './pages/partner/catalog/ModelsPage';
@@ -144,8 +144,8 @@ const AppRoutes: React.FC = () => {
         <Route index element={<Navigate to="dashboard" replace />} />
         
         {/* Dashboards */}
-        <Route path="dashboard-new" element={<PartnerDashboardPage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="dashboard" element={<PartnerDashboardPage />} />
+        {/* <Route path="dashboard" element={<DashboardPage />} /> */}
         
         {/* My Leads */}
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 

@@ -4,6 +4,7 @@ import { usePartnerStore } from '../../stores/usePartnerStore';
 import { Loader2, AlertTriangle, Info, XCircle } from 'lucide-react';
 import { ActiveDashboard } from './ActiveDashboard';
 import { KycOnboardingModal } from './KycOnboardingModal';
+import DashboardPage from '../../pages/partner/DashboardPage';
 
 
 function ProfilePage() {
@@ -89,16 +90,22 @@ const PartnerDashboardPage: React.FC = () => {
     <div className="relative min-h-[calc(100vh-80px)]">
       
       {/* The "inactive" dashboard. Blurred if profile is incomplete. */}
-      <div className={!isProfileComplete ? 'filter blur-md pointer-events-none' : ''}>
-        <ActiveDashboard partner={partner} />
-      </div>
+      {isProfileComplete && (
+        <>
+          <DashboardPage />
+        </>
+      )}
+      {/* <div className={!isProfileComplete ? 'filter blur-md pointer-events-none' : ''}> */}
+        {/* <ActiveDashboard partner={partner} /> */}
+        {/* <DashboardPage /> */}
+      {/* </div> */}
 
       {/* The blocking modal that appears ON TOP if the profile is incomplete. */}
       {!isProfileComplete && (
         <>
-          <div className='y-10 '><ProfilePage /></div>
-          <div className="absolute inset-0 bg-black/30 z-10" />
-          <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+          {/* <div className='y-10 '><ProfilePage /></div> */}
+  
+          <div className="flex items-center justify-center p-4 mt-20">
             <KycOnboardingModal user={user} partner={partner} />
           </div>
         </>
