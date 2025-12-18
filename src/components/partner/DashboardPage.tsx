@@ -5,7 +5,7 @@ import { usePartnerStore } from '../../stores/usePartnerStore';
 import { Loader2, AlertTriangle, Info, XCircle } from 'lucide-react';
 import { OnboardingChecklist } from './OnboardingChecklist';
 import { ActiveDashboard } from './ActiveDashboard';
-import DashboardPage from '../../pages/partner/DashboardPage';
+// import DashboardPage from '../../pages/partner/DashboardPage';
 
 const PartnerDashboardPage: React.FC = () => {
   const { user } = useAuthStore(); // Get the full user object
