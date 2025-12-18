@@ -2,24 +2,24 @@ import React from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { usePartnerStore } from '../../stores/usePartnerStore';
 import { Loader2, AlertTriangle, Info, XCircle } from 'lucide-react';
-import { ActiveDashboard } from './ActiveDashboard';
+// import { ActiveDashboard } from './ActiveDashboard';
 import { KycOnboardingModal } from './KycOnboardingModal';
 import DashboardPage from '../../pages/partner/DashboardPage';
 
 
-function ProfilePage() {
-  const partner = usePartnerStore((state) => state.partner);
-  const isLoading = usePartnerStore((state) => state.isLoading);
-  console.log('Partner data in dashboard : ', partner)
+// function ProfilePage() {
+//   const partner = usePartnerStore((state) => state.partner);
+//   const isLoading = usePartnerStore((state) => state.isLoading);
+//   console.log('Partner data in dashboard : ', partner)
 
-  // This will re-render and log the new value AFTER the state is set
-  console.log('Partner from component:', partner); 
+//   // This will re-render and log the new value AFTER the state is set
+//   console.log('Partner from component:', partner); 
 
-  if (isLoading) return <div>Loading partner...</div>;
-  if (!partner) return <div>No partner data.</div>;
+//   if (isLoading) return <div>Loading partner...</div>;
+//   if (!partner) return <div>No partner data.</div>;
 
-  return <h1>Hello, {partner.business_name} status {partner.status} is completed {partner.profile_completed} percentage {partner.profile_completion_percentage}</h1>;
-}
+//   return <h1>Hello, {partner.business_name} status {partner.status} is completed {partner.profile_completed} percentage {partner.profile_completion_percentage}</h1>;
+// }
 
 
 
