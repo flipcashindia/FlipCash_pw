@@ -34,16 +34,22 @@ export const AgentRoute: React.FC<AgentRouteProps> = ({ children }) => {
 
   // Check if user is an agent
   // The user role should be 'agent' for agent users
-  if (user?.role !== 'agent') {
-    // If user is a partner, redirect to partner dashboard
-    if (user?.role === 'partner') {
-      return <Navigate to="/partner/dashboard" replace />;
-    }
-    // Otherwise redirect to home
-    return <Navigate to="/" replace />;
+  // Check if user is an agent OR a partner with self-agent capability
+  if (user?.role === 'agent') {
+    // Regular agent - allow access
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
-};
+  if (user?.role === 'partner') {
+    // Partner - check if they can work as self-agent
+    // This will be verified by the API when they access agent endpoints
+    // For now, allow access and let the API determine if they have agent profile
+    return <>{children}</>;
+  }
+
+  // Not an agent or partner - redirect to home
+  return <Navigate to="/" replace />;
+    return <>{children}</>;
+  };
 
 export default AgentRoute;

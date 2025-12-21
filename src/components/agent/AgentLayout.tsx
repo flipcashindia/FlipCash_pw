@@ -19,6 +19,7 @@ import {
   ToggleRight,
   Star,
   Activity,
+  Building2,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAgentProfile, useUpdateAvailability } from '../../hooks/useAgentApp';
@@ -94,6 +95,8 @@ const AgentLayout: React.FC = () => {
   //     </span>
   //   );
   // };
+  // <div className="flex-1">
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -229,6 +232,13 @@ const MobileSidebar: React.FC<SidebarProps & { onClose: () => void }> = ({
             <div className="flex-1">
               <p className="text-white font-semibold">{profile.user?.name || 'Agent'}</p>
               <p className="text-white/60 text-sm">{profile.user?.phone}</p>
+
+              {/* ADD THIS: Partner self-agent badge */}
+              {profile.employee_code === 'SELF' && (
+                <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-[#FEC925]/20 text-[#FEC925] text-xs font-bold rounded">
+                  Partner Mode
+                </span>
+              )}
             </div>
           </div>
           
@@ -338,6 +348,12 @@ const DesktopSidebar: React.FC<
               <div className="flex-1">
                 <p className="text-white font-semibold">{profile.user?.name || 'Agent'}</p>
                 <p className="text-white/60 text-sm">{profile.employee_code || 'No ID'}</p>
+                {profile.employee_code === 'SELF' && (
+                  <div className="mt-1 flex items-center gap-1">
+                    <Building2 size={12} className="text-[#FEC925]" />
+                    <span className="text-[#FEC925] text-xs font-semibold">Partner Mode</span>
+                  </div>
+                )}
               </div>
             </div>
             
