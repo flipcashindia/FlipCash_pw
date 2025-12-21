@@ -64,6 +64,10 @@ const AgentDashboardPage: React.FC = () => {
     return colors[status] || 'bg-gray-100 text-gray-700';
   };
 
+  console.log('profile', profile);
+  
+
+
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       assigned: 'New',
@@ -100,7 +104,13 @@ const AgentDashboardPage: React.FC = () => {
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">
-          Hello, {profile?.user?.name?.split(' ')[0] || 'Agent'}! 👋
+          Hello, {profile?.user?.name?.split(' ')[0] || 'Agent'}!
+          {/* ADD THIS: Show if partner */}
+          {profile?.employee_code === 'SELF' && (
+            <span className="ml-2 px-3 py-1 bg-[#FEC925]/20 text-[#FEC925] text-sm rounded-lg">
+              Partner Mode
+            </span>
+          )}
         </h1>
         <p className="text-white/70">
           {activeAssignments.length > 0
@@ -109,7 +119,16 @@ const AgentDashboardPage: React.FC = () => {
             ? `You have ${pendingAcceptance.length} new ${pendingAcceptance.length === 1 ? 'lead' : 'leads'} waiting`
             : 'No active leads right now. Take a break!'}
         </p>
+        {/* ADD THIS: Partner info */}
+        {profile?.employee_code === 'SELF' && (
+          <div className="mt-3 p-3 bg-white/10 rounded-lg">
+            <p className="text-xs text-white/60">Working as field agent for:</p>
+            <p className="text-sm font-semibold">{profile.partner_name}</p>
+          </div>
+        )}
       </div>
+
+
 
       {/* Pending Acceptance Alert */}
       {pendingAcceptance.length > 0 && (

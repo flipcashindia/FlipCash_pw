@@ -809,6 +809,7 @@
 // Base URL: /api/v1/partner-agents/
 
 import { useAuthStore } from '../../stores/authStore';
+import type { AgentProfile } from '../types/agent.type';
 import type {
   AgentSelfProfile,
   AgentAssignedLead,
@@ -1515,6 +1516,23 @@ submitInspection: async (
       };
     }
   },
+
+
+  // Helper to check if current user is a self-agent (partner working as agent)
+  isSelfAgent : (profile: AgentProfile): boolean => {
+    return profile.employee_code === 'SELF';
+  },
+
+  // Helper to check if current user is a partner
+  isPartnerAgent : (): boolean => {
+    const user = useAuthStore.getState().user;
+    return user?.role === 'partner';
+  },
+
+
+
+
+
 };
 
 export default agentAppService;

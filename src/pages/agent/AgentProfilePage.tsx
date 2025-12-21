@@ -196,6 +196,11 @@ const AgentProfilePage: React.FC = () => {
           <div>
             <p className="text-sm text-gray-500">Partner</p>
             <p className="font-semibold text-[#1C1C1B]">{profile.partner_name || 'N/A'}</p>
+            {profile.employee_code === 'SELF' && (
+              <p className="text-xs text-[#FEC925] font-semibold mt-1">
+                You are working as a field agent for your own business
+              </p>
+            )}
           </div>
         </div>
 

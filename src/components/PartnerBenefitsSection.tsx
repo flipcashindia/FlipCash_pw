@@ -44,8 +44,8 @@ const BenefitCard: React.FC<BenefitCardProps> = ({ icon: Icon, title, descriptio
 // --- Stats Component ---
 const StatsBar: React.FC = () => {
   const stats = [
-    { value: "500+", label: "Active Partners" },
-    { value: "₹50L+", label: "Monthly Earnings" },
+    { value: "100+", label: "Active Partners" },
+    { value: "₹20L+", label: "Monthly Earnings" },
     { value: "95%", label: "Success Rate" },
     { value: "24/7", label: "Partner Support" },
   ];
@@ -84,8 +84,8 @@ const PartnerBenefitsSection: React.FC = () => {
     },
     {
       icon: DollarSign,
-      title: "Lucrative Earnings",
-      description: "Earn up to ₹500 per device verification. Weekly payouts with transparent commission structure and no hidden charges.",
+      title: "Profit-Driven Earnings",
+      description: "Partners earn by buying verified devices and reselling them for profit. Earnings depend on device condition, market demand, and resale value — with complete transparency and no hidden charges.",
     },
     {
       icon: Clock,
@@ -105,7 +105,7 @@ const PartnerBenefitsSection: React.FC = () => {
     {
       icon: TrendingUp,
       title: "Growth Opportunities",
-      description: "Scale your business with performance bonuses. Top performers get priority leads, higher commissions, and exclusive incentives.",
+      description: "Scale your business with performance bonuses. Top performers get priority leads, higher profits.",
     },
     {
       icon: Target,

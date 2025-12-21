@@ -1,10 +1,11 @@
 // src/components/partner/PartnerLayout.tsx
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { LayoutDashboard, ListPlus, ListChecks, Wallet, User } from 'lucide-react';
+import { LayoutDashboard, ListPlus, ListChecks, Wallet, User, Navigation } from 'lucide-react';
 import { usePartnerStore } from '../../stores/usePartnerStore';
 import { Loader2 } from 'lucide-react';
+import { agentAppService } from '../../api/services/agentAppService';
 
 // Sidebar items from docs [cite: 17. UX & UI Guidelines]
 const partnerNavItems = [
@@ -18,14 +19,35 @@ const partnerNavItems = [
 export const PartnerLayout: React.FC = () => {
   const { user } = useAuthStore();
   const { partner, isLoading } = usePartnerStore();
+  
+  // Check if partner can work as agent
+  const [canWorkAsAgent, setCanWorkAsAgent] = useState(false);
+  const [checkingAgent, setCheckingAgent] = useState(true);
+
+  useEffect(() => {
+    const checkAgentAccess = async () => {
+      try {
+        const profile = await agentAppService.getProfile();
+        setCanWorkAsAgent(profile.employee_code === 'SELF');
+      } catch {
+        setCanWorkAsAgent(false);
+      } finally {
+        setCheckingAgent(false);
+      }
+    };
+
+    if (partner && !isLoading) {
+      checkAgentAccess();
+    }
+  }, [partner, isLoading]);
 
   if (isLoading || !partner) {
     return (
-     <div className="flex items-center justify-center min-h-[calc(100vh-160px)] bg-brand-gray-light">
-       <Loader2 className="w-12 h-12 animate-spin text-brand-yellow" />
-     </div>
-   );
- }
+      <div className="flex items-center justify-center min-h-[calc(100vh-160px)] bg-brand-gray-light">
+        <Loader2 className="w-12 h-12 animate-spin text-brand-yellow" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-160px)] bg-brand-gray-light">
@@ -58,6 +80,25 @@ export const PartnerLayout: React.FC = () => {
                     <span>{item.name}</span>
                   </NavLink>
                 ))}
+                
+                {/* Agent Mode Link */}
+                {canWorkAsAgent && !checkingAgent && (
+                  <>
+                    <div className="border-t border-gray-200 my-2" />
+                    <Link
+                      to="/agent/dashboard"
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all
+                        bg-gradient-to-r from-[#1B8A05]/10 to-[#1B8A05]/5 text-[#1B8A05] hover:from-[#1B8A05]/20 hover:to-[#1B8A05]/10
+                        border-2 border-[#1B8A05]/30"
+                    >
+                      <Navigation size={20} />
+                      <span>Field Agent Mode</span>
+                      <span className="ml-auto px-2 py-0.5 bg-[#FEC925] text-[#1C1C1B] text-xs font-bold rounded">
+                        NEW
+                      </span>
+                    </Link>
+                  </>
+                )}
               </nav>
             </div>
           </aside>

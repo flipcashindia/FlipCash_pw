@@ -11,6 +11,9 @@ import { useAuthStore } from '../../stores/authStore';
 import { authService } from '../../api/services/authService2';
 import { useToast } from '../../contexts/ToastContext';
 import { type ApiError, type User as ApiUser } from '../../api/types/api';
+import { agentAppService } from '../../api/services/agentAppService';
+// import getAssignment
+
 
 type LoginStep = 'phone' | 'otp';
 
@@ -43,7 +46,7 @@ const getOrCreateDeviceID = (): string => {
 };
 
 // --- Helper: Partner Menu ---
-const PartnerMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () => void; }> = ({ user, onLogout, onClose }) => {
+const PartnerMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () => void; canWorkAsAgent?: boolean; }> = ({ user, onLogout, onClose, canWorkAsAgent }) => {
   
   const menuItems = [
     { name: 'Dashboard', href: '/partner/dashboard', icon: Zap },
@@ -86,6 +89,26 @@ const PartnerMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () =
           </Link>
         ))}
       </div>
+      {/* NEW: Quick link to switch to agent mode */}
+      {canWorkAsAgent && (
+        <>
+          <div className="border-t my-3" />
+          <Link
+            to="/agent/dashboard"
+            onClick={onClose}
+            className="flex items-center justify-between p-4 bg-gradient-to-r from-[#1B8A05]/10 to-[#1B8A05]/5 rounded-lg border-2 border-[#1B8A05]/30 hover:border-[#1B8A05] transition"
+          >
+            <div className="flex items-center gap-3">
+              <Navigation className="w-5 h-5 text-[#1B8A05]" />
+              <div>
+                <span className="font-semibold text-brand-black">Switch to Agent Mode</span>
+                <p className="text-xs text-gray-500">Work on leads in the field</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-[#1B8A05]" />
+          </Link>
+        </>
+      )}
       
       <div className="border-t pt-4">
         <button
@@ -97,6 +120,61 @@ const PartnerMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () =
         </button>
       </div>
     </motion.div>
+  );
+};
+
+
+const AgentStatsDisplay: React.FC = () => {
+  const [stats, setStats] = React.useState({ active: 0, completed: 0 });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [profile, assignments] = await Promise.all([
+          agentAppService.getProfile(),
+          agentAppService.getDashboardStats()]);
+        setStats({
+          active: assignments.in_progress || 0,
+          completed: profile.total_leads_completed || 0
+        });
+      } catch {
+        setStats({ active: 0, completed: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+          <Loader2 className="w-5 h-5 text-gray-400 mx-auto mb-1 animate-spin" />
+          <p className="text-xs text-gray-500">Loading...</p>
+        </div>
+        <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+          <Loader2 className="w-5 h-5 text-gray-400 mx-auto mb-1 animate-spin" />
+          <p className="text-xs text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+        <ClipboardCheck className="w-5 h-5 text-[#1B8A05] mx-auto mb-1" />
+        <p className="text-xs text-gray-500">Active Leads</p>
+        <p className="text-lg font-bold text-brand-black">{stats.active}</p>
+      </div>
+      <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
+        <Activity className="w-5 h-5 text-[#FEC925] mx-auto mb-1" />
+        <p className="text-xs text-gray-500">Completed</p>
+        <p className="text-lg font-bold text-brand-black">{stats.completed}</p>
+      </div>
+    </div>
   );
 };
 
@@ -136,7 +214,7 @@ const AgentMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () => 
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
           <ClipboardCheck className="w-5 h-5 text-[#1B8A05] mx-auto mb-1" />
           <p className="text-xs text-gray-500">Active Leads</p>
@@ -147,7 +225,8 @@ const AgentMenu: React.FC<{ user: ApiUser; onLogout: () => void; onClose: () => 
           <p className="text-xs text-gray-500">Completed</p>
           <p className="text-lg font-bold text-brand-black">-</p>
         </div>
-      </div>
+      </div> */}
+      <AgentStatsDisplay />
       
       {/* Menu Items */}
       <div className="space-y-3">
@@ -252,6 +331,8 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [showModeSelection, setShowModeSelection] = useState(false);
+  const [canWorkAsAgent, setCanWorkAsAgent] = useState(false); 
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,6 +356,8 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     }
   };
 
+  // handleLoginSuccess
+
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -296,6 +379,21 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
       setError('');
       setStep('phone');
       setOtp('');
+
+      // NEW: Check if partner can work as agent
+      if (userRole === 'partner') {
+        try {
+          const profile = await agentAppService.getProfile();
+          if (profile.employee_code === 'SELF') {
+            setCanWorkAsAgent(true);
+            setShowModeSelection(true);
+            return; // Don't close modal - show mode selection
+          }
+        } catch {
+          // Partner doesn't have agent profile - continue normally
+          setCanWorkAsAgent(false);
+        }
+      }
       
       // We don't call handleSuccess here, because the component will
       // automatically re-render with the new `isAuthenticated()` value.
@@ -375,12 +473,28 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
   // UPDATED: This render function checks the global auth state
   // Added 'agent' role check
   const renderContent = () => {
+    // NEW: Show mode selection if partner can work as agent
+    if (showModeSelection && canWorkAsAgent) {
+      return (
+        <ModeSelectionDialog
+          onSelectPartner={() => {
+            setShowModeSelection(false);
+            onClose();
+          }}
+          onSelectAgent={() => {
+            setShowModeSelection(false);
+            onClose();
+          }}
+        />
+      );
+    }
+
     if (isAuthenticated() && user) {
       // --- USER IS LOGGED IN ---
       if (user.role === 'partner') {
-        return <PartnerMenu user={user} onLogout={handleLogout} onClose={onClose} />;
+        return <PartnerMenu user={user} onLogout={handleLogout} onClose={onClose} canWorkAsAgent={canWorkAsAgent} />;
       } else if (user.role === 'agent') {
-        // NEW: Agent menu for agent users
+        // Agent menu for agent users
         return <AgentMenu user={user} onLogout={handleLogout} onClose={onClose} />;
       } else {
         return <ConsumerMenu user={user} onLogout={handleLogout} onClose={onClose} />;
@@ -617,3 +731,98 @@ const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
 };
 
 export default AuthModal;
+
+
+// --- NEW: Mode Selection Dialog for Partners who can work as Agents ---
+const ModeSelectionDialog: React.FC<{ onSelectPartner: () => void; onSelectAgent: () => void; }> = ({ 
+  onSelectPartner, 
+  onSelectAgent 
+}) => {
+  const navigate = useNavigate();
+
+  const handlePartnerMode = () => {
+    onSelectPartner();
+    navigate('/partner/dashboard');
+  };
+
+  const handleAgentMode = () => {
+    onSelectAgent();
+    navigate('/agent/dashboard');
+  };
+
+  return (
+    <motion.div
+      key="mode-selection"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="space-y-4"
+    >
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#FEC925]/20 to-[#1B8A05]/20 p-6 rounded-xl border-2 border-[#FEC925]">
+        <h3 className="text-xl font-bold text-brand-black text-center mb-2">
+          Choose Your Mode
+        </h3>
+        <p className="text-sm text-gray-600 text-center">
+          You can work as both a partner and a field agent
+        </p>
+      </div>
+
+      {/* Partner Mode Option */}
+      <button
+        onClick={handlePartnerMode}
+        className="w-full p-6 bg-white rounded-xl border-2 border-gray-200 hover:border-[#FEC925] hover:shadow-lg transition-all group"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#FEC925]/20 to-[#FEC925]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Zap className="w-8 h-8 text-[#FEC925]" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="text-lg font-bold text-brand-black mb-1">Partner Dashboard</h4>
+            <p className="text-sm text-gray-600">
+              Manage your business, view leads, handle finances, and manage your team
+            </p>
+            <div className="flex gap-2 mt-3">
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">Leads</span>
+              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">Wallet</span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">Team</span>
+            </div>
+          </div>
+          <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-[#FEC925] transition-colors" />
+        </div>
+      </button>
+
+      {/* Agent Mode Option */}
+      <button
+        onClick={handleAgentMode}
+        className="w-full p-6 bg-gradient-to-r from-[#1B8A05]/5 to-[#1B8A05]/10 rounded-xl border-2 border-[#1B8A05]/30 hover:border-[#1B8A05] hover:shadow-lg transition-all group"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#1B8A05]/20 to-[#1B8A05]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Navigation className="w-8 h-8 text-[#1B8A05]" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="text-lg font-bold text-brand-black mb-1">Field Agent Mode</h4>
+            <p className="text-sm text-gray-600">
+              Work on leads in the field, complete inspections, and earn commissions
+            </p>
+            <div className="flex gap-2 mt-3">
+              <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">Active Leads</span>
+              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">Inspections</span>
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">Earnings</span>
+            </div>
+          </div>
+          <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-[#1B8A05] transition-colors" />
+        </div>
+      </button>
+
+      {/* Info Note */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-xs text-blue-800">
+          💡 <strong>Tip:</strong> You can switch between modes anytime from your profile menu
+        </p>
+      </div>
+    </motion.div>
+  );
+};
+

@@ -174,4 +174,5 @@ const PartnerLayout: React.FC = () => {
   );
 };
 
+
 export default PartnerLayout;

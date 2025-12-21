@@ -146,6 +146,10 @@ const AppRoutes: React.FC = () => {
         {/* Dashboards */}
         <Route path="dashboard" element={<PartnerDashboardPage />} />
         {/* <Route path="dashboard" element={<DashboardPage />} /> */}
+        <Route 
+          path="agent-mode" 
+          element={<Navigate to="/agent/dashboard" replace />} 
+        />
         
         {/* My Leads */}
         <Route path="leads/:tab" element={<PartnerLeadsPage />} /> 
