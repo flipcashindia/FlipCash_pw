@@ -34,11 +34,12 @@ export const AgentRoute: React.FC<AgentRouteProps> = ({ children }) => {
 
   // Check if user is an agent
   // The user role should be 'agent' for agent users
-  if (user?.role !== 'agent') {
+  if (user?.role !== 'agent' && user?.role !== 'partner') {
     // If user is a partner, redirect to partner dashboard
-    if (user?.role === 'partner') {
-      return <Navigate to="/partner/dashboard" replace />;
-    }
+    
+    // if (user?.role === 'partner') {
+    //   return <Navigate to="/partner/dashboard" replace />;
+    // }
     // Otherwise redirect to home
     return <Navigate to="/" replace />;
   }

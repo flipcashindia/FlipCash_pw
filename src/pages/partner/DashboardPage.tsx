@@ -11,7 +11,7 @@ import {
   Package,
   FileText,
   Wallet,
-  TrendingUp,
+  // TrendingUp,
   Clock,
   CheckCircle2,
   ArrowRight,
@@ -37,7 +37,7 @@ const DashboardPage: React.FC = () => {
   
   // Fetch data with error handling
   const { data: visitsData, isLoading: visitsLoading, error: visitsError } = useVisits();
-  const { balance, stats: walletStats, error: walletError } = useWallet();
+  const { balance, stats: _walletStats, error: walletError } = useWallet();
   const { data: agentStatsData, isLoading: agentStatsLoading } = useAgentStats();
   const { data: agentsData, isLoading: agentsLoading } = useAgents({ status: 'active' });
 
@@ -51,7 +51,7 @@ const DashboardPage: React.FC = () => {
 
   const completedLeads = visits.filter((v) => v.status === 'completed').length;
   const inProgressLeads = visits.filter((v) => v.status === 'in_progress').length;
-  const totalEarnings = walletStats?.total_credits || '0';
+  // const totalEarnings = walletStats?.total_credits || '0';
 
   const stats = [
     {
@@ -75,15 +75,15 @@ const DashboardPage: React.FC = () => {
       color: 'yellow',
       change: inProgressLeads > 0 ? 'Active' : 'None',
     },
-    {
-      label: 'Total Earnings',
-      value: `₹${parseFloat(totalEarnings).toLocaleString('en-IN')}`,
-      icon: TrendingUp,
-      color: 'purple',
-      change: walletStats?.this_month_topups ? 
-        '+₹' + parseFloat(walletStats.this_month_topups).toLocaleString('en-IN') : 
-        '₹0',
-    },
+    // {
+    //   label: 'Total Earnings',
+    //   value: `₹${parseFloat(totalEarnings).toLocaleString('en-IN')}`,
+    //   icon: TrendingUp,
+    //   color: 'purple',
+    //   change: walletStats?.this_month_topups ? 
+    //     '+₹' + parseFloat(walletStats.this_month_topups).toLocaleString('en-IN') : 
+    //     '₹0',
+    // },
   ];
 
   const recentVisits = visits.slice(0, 5);
@@ -127,9 +127,9 @@ const DashboardPage: React.FC = () => {
                   ₹{parseFloat(balance?.balance || '0').toLocaleString('en-IN')}
                 </span>
               </div>
-              <p className="text-sm opacity-80">
+              {/* <p className="text-sm opacity-80">
                 Blocked: ₹{(parseFloat(balance?.blocked_balance || '0') - parseFloat(balance?.blocked_balance || '0')).toLocaleString('en-IN')}
-              </p>
+              </p> */}
             </div>
             <Link
               to="/partner/wallet"

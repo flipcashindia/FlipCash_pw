@@ -107,9 +107,12 @@ const AgentDashboardPage: React.FC = () => {
           Hello, {profile?.user?.name?.split(' ')[0] || 'Agent'}!
           {/* ADD THIS: Show if partner */}
           {profile?.employee_code === 'SELF' && (
-            <span className="ml-2 px-3 py-1 bg-[#FEC925]/20 text-[#FEC925] text-sm rounded-lg">
+            <button 
+              onClick={() => navigate('/partner/dashboard')}
+              className="ml-2 px-3 py-1 bg-[#FEC925]/20 text-[#FEC925] text-sm rounded-lg hover:bg-[#FEC925]/30 transition-colors"
+            >
               Partner Mode
-            </span>
+            </button>
           )}
         </h1>
         <p className="text-white/70">
