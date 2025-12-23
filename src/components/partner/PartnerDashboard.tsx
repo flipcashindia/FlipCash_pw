@@ -84,7 +84,7 @@ const PartnerDashboardPage: React.FC = () => {
 
   // State 3 & 4: APPROVED (Render the dashboard)
   const isProfileComplete = partner.profile_completed; //
-  console.log('is profile complete: ', partner.status)
+  // console.log('is profile complete: ', partner.status)
 
   return (
     <div className="relative min-h-[calc(100vh-80px)]">

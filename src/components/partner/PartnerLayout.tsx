@@ -19,6 +19,7 @@ const partnerNavItems = [
 export const PartnerLayout: React.FC = () => {
   const { user } = useAuthStore();
   const { partner, isLoading } = usePartnerStore();
+  const isProfileComplete = partner?.profile_completed; 
   
   // Check if partner can work as agent
   const [canWorkAsAgent, setCanWorkAsAgent] = useState(false);
@@ -63,6 +64,21 @@ export const PartnerLayout: React.FC = () => {
                 </h3>
                 <p className="text-sm text-gray-500">{partner.business_name}</p>
               </div>
+              {!isProfileComplete && (
+                      <nav className="flex flex-col space-y-2 p-2">
+                {partnerNavItems.map((item) => (
+                  <div
+                    key={item.name}
+                    // to={item.href}
+                    className='flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all text-gray-700 hover:bg-brand-gray-light' 
+                  >
+                    <item.icon size={20} />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </nav>
+                    )}
+              {isProfileComplete && (
               <nav className="flex flex-col space-y-2 p-2">
                 {partnerNavItems.map((item) => (
                   <NavLink
@@ -100,6 +116,7 @@ export const PartnerLayout: React.FC = () => {
                   </>
                 )}
               </nav>
+              )}
             </div>
           </aside>
 
