@@ -534,7 +534,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
     }
   };
 
-  // ============ Helper Functions ============
+  // ============ Helper Functions ============ accept
   const formatCurrency = (value: string | number | null): string => {
     if (!value) return '₹0';
     return `₹${parseFloat(value.toString()).toLocaleString('en-IN')}`;

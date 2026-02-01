@@ -117,7 +117,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/cookies" element={<CookiePolicy />} />
       
       {/* ============================= */}
-      {/* CONSUMER PROTECTED ROUTES */}
+      {/* CONSUMER PROTECTED ROUTES */} 
       {/* ============================= */}
       <Route
         path="/my-account"
