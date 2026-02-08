@@ -116,7 +116,7 @@ const faqData: FAQItem[] = [
     question: "How can I contact FLIPCASH for support?",
     answer: [
       "You can reach us:",
-      "📞 Phone: +91 96547 86218 / +91 91232 28577",
+      "📞 Phone: +91 91232 28577",
       "📧 Email: support@flipcash.in",
       "Available on working days from 10 AM to 7 PM."
     ],
@@ -303,12 +303,6 @@ const FAQ: React.FC = () => {
               <Phone className="w-12 h-12 text-[#FEC925] mx-auto mb-4" />
               <h3 className="font-bold text-xl mb-2">Phone Support</h3>
               <p className="text-gray-300 text-sm mb-3">Available 10 AM - 7 PM</p>
-              <a 
-                href="tel:+919654786218" 
-                className="text-[#FEC925] hover:text-yellow-300 font-semibold block"
-              >
-                +91 96547 86218
-              </a>
               <a 
                 href="tel:+919123228577" 
                 className="text-[#FEC925] hover:text-yellow-300 font-semibold block"
