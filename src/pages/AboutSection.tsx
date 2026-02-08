@@ -5,22 +5,6 @@ import AboutImg from '../assets/BlogDefault.png';
 const AboutUs: React.FC = () => {
   return (
     <div className="bg-white">
-      {/* Hero Section */}
-      {/* <section className="bg-gradient-to-br from-[#FEC925] to-yellow-400 py-20"> */}
-        {/* <div className="container mx-auto px-4 md:px-6 text-center"> */}
-          {/* <img 
-            src={flipcashLogo} 
-            alt="Flipcash Logo" 
-            className="w-48 h-24 mx-auto mb-8 rounded-lg" 
-          /> */}
-          {/* <h1 className="text-5xl md:text-6xl font-extrabold text-black mb-6">
-            About FLIPCASH
-          </h1>
-          <p className="text-xl md:text-2xl text-black/80 max-w-3xl mx-auto font-medium">
-            Your Trusted Partner for Smart, Sustainable Electronic Device Solutions
-          </p> */}
-        {/* </div> */}
-      {/* </section> */}
 
       {/* Main About Section */}
       <section className="py-16">
