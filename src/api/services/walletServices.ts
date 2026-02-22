@@ -2,8 +2,7 @@
 /**
  * Wallet Service
  * Handles wallet operations, top-ups, and transaction history
- * 
- * USES: privateApiClient with Zustand auth store
+ * * USES: privateApiClient with Zustand auth store
  */
 
 import { privateApiClient } from '../client/apiClient'
@@ -130,6 +129,19 @@ export interface WalletStats {
 }
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+// Safely unwraps Django Pagination if the frontend expects a flat array
+const extractData = (data: any) => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data; 
+  if (data.results && Array.isArray(data.results)) return data.results; 
+  if (data.data && Array.isArray(data.data)) return data.data; 
+  return data; 
+};
+
+// ============================================================================
 // SERVICE
 // ============================================================================
 
@@ -143,7 +155,7 @@ class WalletService {
     const response: AxiosResponse<Wallet> = await privateApiClient.get(
       `${this.baseUrl}/`
     );
-    console.log('wallet balance : ', response)
+    console.log('wallet balance : ', response.data)
     return response.data;
   }
 
@@ -158,6 +170,7 @@ class WalletService {
 
   /**
    * List transactions
+   * Note: Left exactly as-is because the interface expects the paginated { results, count, next } object
    */
   async listTransactions(params?: TransactionListParams): Promise<{
     results: Transaction[];
@@ -249,7 +262,8 @@ class WalletService {
     const response = await privateApiClient.get(
       `${this.baseUrl}/topup/pending/`
     );
-    return response.data;
+    // 👇 FIX: Unwrap the paginated response to guarantee an array is returned
+    return extractData(response.data);
   }
 
   /**
@@ -335,7 +349,8 @@ class WalletService {
     const response = await privateApiClient.get(
       `${this.baseUrl}/payouts/`
     );
-    return response.data;
+    // 👇 FIX: Unwrap the paginated response to guarantee an array is returned
+    return extractData(response.data);
   }
 }
 

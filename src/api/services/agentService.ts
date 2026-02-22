@@ -3,18 +3,6 @@
 // CRITICAL: Endpoints MUST match backend partner_agents/urls.py exactly
 //
 // Base URL: /api/v1/partner-agents/
-//
-// Partner Endpoints:
-// - GET/POST       /agents/                    - List/Create agents
-// - GET/PUT/DELETE /agents/{id}/               - Get/Update/Delete agent
-// - POST           /agents/{id}/verify/        - Submit Aadhaar verification
-// - POST           /agents/{id}/toggle-status/ - Toggle active/inactive
-// - GET            /agents/{id}/assignments/   - Get agent's assignments
-// - GET            /agents/{id}/activity-logs/ - Get agent's activity logs
-// - GET/POST       /assignments/               - List/Create assignments
-// - GET/DELETE     /assignments/{id}/          - Get/Cancel assignment
-// - POST           /assignments/{id}/reassign/ - Reassign to different agent
-// - GET            /assignable-leads/          - Get leads that can be assigned
 
 import { useAuthStore } from '../../stores/authStore';
 import type {
@@ -95,16 +83,20 @@ const apiCall = async <T>(
   return response.json();
 };
 
+// 👇 This safely unwraps Django Pagination
+const extractData = (data: any) => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data; 
+  if (data.results && Array.isArray(data.results)) return data.results; 
+  if (data.data && Array.isArray(data.data)) return data.data; 
+  return data; 
+};
+
 export const agentService = {
   // ============================================================
   // AGENT CRUD
   // ============================================================
 
-  /**
-   * Get list of agents for the partner
-   * GET /api/v1/partner-agents/agents/
-   * Filters: status, verification_status, is_available, search
-   */
   getAgents: async (params?: AgentListParams): Promise<AgentListResponse> => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.append('status', params.status);
@@ -115,22 +107,16 @@ export const agentService = {
     if (params?.page_size) searchParams.append('page_size', String(params.page_size));
 
     const query = searchParams.toString();
-    return apiCall<AgentListResponse>(`/partner-agents/agents/${query ? `?${query}` : ''}`);
+    
+    // 👇 FIX: Unwrap the paginated response here!
+    const rawData = await apiCall<any>(`/partner-agents/agents/${query ? `?${query}` : ''}`);
+    return extractData(rawData) as AgentListResponse;
   },
 
-  /**
-   * Get single agent details
-   * GET /api/v1/partner-agents/agents/{id}/
-   */
   getAgent: async (agentId: string): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`);
   },
 
-  /**
-   * Create a new agent
-   * POST /api/v1/partner-agents/agents/
-   * Body: { phone, name, email?, employee_code?, max_concurrent_leads?, aadhaar_number?, notes? }
-   */
   createAgent: async (data: CreateAgentRequest): Promise<AgentProfile> => {
     console.log('[AgentService] Creating agent with data:', data);
     return apiCall<AgentProfile>('/partner-agents/agents/', {
@@ -139,10 +125,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Update an agent (full update)
-   * PUT /api/v1/partner-agents/agents/{id}/
-   */
   updateAgent: async (agentId: string, data: UpdateAgentRequest): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`, {
       method: 'PUT',
@@ -150,10 +132,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Partial update an agent
-   * PATCH /api/v1/partner-agents/agents/{id}/
-   */
   patchAgent: async (agentId: string, data: Partial<UpdateAgentRequest>): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`, {
       method: 'PATCH',
@@ -161,11 +139,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Delete/Deactivate an agent (soft delete)
-   * DELETE /api/v1/partner-agents/agents/{id}/
-   * Note: Fails if agent has active assignments
-   */
   removeAgent: async (agentId: string): Promise<void> => {
     return apiCall<void>(`/partner-agents/agents/${agentId}/`, {
       method: 'DELETE',
@@ -176,21 +149,12 @@ export const agentService = {
   // AGENT STATUS & VERIFICATION
   // ============================================================
 
-  /**
-   * Toggle agent active/inactive status
-   * POST /api/v1/partner-agents/agents/{id}/toggle-status/
-   */
   toggleStatus: async (agentId: string): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/toggle-status/`, {
       method: 'POST',
     });
   },
 
-  /**
-   * Submit Aadhaar verification
-   * POST /api/v1/partner-agents/agents/{id}/verify/
-   * Body: { aadhaar_number, aadhaar_front_image?, aadhaar_back_image? }
-   */
   verifyAgent: async (agentId: string, data: AadhaarVerifyRequest): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/verify/`, {
       method: 'POST',
@@ -198,12 +162,7 @@ export const agentService = {
     });
   },
 
-  /**
-   * Toggle agent availability
-   * PATCH /api/v1/partner-agents/agents/{id}/
-   */
   toggleAvailability: async (agentId: string): Promise<AgentProfile> => {
-    // First get current status
     const agent = await agentService.getAgent(agentId);
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`, {
       method: 'PATCH',
@@ -211,10 +170,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Activate an agent
-   * PATCH /api/v1/partner-agents/agents/{id}/
-   */
   activateAgent: async (agentId: string): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`, {
       method: 'PATCH',
@@ -222,10 +177,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Deactivate an agent
-   * PATCH /api/v1/partner-agents/agents/{id}/
-   */
   deactivateAgent: async (agentId: string): Promise<AgentProfile> => {
     return apiCall<AgentProfile>(`/partner-agents/agents/${agentId}/`, {
       method: 'PATCH',
@@ -237,40 +188,26 @@ export const agentService = {
   // AGENT ASSIGNMENTS & ACTIVITY
   // ============================================================
 
-  /**
-   * Get agent's lead assignments
-   * GET /api/v1/partner-agents/agents/{id}/assignments/
-   * Query: ?status=assigned,accepted,in_progress
-   */
   getAgentAssignments: async (
     agentId: string,
     status?: string
   ): Promise<AgentAssignmentsResponse> => {
     const query = status ? `?status=${status}` : '';
-    return apiCall<AgentAssignmentsResponse>(
-      `/partner-agents/agents/${agentId}/assignments/${query}`
-    );
+    // 👇 FIX: Unwrap the paginated response here!
+    const rawData = await apiCall<any>(`/partner-agents/agents/${agentId}/assignments/${query}`);
+    return extractData(rawData) as AgentAssignmentsResponse;
   },
 
-  /**
-   * Get agent's activity logs (last 100)
-   * GET /api/v1/partner-agents/agents/{id}/activity-logs/
-   */
   getAgentActivityLogs: async (agentId: string): Promise<ActivityLogsResponse> => {
-    return apiCall<ActivityLogsResponse>(
-      `/partner-agents/agents/${agentId}/activity-logs/`
-    );
+    // 👇 FIX: Unwrap the paginated response here!
+    const rawData = await apiCall<any>(`/partner-agents/agents/${agentId}/activity-logs/`);
+    return extractData(rawData) as ActivityLogsResponse;
   },
 
   // ============================================================
   // LEAD ASSIGNMENTS (Partner managing assignments)
   // ============================================================
 
-  /**
-   * Get all lead assignments
-   * GET /api/v1/partner-agents/assignments/
-   * Filters: status, priority, agent, lead, lead_number, is_active, is_overdue
-   */
   getAssignments: async (params?: AssignmentListParams): Promise<AgentAssignmentsResponse> => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.append('status', params.status);
@@ -283,14 +220,11 @@ export const agentService = {
     if (params?.page) searchParams.append('page', String(params.page));
 
     const query = searchParams.toString();
-    return apiCall<AgentAssignmentsResponse>(`/partner-agents/assignments/${query ? `?${query}` : ''}`);
+    // 👇 FIX: Unwrap the paginated response here!
+    const rawData = await apiCall<any>(`/partner-agents/assignments/${query ? `?${query}` : ''}`);
+    return extractData(rawData) as AgentAssignmentsResponse;
   },
 
-  /**
-   * Assign a lead to an agent
-   * POST /api/v1/partner-agents/assignments/
-   * Body: { agent_id, lead_id, priority?, assignment_notes?, expected_completion_at? }
-   */
   createAssignment: async (data: CreateAssignmentRequest): Promise<AgentLeadAssignment> => {
     console.log('[AgentService] Creating assignment:', data);
     return apiCall<AgentLeadAssignment>('/partner-agents/assignments/', {
@@ -299,19 +233,10 @@ export const agentService = {
     });
   },
 
-  /**
-   * Get assignment details
-   * GET /api/v1/partner-agents/assignments/{id}/
-   */
   getAssignment: async (assignmentId: string): Promise<AgentLeadAssignment> => {
     return apiCall<AgentLeadAssignment>(`/partner-agents/assignments/${assignmentId}/`);
   },
 
-  /**
-   * Cancel an assignment
-   * DELETE /api/v1/partner-agents/assignments/{id}/
-   * Body: { reason? }
-   */
   cancelAssignment: async (assignmentId: string, reason?: string): Promise<void> => {
     return apiCall<void>(`/partner-agents/assignments/${assignmentId}/`, {
       method: 'DELETE',
@@ -319,11 +244,6 @@ export const agentService = {
     });
   },
 
-  /**
-   * Reassign lead to different agent
-   * POST /api/v1/partner-agents/assignments/{id}/reassign/
-   * Body: { new_agent_id, reason? }
-   */
   reassignLead: async (
     assignmentId: string,
     data: ReassignLeadRequest
@@ -338,33 +258,23 @@ export const agentService = {
   // ASSIGNABLE LEADS
   // ============================================================
 
-  /**
-   * Get leads that can be assigned to agents
-   * GET /api/v1/partner-agents/assignable-leads/
-   * Returns leads claimed by partner without active agent assignments
-   */
   getAssignableLeads: async (): Promise<AssignableLeadsResponse> => {
-    return apiCall<AssignableLeadsResponse>('/partner-agents/assignable-leads/');
+    // 👇 FIX: Unwrap the paginated response here!
+    const rawData = await apiCall<any>('/partner-agents/assignable-leads/');
+    return extractData(rawData) as AssignableLeadsResponse;
   },
 
   // ============================================================
   // STATS
   // ============================================================
 
-  /**
-   * Get overall agents stats for partner
-   * Note: Check if backend provides this endpoint
-   */
   getOverallStats: async (): Promise<AgentStats> => {
-    // If backend doesn't have a dedicated stats endpoint, 
-    // we can calculate from getAgents
     try {
       const response = await apiCall<AgentStats>('/partner-agents/agents/stats/');
       return response;
     } catch {
-      // Fallback: calculate from agents list
+      // Fallback works properly now because `getAgents()` actually returns an array!
       const agents = await agentService.getAgents();
-      // AgentListResponse is a flat array (AgentListItem[])
       return {
         total_agents: agents.length,
         active_agents: agents.filter((a) => a.status === 'active').length,
@@ -376,24 +286,14 @@ export const agentService = {
     }
   },
 
-  // ============================================================
-  // HELPER: Get available agents for a specific lead
-  // ============================================================
-
-  /**
-   * Get agents that can be assigned to a specific lead
-   * Uses getAgents with is_available filter
-   */
   getAvailableAgentsForLead: async (): Promise<AgentListItem[]> => {
+    // This will no longer crash because `getAgents()` returns the unwrapped array!
     const agents = await agentService.getAgents({
       status: 'active',
       is_available: true,
     });
-    // Filter agents who can accept more leads
     return agents.filter((agent) => agent.can_accept_leads !== false);
   },
 };
 
 export default agentService;
-
-
