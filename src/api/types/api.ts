@@ -41,6 +41,13 @@ export interface PartnerSignupVerifyOtpResponse {
   };
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 /**
  * API 6.3: Partner Complete Signup
  */

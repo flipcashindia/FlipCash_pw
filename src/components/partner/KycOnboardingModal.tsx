@@ -2,48 +2,51 @@
 import React, { useEffect, useState } from 'react';
 import { type User, type PartnerProfile } from '../../api/types/api';
 import { Link } from 'react-router-dom';
-import { Loader2, AlertCircle, X, CheckCircle, RefreshCw } from 'lucide-react'; // <-- Import RefreshCw
-import { partnerService } from '../../api/services/partnerService'; // <-- Corrected path
-import { useQuery, useQueryClient } from '@tanstack/react-query'; // <-- Import useQueryClient
+import { Loader2, AlertCircle, X, CheckCircle, RefreshCw } from 'lucide-react';
+import { partnerService } from '../../api/services/partnerService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePartnerStore } from '../../stores/usePartnerStore';
-import { useAuthStore } from '../../stores/authStore'; // <-- Import auth store
-import { useToast } from '../../contexts/ToastContext'; // <-- Import useToast
+import { useAuthStore } from '../../stores/authStore';
+import { useToast } from '../../contexts/ToastContext';
 
-// --- Helper Hook to fetch sub-items (Unchanged) ---
+// --- Helper Hook to fetch sub-items ---
 const usePartnerChecklist = (partnerId: string) => {
   const { data: bankAccounts, isLoading: bankLoading } = useQuery({
     queryKey: ['partnerBankAccounts', partnerId],
-    queryFn: () => partnerService.getBankAccounts(), //
+    queryFn: () => partnerService.getBankAccounts(),
     staleTime: 300000 
   });
 
-
-
   const { data: documents, isLoading: docsLoading } = useQuery({
     queryKey: ['partnerDocuments', partnerId],
-    queryFn: () => partnerService.getDocuments(), //
+    queryFn: () => partnerService.getDocuments(),
     staleTime: 300000
   });
   
   const { data: serviceAreas, isLoading: areasLoading } = useQuery({
     queryKey: ['partnerServiceAreas', partnerId],
-    queryFn: () => partnerService.getServiceAreas(), //
+    queryFn: () => partnerService.getServiceAreas(),
     staleTime: 300000
   });
 
+  // ✅ SAFE EXTRACTION WITH TYPESCRIPT BYPASS
+  const safeBanks: any[] = Array.isArray(bankAccounts) ? bankAccounts : ((bankAccounts as any)?.results || []);
+  const safeDocs: any[] = Array.isArray(documents) ? documents : ((documents as any)?.results || []);
+  const safeAreas: any[] = Array.isArray(serviceAreas) ? serviceAreas : ((serviceAreas as any)?.results || []);
+
   const checklist = {
     bank: {
-      isDone: !!bankAccounts?.find(b => b.is_verified), //
+      isDone: !!safeBanks.find((b: any) => b.is_verified),
       isLoading: bankLoading,
     },
     docs: {
       isDone: 
-        !!documents?.find(d => d.document_type === 'aadhaar' && d.verification_status === 'verified') &&
-        !!documents?.find(d => d.document_type === 'pan' && d.verification_status === 'verified'),
+        !!safeDocs.find((d: any) => d.document_type === 'aadhaar' && d.verification_status === 'verified') &&
+        !!safeDocs.find((d: any) => d.document_type === 'pan' && d.verification_status === 'verified'),
       isLoading: docsLoading,
     },
     area: {
-      isDone: !!serviceAreas?.find(a => a.is_active), //
+      isDone: !!safeAreas.find((a: any) => a.is_active),
       isLoading: areasLoading,
     }
   };
@@ -52,18 +55,17 @@ const usePartnerChecklist = (partnerId: string) => {
 };
 
 
-// --- The Modal Component (Upgraded) ---
+// --- The Modal Component ---
 export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile }> = ({ user, partner }) => {
-  console.log('KYC Onboarding Modal => user: ', user)
   const queryClient = useQueryClient();
   const toast = useToast();
   const { refetchPartner } = usePartnerStore();
-  const { refetchUser } = useAuthStore(); // <-- Get refetch function from auth store
+  const { refetchUser } = useAuthStore();
   const { checklist, isLoading } = usePartnerChecklist(partner.id);
   const [isRefetching, setIsRefetching] = useState(false);
 
   // 1. Get User KYC Status
-  const kycStatus = user.kyc_status || 'pending'; //
+  const kycStatus = user.kyc_status || 'pending';
   const isKycDone = kycStatus === 'verified';
   const kycStatusText = {
     pending: 'Pending',
@@ -73,10 +75,10 @@ export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile 
   }[kycStatus];
   
   const kycStatusColor = {
-    pending: 'text-brand-yellow', //
+    pending: 'text-brand-yellow',
     in_review: 'text-blue-500',
-    verified: 'text-brand-green', //
-    rejected: 'text-brand-red', //
+    verified: 'text-brand-green',
+    rejected: 'text-brand-red',
   }[kycStatus];
 
   const allDone = isKycDone && checklist.bank.isDone && checklist.docs.isDone && checklist.area.isDone;
@@ -87,16 +89,13 @@ export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile 
     }
   }, [allDone, partner.profile_completed, refetchPartner]);
 
-  // --- NEW: Refresh handler ---
+  // --- Refresh handler ---
   const handleRefreshStatus = async () => {
     setIsRefetching(true);
-    // 1. Refetch the KYC status from the User object
     await refetchUser(); 
-    // 2. Refetch all data from React Query
     await queryClient.invalidateQueries({ queryKey: ['partnerBankAccounts'] });
     await queryClient.invalidateQueries({ queryKey: ['partnerDocuments'] });
     await queryClient.invalidateQueries({ queryKey: ['partnerServiceAreas'] });
-    // 3. Refetch the main partner profile
     await refetchPartner();
     
     setIsRefetching(false);
@@ -110,7 +109,6 @@ export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile 
         <h2 className="text-2xl font-bold text-brand-black mb-2">Complete Your Profile</h2>
         <p className="text-gray-600 mb-4">You must complete all steps to get approved and start receiving leads.</p>
         
-        {/* --- UPGRADED: Header with Refresh Button --- */}
         <div className="flex items-center justify-center space-x-2">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm ${kycStatusColor.replace('text-', 'bg-').replace('500', '100').replace('yellow', 'yellow-100')} ${kycStatusColor}`}>
             {kycStatus === 'verified' && <CheckCircle size={16} />}
@@ -175,7 +173,7 @@ export const KycOnboardingModal: React.FC<{ user: User; partner: PartnerProfile 
   );
 };
 
-// --- Sub-component for the checklist items (Unchanged) ---
+// --- Sub-component for the checklist items ---
 const ChecklistItem: React.FC<{
   title: string;
   description: string;
