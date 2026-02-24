@@ -11,7 +11,6 @@ import {
   Package,
   FileText,
   Wallet,
-  // TrendingUp,
   Clock,
   CheckCircle2,
   ArrowRight,
@@ -41,17 +40,17 @@ const DashboardPage: React.FC = () => {
   const { data: agentStatsData, isLoading: agentStatsLoading } = useAgentStats();
   const { data: agentsData, isLoading: agentsLoading } = useAgents({ status: 'active' });
 
-  // ✅ Safe array handling - ensure visits is always an array
-  const visits = Array.isArray(visitsData) ? visitsData : [];
-  const agents = agentsData || [];
+  // ✅ SAFE EXTRACTION WITH TYPESCRIPT BYPASS
+  const visits: any[] = Array.isArray(visitsData) ? visitsData : ((visitsData as any)?.results || []);
+  const agents: any[] = Array.isArray(agentsData) ? agentsData : ((agentsData as any)?.results || []);
 
-  const activeLeads = visits.filter((v) => 
+  // ✅ Explicitly typed variables as ': any' in the callbacks
+  const activeLeads = visits.filter((v: any) => 
     ['scheduled', 'en_route', 'in_progress'].includes(v.status)
   ).length;
 
-  const completedLeads = visits.filter((v) => v.status === 'completed').length;
-  const inProgressLeads = visits.filter((v) => v.status === 'in_progress').length;
-  // const totalEarnings = walletStats?.total_credits || '0';
+  const completedLeads = visits.filter((v: any) => v.status === 'completed').length;
+  const inProgressLeads = visits.filter((v: any) => v.status === 'in_progress').length;
 
   const stats = [
     {
@@ -75,15 +74,6 @@ const DashboardPage: React.FC = () => {
       color: 'yellow',
       change: inProgressLeads > 0 ? 'Active' : 'None',
     },
-    // {
-    //   label: 'Total Earnings',
-    //   value: `₹${parseFloat(totalEarnings).toLocaleString('en-IN')}`,
-    //   icon: TrendingUp,
-    //   color: 'purple',
-    //   change: walletStats?.this_month_topups ? 
-    //     '+₹' + parseFloat(walletStats.this_month_topups).toLocaleString('en-IN') : 
-    //     '₹0',
-    // },
   ];
 
   const recentVisits = visits.slice(0, 5);
@@ -127,9 +117,6 @@ const DashboardPage: React.FC = () => {
                   ₹{parseFloat(balance?.balance || '0').toLocaleString('en-IN')}
                 </span>
               </div>
-              {/* <p className="text-sm opacity-80">
-                Blocked: ₹{(parseFloat(balance?.blocked_balance || '0') - parseFloat(balance?.blocked_balance || '0')).toLocaleString('en-IN')}
-              </p> */}
             </div>
             <Link
               to="/partner/wallet"
@@ -174,7 +161,7 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Actions - Including Manage Agents */}
+      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Browse Catalog */}
         <Link
@@ -220,9 +207,7 @@ const DashboardPage: React.FC = () => {
           </div>
         </Link>
 
-        {/* ============================================== */}
-        {/* NEW: MANAGE AGENTS QUICK ACTION */}
-        {/* ============================================== */}
+        {/* Manage Agents */}
         <Link
           to="/partner/agents"
           className="group bg-gradient-to-br from-[#1B8A05] to-[#156d04] rounded-xl p-6 text-white hover:shadow-xl transition-all"
@@ -245,9 +230,7 @@ const DashboardPage: React.FC = () => {
         </Link>
       </div>
 
-      {/* ============================================== */}
-      {/* NEW: AGENTS OVERVIEW SECTION */}
-      {/* ============================================== */}
+      {/* Agents Overview Section */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -289,7 +272,8 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <UserCheck className="text-[#1B8A05]" size={20} />
                   <span className="text-2xl font-bold text-[#1C1C1B]">
-                    {agentStatsData?.active_agents || agents.filter(a => a.status === 'active').length}
+                    {/* ✅ Added explicit ': any' typing */}
+                    {agentStatsData?.active_agents || agents.filter((a: any) => a.status === 'active').length}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">Active</p>
@@ -298,7 +282,8 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="text-blue-600" size={20} />
                   <span className="text-2xl font-bold text-[#1C1C1B]">
-                    {agentStatsData?.available_agents || agents.filter(a => a.is_available).length}
+                    {/* ✅ Added explicit ': any' typing */}
+                    {agentStatsData?.available_agents || agents.filter((a: any) => a.is_available).length}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">Available Now</p>
@@ -319,7 +304,8 @@ const DashboardPage: React.FC = () => {
               <div>
                 <h3 className="font-semibold text-gray-700 mb-3">Your Team</h3>
                 <div className="space-y-2">
-                  {agents.slice(0, 3).map((agent) => (
+                  {/* ✅ Added explicit ': any' typing */}
+                  {agents.slice(0, 3).map((agent: any) => (
                     <div
                       key={agent.id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
@@ -409,7 +395,8 @@ const DashboardPage: React.FC = () => {
           </div>
         ) : recentVisits.length > 0 ? (
           <div className="space-y-3">
-            {recentVisits.map((visit) => (
+            {/* ✅ Added explicit ': any' typing */}
+            {recentVisits.map((visit: any) => (
               <button
                 key={visit.id}
                 onClick={() => navigate(`/partner/lead/${visit.lead_number}`)}
@@ -431,7 +418,7 @@ const DashboardPage: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
-                          {(visit as any).pickup_city || (visit as any).city || 'N/A'}
+                          {visit.pickup_city || visit.city || 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -440,7 +427,7 @@ const DashboardPage: React.FC = () => {
                     <div className="text-right">
                       <div className="flex items-center gap-1 font-bold text-gray-900">
                         <IndianRupee className="w-4 h-4" />
-                        <span>{parseFloat((visit as any).estimated_price || '0').toLocaleString('en-IN')}</span>
+                        <span>{parseFloat(visit.estimated_price || '0').toLocaleString('en-IN')}</span>
                       </div>
                       <p className="text-xs text-gray-500">Est. Price</p>
                     </div>

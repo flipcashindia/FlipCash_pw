@@ -212,23 +212,6 @@ interface PricingBreakdown {
   calculation_method?: string;
 }
 
-// interface VisitData {
-//   inspection_notes: string;
-//   inspection_photos: string[];
-//   verified_imei: string;
-//   verified_conditions: VerifiedConditions;
-//   pricing_breakdown: PricingBreakdown;
-//   partner_recommended_price: string;
-//   full_assessment: any;
-//   inspection_completed_at: string;
-// }
-
-// interface CustomerResponseData {
-//   response: 'accepted' | 'rejected';
-//   responded_at: string;
-//   final_price?: string;
-//   rejection_reason?: string;
-// }
 
 // ⬆️ END OF NEW CODE ⬆️
 
@@ -734,15 +717,7 @@ const AgentLeadDetailPage: React.FC = () => {
   const [completedPayment, setCompletedPayment] = useState<PaymentDetails | null>(null);
   const [statusLogs, setStatusLogs] = useState<StatusLog[]>([]);
 
-  // Update KYC data when assignment loads
-  // useEffect(() => {
-  //   if (assignment?.customer_name && !kycData.customer_full_name) {
-  //     setKycData(prev => ({
-  //       ...prev,
-  //       customer_full_name: assignment.customer_name
-  //     }));
-  //   }
-  // }, [assignment?.customer_name]);
+  
 
 // ============================================================================
 // REPLACE THE HOOKS SECTION (After other hooks, around line 450)
@@ -753,61 +728,7 @@ const AgentLeadDetailPage: React.FC = () => {
   const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
   const [attributesError, setAttributesError] = useState<string | null>(null);
 
-  // Fetch device attributes manually
-  // useEffect(() => {
-  //   console.log('Assignment ID for fetching device attributes:', assignmentId);
-  //   const fetchDeviceAttributes = async () => {
-  //     if (!assignmentId) return;
-      
-  //     setIsLoadingAttributes(true);
-  //     setAttributesError(null);
-      
-  //     try {
-  //       const token = useAuthStore.getState().accessToken;
-        
-  //       if (!token) {
-  //         throw new Error('Authentication token not found');
-  //       }
-        
-  //       console.log('Fetching device attributes for assignment:', assignmentId);
-        
-  //       const response = await fetch(
-  //         `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
-  //         {
-  //           method: 'GET',
-  //           headers: {
-  //             'Authorization': `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //         }
-  //       );
-  //       console.log('getting attribures response : ', response);
-
-  //       console.log('[DeviceAttributes] Fetch response status:', response.status);
-        
-  //       if (!response.ok) {
-  //         const errorData = await response.json().catch(() => ({}));
-  //         throw new Error(errorData.error || `Failed to fetch device attributes: ${response.status}`);
-  //       }
-        
-  //       const data = await response.json();
-  //       console.log('[DeviceAttributes] Fetched successfully:', data);
-        
-  //       setDeviceAttributes(data);
-  //     } catch (err: any) {
-  //       console.error('[DeviceAttributes] Fetch error:', err);
-  //       setAttributesError(err.message || 'Failed to load device attributes');
-  //     } finally {
-  //       setIsLoadingAttributes(false);
-  //     }
-  //   };
-    
-  //   // Fetch when assignment is loaded and we're in inspecting stage
-  //   if (assignmentId && assignment?.assignment_status === 'code_verified') {
-  //     fetchDeviceAttributes();
-  //   }
-  // }, [assignmentId, assignment?.assignment_status]);
-
+  
   // Fetch device attributes manually
 useEffect(() => {
   // console.log('=== Device Attributes Effect Triggered ===');
@@ -1068,6 +989,11 @@ useEffect(() => {
     setActionError(null);
     try {
       const position = await getCurrentLocation();
+      
+      if (!position || !position.coords) {
+        throw new Error("Unable to read GPS location. Please ensure location permissions are granted.");
+      }
+
       await checkInMutation.mutateAsync({
         assignmentId,
         data: {
