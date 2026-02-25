@@ -994,11 +994,16 @@ useEffect(() => {
         throw new Error("Unable to read GPS location. Please ensure location permissions are granted.");
       }
 
+      // Round to 6 decimal places (~0.1m precision) to satisfy backend
+      // DecimalField constraints (max_digits=10 for lat, 11 for lng)
+      const latitude = parseFloat(position.coords.latitude.toFixed(6));
+      const longitude = parseFloat(position.coords.longitude.toFixed(6));
+
       await checkInMutation.mutateAsync({
         assignmentId,
         data: {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude,
+          longitude,
           notes: '',
         },
       });
@@ -1808,142 +1813,9 @@ const handleSubmitInspection = async () => {
     );
   }
 
-  // // Show inspection form
-  // if (showInspectionForm) {
-  //   const handleImageUpload = async (_key: string, file: File): Promise<string> => {
-  //     return new Promise((resolve, reject) => {
-  //       const reader = new FileReader();
-  //       reader.onload = () => resolve(reader.result as string);
-  //       reader.onerror = () => reject(new Error('Failed to read file'));
-  //       reader.readAsDataURL(file);
-  //     });
-  //   };
 
-  //   return (
-  //     <InspectionForm
-  //       data={inspectionData}
-  //       onDataChange={setInspectionData}
-  //       onSubmit={handleSubmitInspection}
-  //       onCancel={() => setShowInspectionForm(false)}
-  //       isSubmitting={submitInspectionMutation.isPending}
-  //       deviceInfo={{
-  //         brand: assignment.device_brand,
-  //         model: assignment.device_model,
-  //         storage: assignment.device_storage,
-  //       }}
-  //       onImageUpload={handleImageUpload}
-  //     />
-  //   );
-  // }
 
   
-  // Show dynamic inspection form
-  // if (showInspectionForm) {
-  //   if (isLoadingAttributes) {
-  //     return (
-  //       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-  //         <Loader2 className="w-12 h-12 animate-spin text-[#FEC925] mb-4" />
-  //         <p className="text-gray-600 font-medium">Loading device inspection form...</p>
-  //         <p className="text-gray-500 text-sm mt-2">Fetching inspection criteria...</p>
-  //       </div>
-  //     );
-  //   }
-
-  //   if (attributesError) {
-  //     return (
-  //       <div className="min-h-screen bg-gray-50 p-6">
-  //         <div className="max-w-md mx-auto mt-20">
-  //           <div className="bg-white rounded-2xl border-2 border-red-200 p-6 text-center">
-  //             <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
-  //             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-  //               Failed to Load Inspection Form
-  //             </h3>
-  //             <p className="text-gray-600 mb-4">{attributesError}</p>
-  //             <div className="flex gap-3">
-  //               <button
-  //                 onClick={() => setShowInspectionForm(false)}
-  //                 className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
-  //               >
-  //                 Go Back
-  //               </button>
-  //               <button
-  //                 onClick={async () => {
-  //                   setAttributesError(null);
-  //                   setIsLoadingAttributes(true);
-  //                   try {
-  //                     const token = useAuthStore.getState().accessToken;
-  //                     const response = await fetch(
-  //                       `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
-  //                       {
-  //                         method: 'GET',
-  //                         headers: {
-  //                           'Authorization': `Bearer ${token}`,
-  //                           'Content-Type': 'application/json',
-  //                         },
-  //                       }
-  //                     );
-                      
-  //                     if (!response.ok) {
-  //                       throw new Error('Failed to fetch device attributes');
-  //                     }
-                      
-  //                     const data = await response.json();
-  //                     setDeviceAttributes(data);
-  //                   } catch (err: any) {
-  //                     setAttributesError(err.message);
-  //                   } finally {
-  //                     setIsLoadingAttributes(false);
-  //                   }
-  //                 }}
-  //                 className="flex-1 px-4 py-2 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-semibold hover:bg-[#e5b520] transition"
-  //               >
-  //                 Retry
-  //               </button>
-  //             </div>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     );
-  //   }
-
-  //   if (!deviceAttributes?.data?.attributes) {
-  //     return (
-  //       <div className="min-h-screen bg-gray-50 p-6">
-  //         <div className="max-w-md mx-auto mt-20">
-  //           <div className="bg-white rounded-2xl border-2 border-amber-200 p-6 text-center">
-  //             <AlertCircle className="mx-auto text-amber-500 mb-4" size={48} />
-  //             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-  //               No Inspection Criteria Available
-  //             </h3>
-  //             <p className="text-gray-600 mb-4">
-  //               Unable to load inspection form for this device category.
-  //             </p>
-  //             <button
-  //               onClick={() => setShowInspectionForm(false)}
-  //               className="w-full px-4 py-2 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-semibold hover:bg-[#e5b520] transition"
-  //             >
-  //               Go Back
-  //             </button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     );
-  //   }
-
-  //   return (
-  //     <DynamicInspectionForm
-  //       data={dynamicInspectionData}
-  //       onDataChange={setDynamicInspectionData}
-  //       onSubmit={handleSubmitInspection}
-  //       onCancel={() => setShowInspectionForm(false)}
-  //       isSubmitting={submitInspectionMutation.isPending}
-  //       deviceInfo={deviceAttributes.data.device_info}
-  //       attributes={deviceAttributes.data.attributes}
-  //       pricingConfig={deviceAttributes.data.pricing_config}
-  //     />
-  //   );
-  // }
-
 // Show inspection form - with fallback to old form if dynamic attributes fail
 if (showInspectionForm) {
   // ✅ CRITICAL FIX: Add validation check before showing form
@@ -2101,68 +1973,6 @@ if (showInspectionForm) {
 }
 
 
-
-  // Show inspection form - with fallback to old form if dynamic attributes fail
-  // if (showInspectionForm) {
-  //   // Try dynamic form first if attributes are being loaded
-  //   if (isLoadingAttributes) {
-  //     return (
-  //       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-  //         <Loader2 className="w-12 h-12 animate-spin text-[#FEC925] mb-4" />
-  //         <p className="text-gray-600 font-medium">Loading device inspection form...</p>
-  //         <p className="text-gray-500 text-sm mt-2">Fetching inspection criteria...</p>
-  //       </div>
-  //     );
-  //   }
-
-  //   // If we have valid dynamic attributes data, use dynamic form
-  //   if (deviceAttributes?.data?.attributes && deviceAttributes.data.attributes.length > 0) {
-  //     return (
-  //       <DynamicInspectionForm
-  //         data={dynamicInspectionData}
-  //         onDataChange={setDynamicInspectionData}
-  //         onSubmit={handleSubmitInspection}
-  //         onCancel={() => setShowInspectionForm(false)}
-  //         isSubmitting={submitInspectionMutation.isPending}
-  //         deviceInfo={deviceAttributes.data.device_info}
-  //         attributes={deviceAttributes.data.attributes}
-  //         pricingConfig={deviceAttributes.data.pricing_config}
-  //       />
-  //     );
-  //   }
-
-  //   // FALLBACK: Use old static inspection form if dynamic attributes unavailable
-  //   console.log('[InspectionForm] Using static fallback form - dynamic attributes not available');
-    
-  //   const handleImageUpload = async (_key: string, file: File): Promise<string> => {
-  //     return new Promise((resolve, reject) => {
-  //       const reader = new FileReader();
-  //       reader.onload = () => resolve(reader.result as string);
-  //       reader.onerror = () => reject(new Error('Failed to read file'));
-  //       reader.readAsDataURL(file);
-  //     });
-  //   };
-
-  //   return (
-  //     <InspectionForm
-  //       data={inspectionData}
-  //       onDataChange={setInspectionData}
-  //       onSubmit={handleSubmitInspection}
-  //       onCancel={() => setShowInspectionForm(false)}
-  //       isSubmitting={submitInspectionMutation.isPending}
-  //       deviceInfo={{
-  //         brand: assignment.device_brand,
-  //         model: assignment.device_model,
-  //         storage: assignment.device_storage,
-  //       }}
-  //       onImageUpload={handleImageUpload}
-  //     />
-  //   );
-  // }
-
-
-  // console.log('showCustomerAcceptance', showCustomerAcceptance);
-  // console.log('systemCalculatedPrice', systemCalculatedPrice);
 
   // Show customer acceptance UI
   if (showCustomerAcceptance && systemCalculatedPrice ){
