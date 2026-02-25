@@ -8,7 +8,7 @@ import {
   ArrowLeft, Loader2, AlertTriangle, X, Wallet, MapPin, User, CheckCircle,
   Tag, MessageSquare, Activity, Phone, Clock, Navigation, Eye, EyeOff,
   Smartphone, DollarSign, Send, Play,  ChevronRight,
-  UserPlus, Users,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -414,71 +414,71 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
 
 
-  const handleCheckIn = async () => {
-    if (!leadDetails || !visitDetails) return;
+  // const handleCheckIn = async () => {
+  //   if (!leadDetails || !visitDetails) return;
     
-    try {
-      setActionLoading(true);
-      setError(null);
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
-      const token = useAuthStore.getState().accessToken;
-      if (!token) throw new Error('Authentication required');
+  //     const token = useAuthStore.getState().accessToken;
+  //     if (!token) throw new Error('Authentication required');
 
-      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || 'Failed to check in');
-      }
+  //     if (!res.ok) {
+  //       const err = await res.json().catch(() => ({}));
+  //       throw new Error(err.detail || err.error || 'Failed to check in');
+  //     }
 
-      loadLeadDetails(leadDetails.id);
+  //     loadLeadDetails(leadDetails.id);
       
-    } catch (err: any) {
-      console.error('Check in error:', err);
-      setError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  //   } catch (err: any) {
+  //     console.error('Check in error:', err);
+  //     setError(err.message);
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // };
 
-  const handleStartInspection = async () => {
-    if (!leadDetails || !visitDetails) return;
+  // const handleStartInspection = async () => {
+  //   if (!leadDetails || !visitDetails) return;
     
-    try {
-      setActionLoading(true);
-      setError(null);
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
-      const token = useAuthStore.getState().accessToken;
-      if (!token) throw new Error('Authentication required');
+  //     const token = useAuthStore.getState().accessToken;
+  //     if (!token) throw new Error('Authentication required');
 
-      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || 'Failed to start inspection');
-      }
-      console.log('lead detials: ', leadDetails);
-      loadLeadDetails(leadDetails.id);
+  //     if (!res.ok) {
+  //       const err = await res.json().catch(() => ({}));
+  //       throw new Error(err.detail || err.error || 'Failed to start inspection');
+  //     }
+  //     console.log('lead detials: ', leadDetails);
+  //     loadLeadDetails(leadDetails.id);
       
-    } catch (err: any) {
-      console.error('Start inspection error:', err);
-      setError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  //   } catch (err: any) {
+  //     console.error('Start inspection error:', err);
+  //     setError(err.message);
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // };
 
   const doUnassign = async (): Promise<boolean> => {
     if (!assignmentId || !leadDetails) return false;
@@ -626,7 +626,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
   const canAssignAgent = isLeadClaimed && !isAssigned && !isTerminal;
 
   // Show "Unassign" / "Reassign" only when assigned AND visit not started AND not terminal
-  const canUnassignOrReassign = isAssigned && !isVisitStarted && !isTerminal;
+  // const canUnassignOrReassign = isAssigned && !isVisitStarted && !isTerminal;
 
   // ============ Loading State ============
   if (loading) {
