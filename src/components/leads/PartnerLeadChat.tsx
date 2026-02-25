@@ -165,7 +165,7 @@ const PartnerLeadChat: React.FC<PartnerLeadChatProps> = ({
       setSending(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error("Authentication required.");
 
       const payload = {

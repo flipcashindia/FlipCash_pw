@@ -8,7 +8,7 @@ import {
   ArrowLeft, Loader2, AlertTriangle, X, Wallet, MapPin, User, CheckCircle,
   Tag, MessageSquare, Activity, Phone, Clock, Navigation, Eye, EyeOff,
   Smartphone, DollarSign, Send, Play,  ChevronRight,
-  UserPlus, Users,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -207,6 +207,11 @@ export const PartnerLeadDetailPage: React.FC = () => {
   // Assign Agent modal state
   const [isAssignAgentModalOpen, setIsAssignAgentModalOpen] = useState(false);
 
+  // Assignment tracking for unassign/reassign
+  const [assignmentId, setAssignmentId] = useState<string | null>(null);
+  const [unassignLoading, setUnassignLoading] = useState(false);
+  const [isReassigning, setIsReassigning] = useState(false);
+
   // ============ Load Data ============
   useEffect(() => {
     if (!leadId) {
@@ -246,15 +251,17 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
       const data: LeadDetail = await res.json();
       console.log('Partner Lead Details:', data);
+      console.log('assigned agent:', data.assigned_agent)
       setLeadDetails(data);
       
       // Load related data
       loadOffers(id);
       loadWalletInfo();
       
-      // Load visit if assigned
+      // Load visit and assignment if claimed
       if (data.status !== LeadStatus.BOOKED) {
         loadVisitDetails(id);
+        loadAssignmentId(id);
       }
       
     } catch (err: any) {
@@ -283,6 +290,26 @@ export const PartnerLeadDetailPage: React.FC = () => {
       console.error('Failed to load offers:', err);
     } finally {
       setLoadingOffers(false);
+    }
+  };
+
+  const loadAssignmentId = async (leadId: string) => {
+    try {
+      const token = useAuthStore.getState().accessToken;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/partner-agents/leads/${leadId}/assigned-agent/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.assignment_id) {
+          setAssignmentId(data.assignment_id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load assignment id:', err);
     }
   };
 
@@ -384,7 +411,10 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
 
 
-  // const handleStartVisit = async () => {
+
+
+
+  // const handleCheckIn = async () => {
   //   if (!leadDetails || !visitDetails) return;
     
   //   try {
@@ -394,7 +424,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
   //     const token = useAuthStore.getState().accessToken;
   //     if (!token) throw new Error('Authentication required');
 
-  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_journey/`, {
+  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
   //       method: 'POST',
   //       headers: {
   //         'Authorization': `Bearer ${token}`,
@@ -404,87 +434,92 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
   //     if (!res.ok) {
   //       const err = await res.json().catch(() => ({}));
-  //       throw new Error(err.detail || err.error || 'Failed to start journey');
+  //       throw new Error(err.detail || err.error || 'Failed to check in');
   //     }
 
   //     loadLeadDetails(leadDetails.id);
       
   //   } catch (err: any) {
-  //     console.error('Start journey error:', err);
+  //     console.error('Check in error:', err);
   //     setError(err.message);
   //   } finally {
   //     setActionLoading(false);
   //   }
   // };
 
-
-
-
-
-  const handleCheckIn = async () => {
-    if (!leadDetails || !visitDetails) return;
+  // const handleStartInspection = async () => {
+  //   if (!leadDetails || !visitDetails) return;
     
-    try {
-      setActionLoading(true);
-      setError(null);
+  //   try {
+  //     setActionLoading(true);
+  //     setError(null);
       
+  //     const token = useAuthStore.getState().accessToken;
+  //     if (!token) throw new Error('Authentication required');
+
+  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
+
+  //     if (!res.ok) {
+  //       const err = await res.json().catch(() => ({}));
+  //       throw new Error(err.detail || err.error || 'Failed to start inspection');
+  //     }
+  //     console.log('lead detials: ', leadDetails);
+  //     loadLeadDetails(leadDetails.id);
+      
+  //   } catch (err: any) {
+  //     console.error('Start inspection error:', err);
+  //     setError(err.message);
+  //   } finally {
+  //     setActionLoading(false);
+  //   }
+  // };
+
+  const doUnassign = async (): Promise<boolean> => {
+    if (!assignmentId || !leadDetails) return false;
+    try {
+      setUnassignLoading(true);
+      setError(null);
       const token = useAuthStore.getState().accessToken;
       if (!token) throw new Error('Authentication required');
-
-      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const res = await fetch(`${API_BASE_URL}/partner-agents/assignments/${assignmentId}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Partner un-assigned' }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || 'Failed to check in');
+        throw new Error(err.detail || err.error || 'Failed to unassign agent');
       }
-
-      loadLeadDetails(leadDetails.id);
-      
+      setAssignmentId(null);
+      return true;
     } catch (err: any) {
-      console.error('Check in error:', err);
+      console.error('Unassign error:', err);
       setError(err.message);
+      return false;
     } finally {
-      setActionLoading(false);
+      setUnassignLoading(false);
     }
   };
 
-  const handleStartInspection = async () => {
-    if (!leadDetails || !visitDetails) return;
-    
-    try {
-      setActionLoading(true);
-      setError(null);
-      
-      const token = useAuthStore.getState().accessToken;
-      if (!token) throw new Error('Authentication required');
+  const handleUnassignAgent = async () => {
+    if (!assignmentId || !leadDetails) return;
+    const agentName = leadDetails.assigned_agent?.name || 'the agent';
+    const confirmed = window.confirm(`Are you sure you want to remove ${agentName} from this lead?`);
+    if (!confirmed) return;
+    const success = await doUnassign();
+    if (success) await loadLeadDetails(leadDetails.id);
+  };
 
-      const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.error || 'Failed to start inspection');
-      }
-
-      loadLeadDetails(leadDetails.id);
-      
-    } catch (err: any) {
-      console.error('Start inspection error:', err);
-      setError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
+  const handleReassignAgent = () => {
+    // Open assign modal in reassign mode
+    setIsReassigning(true);
+    setIsAssignAgentModalOpen(true);
   };
 
   const handleMakeOffer = async () => {
@@ -571,11 +606,27 @@ export const PartnerLeadDetailPage: React.FC = () => {
   };
 
   const isLeadClaimed = leadDetails?.status !== LeadStatus.BOOKED;
-  
-  // Check if lead can have agent assigned
-  const canAssignAgent = isLeadClaimed && 
-    !leadDetails?.assigned_agent &&
-    !['completed', 'cancelled', 'expired'].includes(leadDetails?.status || '');
+
+  // Visit is "started" once the agent is physically en route or beyond
+  const VISIT_STARTED_STATUSES = [
+    LeadStatus.EN_ROUTE, LeadStatus.CHECKED_IN, LeadStatus.INSPECTING,
+    LeadStatus.OFFER_MADE, LeadStatus.NEGOTIATING, LeadStatus.ACCEPTED,
+    LeadStatus.PAYMENT_PROCESSING, LeadStatus.COMPLETED,
+  ];
+  const isVisitStarted = VISIT_STARTED_STATUSES.includes(leadDetails?.status as any);
+
+  const TERMINAL_STATUSES = ['completed', 'cancelled', 'expired', 'disputed'];
+  const isTerminal = TERMINAL_STATUSES.includes(leadDetails?.status || '');
+
+  // Source of truth: use assignmentId (fetched separately) OR assigned_agent from lead.
+  // The API may not populate assigned_agent on all endpoints, so we check both.
+  const isAssigned = !!assignmentId || !!leadDetails?.assigned_agent;
+
+  // Show "Assign Agent" only when lead is claimed, no agent assigned, not terminal
+  const canAssignAgent = isLeadClaimed && !isAssigned && !isTerminal;
+
+  // Show "Unassign" / "Reassign" only when assigned AND visit not started AND not terminal
+  // const canUnassignOrReassign = isAssigned && !isVisitStarted && !isTerminal;
 
   // ============ Loading State ============
   if (loading) {
@@ -659,7 +710,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-gray-600 mb-1">
-                  {getDeviceName(leadDetails)} • {leadDetails.storage} • {leadDetails.color}
+                  {getDeviceName(leadDetails)} • {leadDetails.storage} / {leadDetails.ram} RAM 
                 </p>
                 <p className="text-sm text-gray-500">
                   Created: {formatDate(leadDetails.created_at)}
@@ -679,17 +730,6 @@ export const PartnerLeadDetailPage: React.FC = () => {
                   </button>
                 )}
 
-                {/* Assign Agent Button */}
-                {canAssignAgent && (
-                  <button 
-                    onClick={() => setIsAssignAgentModalOpen(true)}
-                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2 shadow-lg"
-                  >
-                    <UserPlus size={20} />
-                    Assign Agent
-                  </button>
-                )}
-
                 {/* Start Journey Button */}
                 {/* {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && !leadDetails.assigned_agent && (
                   <button 
@@ -703,7 +743,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                 )} */}
 
                 {/* Check In Button */}
-                {leadDetails.status === LeadStatus.EN_ROUTE && (
+                {/* {leadDetails.status === LeadStatus.EN_ROUTE && (
                   <button 
                     onClick={handleCheckIn}
                     disabled={actionLoading}
@@ -712,10 +752,10 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <MapPin size={20} />}
                     Check In
                   </button>
-                )}
+                )} */}
 
                 {/* Start Inspection Button */}
-                {leadDetails.status === LeadStatus.CHECKED_IN && (
+                {/* {leadDetails.status === LeadStatus.CHECKED_IN && (
                   <button 
                     onClick={handleStartInspection}
                     disabled={actionLoading}
@@ -724,10 +764,10 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Eye size={20} />}
                     Start Inspection
                   </button>
-                )}
+                )} */}
 
                 {/* Make Offer Button */}
-                {leadDetails.status === LeadStatus.INSPECTING && (
+                {/* {leadDetails.status === LeadStatus.INSPECTING && (
                   <button 
                     onClick={() => setIsOfferModalOpen(true)}
                     className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2"
@@ -735,7 +775,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     <DollarSign size={20} />
                     Make Offer
                   </button>
-                )}
+                )} */}
 
                 {/* Report Issue Button */}
                 {isLeadClaimed && !['cancelled', 'completed'].includes(leadDetails.status) && (
@@ -750,33 +790,73 @@ export const PartnerLeadDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Assigned Agent Info Display */}
-            {leadDetails.assigned_agent && (
-              <div className="mt-6 p-4 bg-[#1B8A05]/10 border-2 border-[#1B8A05] rounded-xl">
+            {/* ── Assigned Agent Row (always visible when lead is claimed) ── */}
+            {isLeadClaimed && (
+              <div className="mt-6 p-4 bg-white border-2 border-gray-200 rounded-xl">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#1B8A05]/20 rounded-full flex items-center justify-center">
-                      <Users className="text-[#1B8A05]" size={24} />
+                  <p className="font-semibold text-gray-500">Assigned Agent:</p>
+                  {leadDetails.assigned_agent ? (
+                    <div className="text-right">
+                      <p className="font-bold text-[#1B8A05]">{leadDetails.assigned_agent.name}</p>
+                      <p className="text-xs text-gray-500">{leadDetails.assigned_agent.phone}</p>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-600">Assigned Agent</p>
-                      <p className="text-lg font-bold text-[#1C1C1B]">{leadDetails.assigned_agent.name}</p>
-                      <p className="text-sm text-gray-600">{leadDetails.assigned_agent.phone}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      leadDetails.assigned_agent.status === 'active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {leadDetails.assigned_agent.status}
-                    </span>
-                    {leadDetails.assigned_agent.employee_id && (
-                      <p className="text-xs text-gray-500 mt-1">ID: {leadDetails.assigned_agent.employee_id}</p>
+                  ) : (
+                    <p className="font-bold text-[#FF0000]">Unassigned</p>
+                  )}
+                </div>
+
+                {/* ── Action buttons — dedicated row, always visible ── */}
+                {!isTerminal && (
+                  <div className="flex gap-3 mt-4">
+                    {isAssigned ? (
+                      isVisitStarted ? (
+                        // Visit started — lock changes
+                        <div className="flex-1 px-4 py-3 bg-yellow-50 border border-yellow-300 rounded-xl text-center">
+                          <p className="text-sm font-semibold text-yellow-700">
+                            🔒 Visit in progress — agent cannot be changed
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Un-Assign */}
+                          <button
+                            onClick={handleUnassignAgent}
+                            disabled={unassignLoading}
+                            className="flex-1 px-4 py-3 border-2 border-[#FF0000] text-[#FF0000] rounded-xl font-bold hover:bg-[#FF0000] hover:text-white transition flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {unassignLoading && !isReassigning
+                              ? <Loader2 className="animate-spin" size={18} />
+                              : <X size={18} />
+                            }
+                            Un-Assign
+                          </button>
+
+                          {/* Re-Assign */}
+                          <button
+                            onClick={handleReassignAgent}
+                            disabled={unassignLoading}
+                            className="flex-1 px-4 py-3 bg-[#1C1C1B] text-white rounded-xl font-bold hover:bg-[#333] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {unassignLoading && isReassigning
+                              ? <Loader2 className="animate-spin" size={18} />
+                              : <UserPlus size={18} />
+                            }
+                            Re-Assign
+                          </button>
+                        </>
+                      )
+                    ) : (
+                      // No agent — Assign
+                      <button
+                        onClick={() => { setIsReassigning(false); setIsAssignAgentModalOpen(true); }}
+                        className="flex-1 px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2"
+                      >
+                        <UserPlus size={18} />
+                        Assign Agent
+                      </button>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -1364,17 +1444,24 @@ export const PartnerLeadDetailPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Assign Agent Modal */}
+      {/* Assign / Reassign Agent Modal */}
       {leadDetails && (
         <AssignAgentModal
           isOpen={isAssignAgentModalOpen}
-          onClose={() => setIsAssignAgentModalOpen(false)}
+          onClose={() => { setIsAssignAgentModalOpen(false); setIsReassigning(false); }}
           leadId={leadDetails.id}
           leadNumber={leadDetails.lead_number}
           deviceName={getDeviceName(leadDetails)}
-          onSuccess={() => {
+          // Reassign props
+          isReassigning={isReassigning}
+          currentAgentName={leadDetails.assigned_agent?.name}
+          currentAgentPhone={leadDetails.assigned_agent?.phone}
+          // Called by the modal BEFORE creating the new assignment
+          onBeforeAssign={isReassigning ? async () => { await doUnassign(); } : undefined}
+          onSuccess={async () => {
             setIsAssignAgentModalOpen(false);
-            loadLeadDetails(leadDetails.id);
+            setIsReassigning(false);
+            await loadLeadDetails(leadDetails.id);
           }}
         />
       )}

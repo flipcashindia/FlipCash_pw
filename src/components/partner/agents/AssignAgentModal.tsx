@@ -1,30 +1,23 @@
 // src/components/partner/agents/AssignAgentModal.tsx
-// Modal for assigning a lead to an agent
-// Used in: LeadsPage, LeadDetailPage when partner wants to assign a claimed lead to an agent
-// Backend: POST /api/v1/partner-agents/assignments/
-// Uses: useAvailableAgents, useCreateAssignment from useAgents.ts
+// Modal for assigning OR reassigning an agent to a lead.
+// Assign:   fresh assign when no agent is currently assigned.
+// Reassign: replaces the current agent (unassigns old then assigns new).
+//
+// Backend:
+//   POST   /api/v1/partner-agents/assignments/          ← create assignment
+//   DELETE /api/v1/partner-agents/assignments/{id}/     ← unassign (handled by parent via onBeforeAssign)
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X,
-  UserPlus,
-  Loader2,
-  Search,
-  Star,
-  CheckCircle,
-  Phone,
-  // MapPin,
-  AlertCircle,
-  Users,
-  Activity,
-  // Clock,
-  Package,
-  Calendar,
-  IndianRupee,
+  X, UserPlus, Loader2, Search, Star, CheckCircle,
+  Phone, AlertCircle, Users, Activity, Package,
+  Calendar, IndianRupee, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { useAvailableAgents, useCreateAssignment } from '../../../hooks/useAgents';
 import type { AgentListItem } from '../../../api/types/agent.type';
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface AssignAgentModalProps {
   isOpen: boolean;
@@ -35,10 +28,32 @@ interface AssignAgentModalProps {
   customerName?: string;
   scheduledDate?: string;
   estimatedPrice?: number;
+
+  // Reassign mode
+  isReassigning?: boolean;
+  currentAgentName?: string;
+  currentAgentPhone?: string;
+
+  // Called BEFORE the new assignment is created so the parent can
+  // DELETE the existing assignment first. Should throw on failure.
+  onBeforeAssign?: () => Promise<void>;
+
   onSuccess?: () => void;
 }
 
 type Priority = 'low' | 'normal' | 'high' | 'urgent';
+type Step = 'select' | 'confirm';
+
+// ─── Priority config ──────────────────────────────────────────────────────────
+
+const PRIORITY_CONFIG: Record<Priority, { bg: string; activeBg: string; text: string; border: string; label: string }> = {
+  low:    { bg: 'bg-gray-100',        activeBg: 'bg-gray-200',       text: 'text-gray-700',   border: 'border-gray-400',   label: 'Low'    },
+  normal: { bg: 'bg-blue-50',         activeBg: 'bg-blue-100',       text: 'text-blue-700',   border: 'border-blue-500',   label: 'Normal' },
+  high:   { bg: 'bg-orange-50',       activeBg: 'bg-orange-100',     text: 'text-orange-700', border: 'border-orange-500', label: 'High'   },
+  urgent: { bg: 'bg-[#FF0000]/5',     activeBg: 'bg-[#FF0000]/15',   text: 'text-[#FF0000]',  border: 'border-[#FF0000]',  label: 'Urgent' },
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
   isOpen,
@@ -49,41 +64,80 @@ const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
   customerName,
   scheduledDate,
   estimatedPrice,
+  isReassigning = false,
+  currentAgentName,
+  currentAgentPhone,
+  onBeforeAssign,
   onSuccess,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAgent, setSelectedAgent] = useState<AgentListItem | null>(null);
+  const [step, setStep]                       = useState<Step>('select');
+  const [searchQuery, setSearchQuery]         = useState('');
+  const [selectedAgent, setSelectedAgent]     = useState<AgentListItem | null>(null);
   const [assignmentNotes, setAssignmentNotes] = useState('');
-  const [priority, setPriority] = useState<Priority>('normal');
-  const [error, setError] = useState<string | null>(null);
+  const [priority, setPriority]               = useState<Priority>('normal');
+  const [error, setError]                     = useState<string | null>(null);
+  const [preAssignLoading, setPreAssignLoading] = useState(false);
 
-  // Fetch available agents (active, available, can accept leads)
+  // Reset every time the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('select');
+      setSelectedAgent(null);
+      setAssignmentNotes('');
+      setSearchQuery('');
+      setPriority('normal');
+      setError(null);
+    }
+  }, [isOpen]);
+
   const { data: availableAgents, isLoading, error: fetchError } = useAvailableAgents();
   const createAssignmentMutation = useCreateAssignment();
 
-  // Filter agents based on search
+  const isPending = createAssignmentMutation.isPending || preAssignLoading;
+
+  // Filter agents by search query
   const filteredAgents = useMemo(() => {
     if (!availableAgents) return [];
-    if (!searchQuery) return availableAgents;
-    
-    const query = searchQuery.toLowerCase();
-    return availableAgents.filter((agent) => 
-      agent.user_name.toLowerCase().includes(query) ||
-      agent.user_phone.includes(query) ||
-      agent.employee_code?.toLowerCase().includes(query)
+    if (!searchQuery.trim()) return availableAgents;
+    const q = searchQuery.toLowerCase();
+    return availableAgents.filter((a) =>
+      a.user_name.toLowerCase().includes(q) ||
+      a.user_phone.includes(q) ||
+      a.employee_code?.toLowerCase().includes(q)
     );
   }, [availableAgents, searchQuery]);
 
-  const handleAssign = async () => {
-    if (!selectedAgent) {
-      setError('Please select an agent');
-      return;
-    }
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
+  const handleAgentSelect = (agent: AgentListItem) => {
+    setSelectedAgent(agent);
+    setError(null);
+  };
+
+  // "Next" button on select step
+  const handleProceed = () => {
+    if (!selectedAgent) { setError('Please select an agent'); return; }
+    if (isReassigning) {
+      setStep('confirm');  // Show confirm screen before acting
+    } else {
+      handleAssign();      // Fresh assign — no confirmation needed
+    }
+  };
+
+  // Final assign action
+  const handleAssign = async () => {
+    if (!selectedAgent) return;
     try {
       setError(null);
-      
-      // CreateAssignmentRequest: agent_id, lead_id, priority, assignment_notes, expected_completion_at
+
+      // Step 1: Unassign existing agent if reassigning
+      if (isReassigning && onBeforeAssign) {
+        setPreAssignLoading(true);
+        await onBeforeAssign();
+        setPreAssignLoading(false);
+      }
+
+      // Step 2: Create new assignment
       await createAssignmentMutation.mutateAsync({
         agent_id: selectedAgent.id,
         lead_id: leadId,
@@ -91,16 +145,18 @@ const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
         assignment_notes: assignmentNotes.trim() || undefined,
       });
 
-      // Reset and close
       handleClose();
       onSuccess?.();
     } catch (err: any) {
-      setError(err.message || 'Failed to assign agent');
+      setPreAssignLoading(false);
+      setError(err.message || 'Failed to assign agent. Please try again.');
+      setStep('select');
     }
   };
 
   const handleClose = () => {
-    if (!createAssignmentMutation.isPending) {
+    if (!isPending) {
+      setStep('select');
       setSelectedAgent(null);
       setAssignmentNotes('');
       setSearchQuery('');
@@ -110,17 +166,9 @@ const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
     }
   };
 
-  const getPriorityConfig = (p: Priority) => {
-    const configs = {
-      low: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Low' },
-      normal: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Normal' },
-      high: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'High' },
-      urgent: { bg: 'bg-[#FF0000]/10', text: 'text-[#FF0000]', label: 'Urgent' },
-    };
-    return configs[p];
-  };
-
   if (!isOpen) return null;
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AnimatePresence>
@@ -129,225 +177,341 @@ const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden"
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#FEC925] to-[#e5b520] p-6">
+
+          {/* ── Header ────────────────────────────────────────────────── */}
+          <div className={`p-6 flex-shrink-0 ${
+            isReassigning
+              ? 'bg-gradient-to-r from-orange-400 to-orange-500'
+              : 'bg-gradient-to-r from-[#FEC925] to-[#e5b520]'
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <UserPlus className="text-[#1C1C1B]" size={24} />
+                  {isReassigning
+                    ? <RefreshCw className="text-white" size={22} />
+                    : <UserPlus className="text-[#1C1C1B]" size={24} />
+                  }
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-[#1C1C1B]">Assign Agent</h3>
-                  <p className="text-[#1C1C1B]/70 text-sm">
-                    Lead #{leadNumber}
-                  </p>
+                  <h3 className="text-xl font-bold text-white">
+                    {isReassigning
+                      ? step === 'confirm' ? 'Confirm Reassignment' : 'Reassign Agent'
+                      : 'Assign Agent'
+                    }
+                  </h3>
+                  <p className="text-white/70 text-sm">Lead #{leadNumber}</p>
                 </div>
               </div>
               <button
                 onClick={handleClose}
-                disabled={createAssignmentMutation.isPending}
-                className="text-[#1C1C1B]/60 hover:text-[#1C1C1B] transition disabled:opacity-50"
+                disabled={isPending}
+                className="text-white/70 hover:text-white transition disabled:opacity-50"
               >
                 <X size={24} />
               </button>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            {/* Lead Summary */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+          {/* ── Scrollable content ────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+            {/* Lead summary */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
               <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
-                  <Package className="text-[#FEC925]" size={18} />
-                  <span className="font-semibold text-[#1C1C1B]">{deviceName}</span>
+                  <Package className="text-[#FEC925]" size={16} />
+                  <span className="font-semibold text-[#1C1C1B] text-sm">{deviceName}</span>
                 </div>
                 {customerName && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Users size={16} />
-                    <span>{customerName}</span>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Users size={14} /><span>{customerName}</span>
                   </div>
                 )}
                 {scheduledDate && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar size={16} />
-                    <span>{scheduledDate}</span>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Calendar size={14} /><span>{scheduledDate}</span>
                   </div>
                 )}
                 {estimatedPrice && (
-                  <div className="flex items-center gap-2 text-[#1B8A05]">
-                    <IndianRupee size={16} />
+                  <div className="flex items-center gap-2 text-[#1B8A05] text-sm">
+                    <IndianRupee size={14} />
                     <span className="font-semibold">{estimatedPrice.toLocaleString('en-IN')}</span>
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Current agent banner — reassign mode only */}
+            {isReassigning && currentAgentName && (
+              <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="font-bold text-orange-800 text-sm">Currently Assigned</p>
+                  <p className="text-orange-700 font-semibold">{currentAgentName}</p>
+                  {currentAgentPhone && (
+                    <p className="text-orange-600 text-sm flex items-center gap-1 mt-0.5">
+                      <Phone size={12} /> {currentAgentPhone}
+                    </p>
+                  )}
+                  <p className="text-orange-600 text-xs mt-1">
+                    Selecting a new agent below will replace this assignment.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Error */}
             {(error || fetchError) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-4 p-4 bg-[#FF0000]/10 border-2 border-[#FF0000] rounded-xl flex items-center gap-3"
+                className="p-4 bg-[#FF0000]/10 border-2 border-[#FF0000] rounded-xl flex items-center gap-3"
               >
                 <AlertCircle className="text-[#FF0000] flex-shrink-0" size={20} />
                 <p className="text-[#FF0000] font-semibold text-sm">
-                  {error || 'Failed to load agents'}
+                  {error || 'Failed to load agents. Please try again.'}
                 </p>
               </motion.div>
             )}
 
-            {/* Search */}
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search agents by name, phone, or employee code..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none transition"
-                />
-              </div>
-            </div>
+            {/* ══ STEP 1: Select agent ══════════════════════════════════ */}
+            {step === 'select' && (
+              <>
+                {/* Search bar */}
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search by name, phone or employee code..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none text-sm transition"
+                  />
+                </div>
 
-            {/* Priority Selection */}
-            <div className="mb-4">
-              <label className="block font-bold text-[#1C1C1B] mb-2">Priority</label>
-              <div className="flex gap-2">
-                {(['low', 'normal', 'high', 'urgent'] as Priority[]).map((p) => {
-                  const config = getPriorityConfig(p);
-                  const isSelected = priority === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                        isSelected
-                          ? `${config.bg} ${config.text} ring-2 ring-offset-1 ring-[#FEC925]`
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+                {/* Priority */}
+                <div>
+                  <p className="font-bold text-[#1C1C1B] text-sm mb-2">Priority</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(Object.keys(PRIORITY_CONFIG) as Priority[]).map((p) => {
+                      const cfg = PRIORITY_CONFIG[p];
+                      const active = priority === p;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setPriority(p)}
+                          className={`py-2 rounded-xl text-sm font-semibold border-2 transition ${
+                            active
+                              ? `${cfg.activeBg} ${cfg.text} ${cfg.border}`
+                              : `${cfg.bg} ${cfg.text} border-transparent`
+                          }`}
+                        >
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Agent list */}
+                <div>
+                  <h4 className="font-bold text-[#1C1C1B] text-sm mb-3 flex items-center gap-2">
+                    <Users className="text-[#FEC925]" size={16} />
+                    Available Agents ({filteredAgents.length})
+                  </h4>
+
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="animate-spin text-[#FEC925]" size={32} />
+                    </div>
+                  ) : filteredAgents.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl">
+                      <Users className="text-gray-300 mx-auto mb-3" size={48} />
+                      <p className="text-gray-600 font-semibold">No available agents</p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        {searchQuery
+                          ? 'Try different search terms'
+                          : 'All agents are currently busy or unavailable'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {filteredAgents.map((agent) => (
+                        <AgentSelectCard
+                          key={agent.id}
+                          agent={agent}
+                          isSelected={selectedAgent?.id === agent.id}
+                          onSelect={() => handleAgentSelect(agent)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes — visible once agent selected */}
+                <AnimatePresence>
+                  {selectedAgent && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
                     >
-                      {config.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                      <label className="block font-bold text-[#1C1C1B] text-sm mb-2">
+                        Assignment Notes{' '}
+                        <span className="text-gray-400 font-normal">(Optional)</span>
+                      </label>
+                      <textarea
+                        value={assignmentNotes}
+                        onChange={(e) => setAssignmentNotes(e.target.value)}
+                        placeholder="Any special instructions for the agent..."
+                        rows={3}
+                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none text-sm transition"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-            {/* Agents List */}
-            <div className="mb-4">
-              <h4 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
-                <Users className="text-[#FEC925]" size={18} />
-                Available Agents ({filteredAgents.length})
-              </h4>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="animate-spin text-[#FEC925]" size={32} />
-                </div>
-              ) : filteredAgents.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl">
-                  <Users className="text-gray-300 mx-auto mb-3" size={48} />
-                  <p className="text-gray-600 font-semibold">No available agents</p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    {searchQuery ? 'Try different search terms' : 'All agents are currently busy or unavailable'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {filteredAgents.map((agent) => (
-                    <AgentSelectCard
-                      key={agent.id}
-                      agent={agent}
-                      isSelected={selectedAgent?.id === agent.id}
-                      onSelect={() => setSelectedAgent(agent)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Assignment Notes */}
-            {selectedAgent && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mb-4"
-              >
-                <label className="block font-bold text-[#1C1C1B] mb-2">
-                  Assignment Notes <span className="text-gray-400 font-normal text-sm">(Optional)</span>
-                </label>
-                <textarea
-                  value={assignmentNotes}
-                  onChange={(e) => setAssignmentNotes(e.target.value)}
-                  placeholder="Any special instructions for the agent..."
-                  rows={3}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none transition"
-                />
-              </motion.div>
+                {/* Selected summary pill */}
+                <AnimatePresence>
+                  {selectedAgent && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="bg-[#1B8A05]/10 p-4 rounded-xl border-2 border-[#1B8A05]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="text-[#1B8A05] flex-shrink-0" size={22} />
+                        <p className="text-sm text-gray-700">
+                          <span className="font-bold text-[#1C1C1B]">{selectedAgent.user_name}</span>{' '}
+                          will {isReassigning ? 'replace the current agent with ' : 'receive this lead with '}
+                          <span className={`font-semibold ${PRIORITY_CONFIG[priority].text}`}>
+                            {PRIORITY_CONFIG[priority].label}
+                          </span>{' '}
+                          priority.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
             )}
 
-            {/* Selected Agent Summary */}
-            {selectedAgent && (
+            {/* ══ STEP 2: Confirm reassignment ═════════════════════════ */}
+            {step === 'confirm' && selectedAgent && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-[#1B8A05]/10 p-4 rounded-xl border-2 border-[#1B8A05]"
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-5"
               >
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="text-[#1B8A05] flex-shrink-0" size={24} />
-                  <div className="flex-1">
-                    <p className="font-bold text-[#1C1C1B]">Ready to assign</p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-semibold">{selectedAgent.user_name}</span> will receive this lead assignment with{' '}
-                      <span className={`font-semibold ${getPriorityConfig(priority).text}`}>
-                        {getPriorityConfig(priority).label}
-                      </span>{' '}
-                      priority
-                    </p>
+                <div className="text-center pt-2">
+                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <RefreshCw className="text-orange-500" size={28} />
                   </div>
+                  <p className="text-gray-500 text-sm">
+                    Review the agent swap below before confirming.
+                  </p>
+                </div>
+
+                {/* From → To card */}
+                <div className="bg-gray-50 rounded-xl p-5 space-y-4 border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-red-500 font-bold text-xs">OUT</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Removing</p>
+                      <p className="font-bold text-[#1C1C1B]">{currentAgentName || 'Current Agent'}</p>
+                      {currentAgentPhone && (
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <Phone size={12} />{currentAgentPhone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-4">
+                    <div className="w-0.5 h-5 bg-gray-300" />
+                    <RefreshCw className="text-gray-400" size={14} />
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#1B8A05] font-bold text-xs">IN</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Assigning</p>
+                      <p className="font-bold text-[#1C1C1B]">{selectedAgent.user_name}</p>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Phone size={12} />{selectedAgent.user_phone}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-sm text-orange-700">
+                  ⚠️ The previous agent will be removed from this lead immediately.
+                  This cannot be undone once confirmed.
                 </div>
               </motion.div>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-200 flex gap-3">
+          {/* ── Footer ────────────────────────────────────────────────── */}
+          <div className="p-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
+            {/* Back only on confirm step */}
+            {step === 'confirm' && (
+              <button
+                onClick={() => setStep('select')}
+                disabled={isPending}
+                className="px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Back
+              </button>
+            )}
+
             <button
               onClick={handleClose}
-              disabled={createAssignmentMutation.isPending}
-              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+              disabled={isPending}
+              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-sm hover:bg-gray-50 transition disabled:opacity-50"
             >
               Cancel
             </button>
+
             <button
-              onClick={handleAssign}
-              disabled={!selectedAgent || createAssignmentMutation.isPending}
-              className="flex-1 px-4 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={step === 'confirm' ? handleAssign : handleProceed}
+              disabled={!selectedAgent || isPending}
+              className={`flex-1 px-4 py-3 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isReassigning
+                  ? 'bg-orange-500 hover:bg-orange-600'
+                  : 'bg-[#1B8A05] hover:bg-[#156d04]'
+              }`}
             >
-              {createAssignmentMutation.isPending ? (
+              {isPending ? (
                 <>
-                  <Loader2 className="animate-spin" size={20} />
-                  Assigning...
+                  <Loader2 className="animate-spin" size={18} />
+                  {preAssignLoading ? 'Removing old agent...' : 'Assigning...'}
                 </>
+              ) : step === 'confirm' ? (
+                <><RefreshCw size={18} /> Confirm Reassign</>
+              ) : isReassigning ? (
+                <><RefreshCw size={18} /> {selectedAgent ? 'Review & Reassign' : 'Select an Agent'}</>
               ) : (
-                <>
-                  <UserPlus size={20} />
-                  Assign Agent
-                </>
+                <><UserPlus size={18} /> {selectedAgent ? 'Assign Agent' : 'Select an Agent'}</>
               )}
             </button>
           </div>
+
         </motion.div>
       </div>
     </AnimatePresence>
   );
 };
 
-// ========== Agent Select Card ==========
+// ─── Agent Select Card ────────────────────────────────────────────────────────
 
 interface AgentSelectCardProps {
   agent: AgentListItem;
@@ -356,16 +520,15 @@ interface AgentSelectCardProps {
 }
 
 const AgentSelectCard: React.FC<AgentSelectCardProps> = ({ agent, isSelected, onSelect }) => {
-  const formatRating = (rating: string | null): string => {
-    if (!rating) return '-';
-    const num = parseFloat(rating);
-    return isNaN(num) ? '-' : num.toFixed(1);
+  const formatRating = (r: string | null) => {
+    if (!r) return '-';
+    const n = parseFloat(r);
+    return isNaN(n) ? '-' : n.toFixed(1);
   };
 
-  const capacityUsed = agent.current_assigned_leads_count || 0;
-  // AgentListItem doesn't have max_concurrent_leads, default to 5
-  const capacityMax = 5;
-  const capacityPercent = (capacityUsed / capacityMax) * 100;
+  const used    = agent.current_assigned_leads_count || 0;
+  const max     = 5;
+  const pct     = Math.min((used / max) * 100, 100);
 
   return (
     <button
@@ -378,69 +541,54 @@ const AgentSelectCard: React.FC<AgentSelectCardProps> = ({ agent, isSelected, on
     >
       <div className="flex items-center gap-4">
         {/* Avatar */}
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+        <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${
           isSelected ? 'bg-[#1B8A05]/20' : 'bg-[#FEC925]/20'
         }`}>
-          {isSelected ? (
-            <CheckCircle className="text-[#1B8A05]" size={24} />
-          ) : (
-            <span className="text-lg font-bold text-[#b48f00]">
-              {agent.user_name?.charAt(0)?.toUpperCase() || 'A'}
-            </span>
-          )}
+          {isSelected
+            ? <CheckCircle className="text-[#1B8A05]" size={22} />
+            : <span className="text-base font-bold text-[#b48f00]">
+                {agent.user_name?.charAt(0)?.toUpperCase() || 'A'}
+              </span>
+          }
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-bold text-[#1C1C1B] truncate">{agent.user_name}</h4>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h4 className="font-bold text-[#1C1C1B] text-sm truncate">{agent.user_name}</h4>
             {agent.average_rating && (
-              <span className="flex items-center gap-1 text-[#FEC925] text-sm flex-shrink-0">
-                <Star size={14} fill="#FEC925" />
+              <span className="flex items-center gap-0.5 text-[#FEC925] text-xs flex-shrink-0">
+                <Star size={12} fill="#FEC925" />
                 {formatRating(agent.average_rating)}
               </span>
             )}
           </div>
-          
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
-              <Phone size={14} />
-              {agent.user_phone}
-            </span>
-            <span className="flex items-center gap-1">
-              <Activity size={14} />
-              {agent.total_leads_completed} completed
-            </span>
-            {agent.employee_code && (
-              <span className="text-gray-400">
-                #{agent.employee_code}
-              </span>
-            )}
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+            <span className="flex items-center gap-1"><Phone size={12} />{agent.user_phone}</span>
+            <span className="flex items-center gap-1"><Activity size={12} />{agent.total_leads_completed} done</span>
+            {agent.employee_code && <span className="text-gray-400">#{agent.employee_code}</span>}
           </div>
 
-          {/* Capacity indicator */}
+          {/* Capacity bar */}
           <div className="mt-2 flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full ${
-                  capacityPercent >= 100 ? 'bg-[#FF0000]' : capacityPercent >= 80 ? 'bg-[#FEC925]' : 'bg-[#1B8A05]'
+              <div
+                className={`h-full rounded-full transition-all ${
+                  pct >= 100 ? 'bg-[#FF0000]' : pct >= 80 ? 'bg-[#FEC925]' : 'bg-[#1B8A05]'
                 }`}
-                style={{ width: `${Math.min(capacityPercent, 100)}%` }}
+                style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs text-gray-500 flex-shrink-0">
-              {capacityUsed}/{capacityMax}
-            </span>
+            <span className="text-xs text-gray-400 flex-shrink-0">{used}/{max} leads</span>
           </div>
         </div>
 
-        {/* Selection Indicator */}
-        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-          isSelected
-            ? 'border-[#1B8A05] bg-[#1B8A05]'
-            : 'border-gray-300'
+        {/* Radio dot */}
+        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+          isSelected ? 'border-[#1B8A05] bg-[#1B8A05]' : 'border-gray-300'
         }`}>
-          {isSelected && <CheckCircle className="text-white" size={16} />}
+          {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
         </div>
       </div>
     </button>
