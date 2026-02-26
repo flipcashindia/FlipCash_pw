@@ -57,6 +57,8 @@ import {
   CheckSquare,
   XSquare,
   RefreshCw,
+  ArrowRight,
+  HelpCircle,
 } from 'lucide-react';
 
 // ✅ UPDATED IMPORTS - NEW 3-STEP WORKFLOW
@@ -3627,6 +3629,757 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
 // DYNAMIC INSPECTION FORM COMPONENT
 // ============================================================================
 
+// interface DynamicInspectionFormProps {
+//   data: DynamicInspectionData;
+//   onDataChange: (data: DynamicInspectionData) => void;
+//   onSubmit: () => void;
+//   onCancel: () => void;
+//   isSubmitting: boolean;
+//   deviceInfo: any;
+//   attributes: any[];
+//   pricingConfig: any;
+// }
+
+// const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
+//   data,
+//   onDataChange,
+//   onSubmit,
+//   onCancel,
+//   isSubmitting,
+//   deviceInfo,
+//   attributes,
+//   pricingConfig,
+// }) => {
+//   const updateField = <K extends keyof DynamicInspectionData>(
+//     key: K,
+//     value: DynamicInspectionData[K]
+//   ) => {
+//     onDataChange({ ...data, [key]: value });
+//   };
+
+//   const updateAttributeResponse = (attributeName: string, value: any) => {
+//     onDataChange({
+//       ...data,
+//       attribute_responses: {
+//         ...data.attribute_responses,
+//         [attributeName]: value,
+//       },
+//     });
+//   };
+
+//   const captureImage = async (type: 'front_image' | 'back_image' | 'screen_image' | 'imei_image') => {
+//     const input = document.createElement('input');
+//     input.type = 'file';
+//     input.accept = 'image/*';
+//     input.capture = 'environment';
+    
+//     input.onchange = (e) => {
+//       const file = (e.target as HTMLInputElement).files?.[0];
+//       if (file) {
+//         const reader = new FileReader();
+//         reader.onload = () => {
+//           const base64 = reader.result as string;
+//           updateField(type, base64);
+//         };
+//         reader.readAsDataURL(file);
+//       }
+//     };
+    
+//     input.click();
+//   };
+
+//   // Validation
+//   const requiredImagesCaptured = Boolean(
+//     data.front_image && data.back_image && data.imei_image
+//   );
+
+//   const requiredAttributesFilled = attributes
+//     .filter(attr => attr.is_required)
+//     .every(attr => {
+//       const value = data.attribute_responses[attr.name];
+//       return value !== undefined && value !== null && value !== '';
+//     });
+
+//   const isFormValid =
+//     requiredImagesCaptured &&
+//     data.verified_imei &&
+//     data.verified_imei.length >= 15 &&
+//     data.inspection_notes &&
+//     data.inspection_notes.trim().length > 0 &&
+//     requiredAttributesFilled;
+
+//   // Group attributes by type
+//   const cosmeticAttributes = attributes.filter(a => a.attribute_type === 'cosmetic');
+//   const functionalAttributes = attributes.filter(a => a.attribute_type === 'functional');
+//   const batteryAttributes = attributes.filter(a => a.attribute_type === 'battery');
+//   const accessoryAttributes = attributes.filter(a => a.attribute_type === 'accessory');
+
+//   return (
+//     <div className="min-h-screen bg-gray-50">
+//       {/* Header */}
+//       <div className="bg-gradient-to-r from-[#FEC925] to-[#e5b520] p-6">
+//         <div className="flex items-center justify-between mb-4">
+//           <button onClick={onCancel} className="p-2 hover:bg-white/20 rounded-lg transition">
+//             <ArrowLeft size={24} className="text-[#1C1C1B]" />
+//           </button>
+//           <span className="text-[#1C1C1B] font-bold">Device Inspection</span>
+//           <div className="w-10" />
+//         </div>
+//         <div className="flex items-center gap-4">
+//           <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+//             <Smartphone className="text-[#1C1C1B]" size={28} />
+//           </div>
+//           <div>
+//             <h1 className="text-xl font-bold text-[#1C1C1B]">
+//               {deviceInfo.brand} {deviceInfo.model}
+//             </h1>
+//             <p className="text-[#1C1C1B]/70">{deviceInfo.storage}</p>
+//             <p className="text-[#1C1C1B]/60 text-sm">
+//               Est. Price: ₹{parseFloat(deviceInfo.estimated_price || '0').toLocaleString('en-IN')}
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Form Content */}
+//       <div className="p-4 space-y-6 pb-24">
+//         {/* Required Device Photos */}
+//         <Section title="Device Photos (Required)">
+//           <div className="grid grid-cols-2 gap-3">
+//             <ImageCaptureButton
+//               label="Front"
+//               image={data.front_image}
+//               onCapture={() => captureImage('front_image')}
+//               required
+//             />
+//             <ImageCaptureButton
+//               label="Back"
+//               image={data.back_image}
+//               onCapture={() => captureImage('back_image')}
+//               required
+//             />
+//             <ImageCaptureButton
+//               label="Screen On"
+//               image={data.screen_image}
+//               onCapture={() => captureImage('screen_image')}
+//             />
+//             <ImageCaptureButton
+//               label="IMEI"
+//               image={data.imei_image}
+//               onCapture={() => captureImage('imei_image')}
+//               required
+//             />
+//           </div>
+//           {!requiredImagesCaptured && (
+//             <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+//               <AlertCircle size={14} />
+//               Front, Back, and IMEI photos are required
+//             </p>
+//           )}
+//         </Section>
+
+//         {/* Cosmetic Conditions */}
+//         {cosmeticAttributes.length > 0 && (
+//           <Section title="Physical Condition">
+//             <div className="space-y-4">
+//               {cosmeticAttributes.map(attr => (
+//                 <DynamicAttributeField
+//                   key={attr.id}
+//                   attribute={attr}
+//                   value={data.attribute_responses[attr.name]}
+//                   onChange={(value) => updateAttributeResponse(attr.name, value)}
+//                 />
+//               ))}
+//             </div>
+//           </Section>
+//         )}
+
+//         {/* Battery Health */}
+//         {batteryAttributes.length > 0 && (
+//           <Section title="Battery Health">
+//             <div className="space-y-4">
+//               {batteryAttributes.map(attr => (
+//                 <DynamicAttributeField
+//                   key={attr.id}
+//                   attribute={attr}
+//                   value={data.attribute_responses[attr.name]}
+//                   onChange={(value) => updateAttributeResponse(attr.name, value)}
+//                 />
+//               ))}
+//             </div>
+//           </Section>
+//         )}
+
+//         {/* Functional Tests */}
+//         {functionalAttributes.length > 0 && (
+//           <Section title="Functional Tests">
+//             <div className="bg-gray-50 rounded-xl p-3 mb-3">
+//               <p className="text-sm text-gray-600 flex items-center gap-2">
+//                 <AlertCircle size={14} />
+//                 Tap to select working features. All features should be tested.
+//               </p>
+//             </div>
+//             <div className="grid grid-cols-2 gap-4">
+//               {functionalAttributes.map(attr => (
+//                 <DynamicAttributeField
+//                   key={attr.id}
+//                   attribute={attr}
+//                   value={data.attribute_responses[attr.name]}
+//                   onChange={(value) => updateAttributeResponse(attr.name, value)}
+//                   compact
+//                 />
+//               ))}
+//             </div>
+//           </Section>
+//         )}
+
+//         {/* Accessories */}
+//         {accessoryAttributes.length > 0 && (
+//           <Section title="Accessories Included">
+//             <div className="bg-gray-50 rounded-xl p-3 mb-3">
+//               <p className="text-sm text-gray-600 flex items-center gap-2">
+//                 <Package size={14} />
+//                 Select all accessories that are available with the device.
+//               </p>
+//             </div>
+//             <div className="grid grid-cols-2 gap-4">
+//               {accessoryAttributes.map(attr => (
+//                 <DynamicAttributeField
+//                   key={attr.id}
+//                   attribute={attr}
+//                   value={data.attribute_responses[attr.name]}
+//                   onChange={(value) => updateAttributeResponse(attr.name, value)}
+//                   compact
+//                 />
+//               ))}
+//             </div>
+//           </Section>
+//         )}
+
+//         {/* IMEI Verification */}
+//         <Section title="Device Verification (Required)">
+//           <div className="space-y-3">
+//             <div>
+//               <label className="block text-sm font-semibold text-gray-700 mb-2">
+//                 IMEI Number *
+//               </label>
+//               <input
+//                 type="text"
+//                 value={data.verified_imei}
+//                 onChange={(e) => updateField('verified_imei', e.target.value)}
+//                 placeholder="Enter 15-digit IMEI number"
+//                 maxLength={15}
+//                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none font-mono"
+//               />
+//               {data.verified_imei && data.verified_imei.length !== 15 && (
+//                 <p className="text-sm text-red-600 mt-1">IMEI must be 15 digits</p>
+//               )}
+//             </div>
+//             <ToggleField
+//               icon={CheckCircle2}
+//               label="IMEI Verified & Matches"
+//               value={data.imei_matches}
+//               onChange={(v) => updateField('imei_matches', v)}
+//             />
+//             <ToggleField
+//               icon={Zap}
+//               label="Device Powers On"
+//               value={data.device_powers_on}
+//               onChange={(v) => updateField('device_powers_on', v)}
+//             />
+//           </div>
+//         </Section>
+
+//         {/* Inspection Notes */}
+//         <Section title="Inspection Notes (Required)">
+//           <textarea
+//             value={data.inspection_notes}
+//             onChange={(e) => updateField('inspection_notes', e.target.value)}
+//             placeholder="Describe overall device condition, any defects, customer interaction notes..."
+//             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-24"
+//           />
+//           {(!data.inspection_notes || data.inspection_notes.trim().length === 0) && (
+//             <p className="text-sm text-red-600 mt-1">Inspection notes are required</p>
+//           )}
+//         </Section>
+
+//         {/* Pricing Info */}
+//         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+//           <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+//             <BadgeCheck size={18} />
+//             {pricingConfig.calculation_method === 'system_automated' 
+//               ? 'System Will Calculate Final Price'
+//               : 'Pricing Information'}
+//           </h4>
+//           <p className="text-sm text-blue-800 mb-2">
+//             {pricingConfig.notes || 'Price will be calculated based on verified conditions'}
+//           </p>
+//           {pricingConfig.uses_condition_matrix && (
+//             <div className="text-xs text-blue-700 bg-blue-100 rounded-lg p-2 mt-2">
+//               <p className="font-semibold mb-1">Deduction Types:</p>
+//               <div className="flex flex-wrap gap-1">
+//                 {pricingConfig.deduction_types?.map((type: string) => (
+//                   <span key={type} className="px-2 py-0.5 bg-blue-200 rounded capitalize">
+//                     {type}
+//                   </span>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Validation Summary */}
+//         {!isFormValid && (
+//           <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+//             <h4 className="font-bold text-red-700 mb-2 flex items-center gap-2">
+//               <AlertCircle size={18} />
+//               Complete Required Fields
+//             </h4>
+//             <ul className="text-sm text-red-600 space-y-1">
+//               {!requiredImagesCaptured && (
+//                 <li>• Capture required photos (Front, Back, IMEI)</li>
+//               )}
+//               {(!data.verified_imei || data.verified_imei.length < 15) && (
+//                 <li>• Enter valid 15-digit IMEI number</li>
+//               )}
+//               {!requiredAttributesFilled && (
+//                 <li>• Complete all required condition checks</li>
+//               )}
+//               {(!data.inspection_notes || data.inspection_notes.trim().length === 0) && (
+//                 <li>• Add inspection notes</li>
+//               )}
+//             </ul>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Submit Footer */}
+//       <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
+//         <div className="max-w-2xl mx-auto">
+//           <button
+//             onClick={onSubmit}
+//             disabled={isSubmitting || !isFormValid}
+//             className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
+//               isFormValid
+//                 ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
+//                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+//             }`}
+//           >
+//             {isSubmitting ? (
+//               <Loader2 className="animate-spin" size={20} />
+//             ) : (
+//               <>
+//                 <CheckCircle2 size={20} />
+//                 Submit for System Pricing
+//               </>
+//             )}
+//           </button>
+//           {!isFormValid && (
+//             <p className="text-center text-sm text-gray-500 mt-2">
+//               Complete all required fields to submit
+//             </p>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// // Submit for System Pricing const impact
+
+
+// // ============================================================================
+// // HELPER COMPONENTS FOR DYNAMIC FORM
+// // ============================================================================
+
+// interface DynamicAttributeFieldProps {
+//   attribute: any;
+//   value: any;
+//   onChange: (value: any) => void;
+//   compact?: boolean;
+// }
+
+// const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
+//   attribute,
+//   value,
+//   onChange,
+//   compact = false,
+// }) => {
+//   const getPriceImpactDisplay = (selectedValue: any) => {
+//     if (!attribute.price_impact || !selectedValue) return null;
+//     const impact = attribute.price_impact[selectedValue];
+//     if (!impact) return null;
+
+//     const isNegative = impact.value < 0;
+//     const displayValue = Math.abs(impact.value);
+
+//     return (
+//       <span className={`text-xs font-semibold ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
+//         {isNegative ? '-' : '+'}
+//         {impact.type === 'percentage' ? `${displayValue}%` : `₹${displayValue}`}
+//       </span>
+//     );
+//   };
+
+//   const getIconForAttribute = (attrName: string) => {
+//     const iconMap: Record<string, any> = {
+//       'wifi': Wifi,
+//       'wifi_working': Wifi,
+//       'bluetooth': Bluetooth,
+//       'bluetooth_working': Bluetooth,
+//       'camera': Camera,
+//       'cameras_working': Camera,
+//       'speaker': Volume2,
+//       'speakers_working': Volume2,
+//       'microphone': Mic,
+//       'microphone_working': Mic,
+//       'display': Eye,
+//       'display_working': Eye,
+//       'touch': Smartphone,
+//       'touch_working': Smartphone,
+//       'charging': Zap,
+//       'charging_port_working': Zap,
+//       'fingerprint': Fingerprint,
+//       'fingerprint_working': Fingerprint,
+//       'charger': Zap,
+//       'has_charger': Zap,
+//       'box': Package,
+//       'has_box': Package,
+//       'earphones': Volume2,
+//       'has_earphones': Volume2,
+//       'bill': FileText,
+//       'has_bill': FileText,
+//     };
+    
+//     const normalizedName = attrName.toLowerCase().replace(/\s+/g, '_');
+//     for (const key in iconMap) {
+//       if (normalizedName.includes(key)) {
+//         return iconMap[key];
+//       }
+//     }
+//     return CheckCircle2;
+//   };
+
+//   // Boolean field as select/unselect button
+//   if (attribute.is_boolean) {
+//     const Icon = getIconForAttribute(attribute.name);
+//     const isSelected = value === true || value === 'Yes';
+    
+//     return (
+//       <button
+//         type="button"
+//         onClick={() => onChange(!isSelected)}
+//         className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
+//           isSelected 
+//             ? 'border-[#1B8A05] bg-gradient-to-br from-[#1B8A05]/10 to-[#1B8A05]/5 shadow-sm' 
+//             : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+//         }`}
+//       >
+//         {/* Selection indicator in top-right corner */}
+//         <div className="absolute top-2 right-2">
+//           {isSelected ? (
+//             <div className="w-6 h-6 rounded-full bg-[#1B8A05] flex items-center justify-center">
+//               <CheckCircle2 size={16} className="text-white" />
+//             </div>
+//           ) : (
+//             <div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-white" />
+//           )}
+//         </div>
+
+//         {/* Required indicator */}
+//         {attribute.is_required && (
+//           <div className="absolute top-2 left-2">
+//             <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+//           </div>
+//         )}
+
+//         {/* Icon and Label */}
+//         <div className="flex flex-col items-center gap-2 pt-2">
+//           <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+//             isSelected 
+//               ? 'bg-[#1B8A05]/20' 
+//               : 'bg-gray-100'
+//           }`}>
+//             <Icon 
+//               size={24} 
+//               className={isSelected ? 'text-[#1B8A05]' : 'text-gray-400'} 
+//             />
+//           </div>
+          
+//           <div className="text-center">
+//             <p className={`text-sm font-semibold transition-colors ${
+//               isSelected ? 'text-[#1B8A05]' : 'text-gray-700'
+//             }`}>
+//               {attribute.question_text || attribute.name}
+//             </p>
+            
+//             {attribute.help_text && (
+//               <p className="text-xs text-gray-500 mt-1">
+//                 {attribute.help_text}
+//               </p>
+//             )}
+//           </div>
+
+//           {/* Price Impact Badge */}
+//           {isSelected && getPriceImpactDisplay('Yes') && (
+//             <div className="mt-1">
+//               {getPriceImpactDisplay('Yes')}
+//             </div>
+//           )}
+//           {!isSelected && getPriceImpactDisplay('No') && (
+//             <div className="mt-1 text-xs text-gray-500">
+//               Impact: {getPriceImpactDisplay('No')}
+//             </div>
+//           )}
+//         </div>
+
+//         {/* Selection label at bottom */}
+//         <div className="mt-3 pt-3 border-t border-gray-200">
+//           <span className={`text-xs font-bold ${
+//             isSelected ? 'text-[#1B8A05]' : 'text-gray-400'
+//           }`}>
+//             {isSelected ? '✓ Working' : 'Not Working'}
+//           </span>
+//         </div>
+//       </button>
+//     );
+//   }
+
+//   // Select field with options Customer Response Required
+//   if (attribute.options && attribute.options.length > 0) {
+//     return (
+//       <div className={compact ? '' : 'mb-3'}>
+//         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+//           {attribute.is_required && (
+//             <span className="w-2 h-2 bg-red-500 rounded-full" />
+//           )}
+//           {attribute.question_text || attribute.name}
+//         </label>
+//         {attribute.help_text && (
+//           <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+//             <AlertCircle size={12} />
+//             {attribute.help_text}
+//           </p>
+//         )}
+//         <select
+//           value={value || ''}
+//           onChange={(e) => onChange(e.target.value)}
+//           className={`w-full p-3 border-2 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white transition-colors ${
+//             value ? 'border-[#1B8A05] bg-[#1B8A05]/5' : 'border-gray-200'
+//           }`}
+//         >
+//           <option value="">
+//             {attribute.placeholder || `Select ${attribute.name}`}
+//           </option>
+//           {attribute.options.map((option: string) => {
+//             // const impact = getPriceImpactDisplay(option);
+//             return (
+//               <option key={option} value={option}>
+//                 {option}
+//               </option>
+
+//             );
+//           })}
+//         </select>
+//         {value && (
+//           <div className="mt-2 flex items-center justify-between">
+//             <span className="text-xs text-gray-600">Selected: <strong>{value}</strong></span>
+//             {getPriceImpactDisplay(value) && (
+//               <div className="flex items-center gap-1">
+//                 <span className="text-xs text-gray-500">Price Impact:</span>
+//                 {getPriceImpactDisplay(value)}
+//               </div>
+//             )}
+//           </div>
+//         )}
+//       </div>
+//     );
+//   }
+
+//   // Text input fallback
+//   return (
+//     <div className={compact ? '' : 'mb-3'}>
+//       <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+//         {attribute.is_required && (
+//           <span className="w-2 h-2 bg-red-500 rounded-full" />
+//         )}
+//         {attribute.question_text || attribute.name}
+//       </label>
+//       {attribute.help_text && (
+//         <p className="text-xs text-gray-500 mb-2">{attribute.help_text}</p>
+//       )}
+//       <input
+//         type="text"
+//         value={value || ''}
+//         onChange={(e) => onChange(e.target.value)}
+//         placeholder={attribute.placeholder || `Enter ${attribute.name}`}
+//         className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
+//       />
+//     </div>
+//   );
+// };
+
+
+// ============================================================================
+// HELPER COMPONENTS FOR DYNAMIC FORM (UPDATED TO MATCH STEPPER)
+// ============================================================================
+
+interface DynamicAttributeFieldProps {
+  attribute: any;
+  value: any;
+  onChange: (value: any) => void;
+  compact?: boolean;
+}
+
+const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
+  attribute,
+  value,
+  onChange,
+}) => {
+  const getPriceImpactDisplay = (selectedValue: any) => {
+    if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
+    
+    // Map boolean to 'Yes'/'No' for price impact lookup if needed
+    const impactKey = typeof selectedValue === 'boolean' 
+      ? (selectedValue ? 'Yes' : 'No') 
+      : String(selectedValue);
+      
+    const impact = attribute.price_impact[impactKey];
+    if (!impact) return null;
+
+    const isNegative = impact.value < 0;
+    const displayValue = Math.abs(impact.value);
+
+    return (
+      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isNegative ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        {isNegative ? '-' : '+'}
+        {impact.type === 'percentage' ? `${displayValue}%` : `₹${displayValue}`}
+      </span>
+    );
+  };
+
+  // 1. Boolean field as Yes/No Grid Buttons
+  if (attribute.is_boolean) {
+    return (
+      <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+        <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-3 md:mb-4 flex items-center gap-2">
+          {attribute.question_text || attribute.name}
+          {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+          {attribute.help_text && (
+            <span className="group relative ml-1">
+              <HelpCircle size={16} className="text-gray-400 cursor-help" />
+              <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1C1C1B] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center shadow-lg">
+                {attribute.help_text}
+              </span>
+            </span>
+          )}
+        </label>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          <button
+            type="button"
+            onClick={() => onChange(true)}
+            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
+              value === true
+                ? 'bg-[#1B8A05]/10 border-[#1B8A05] ring-2 ring-[#1B8A05]/50 text-[#1B8A05] shadow-sm'
+                : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
+            }`}
+          >
+            <span>Yes</span>
+            {getPriceImpactDisplay(true)}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => onChange(false)}
+            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
+              value === false
+                ? 'bg-[#FF0000]/10 border-[#FF0000] ring-2 ring-[#FF0000]/50 text-[#FF0000] shadow-sm'
+                : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
+            }`}
+          >
+            <span>No</span>
+            {getPriceImpactDisplay(false)}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Options field as Grid Buttons
+  if (attribute.options && attribute.options.length > 0) {
+    return (
+      <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+        <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-3 md:mb-4 flex items-center gap-2">
+          {attribute.question_text || attribute.name}
+          {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+          {attribute.help_text && (
+            <span className="group relative ml-1">
+              <HelpCircle size={16} className="text-gray-400 cursor-help" />
+              <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1C1C1B] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center shadow-lg">
+                {attribute.help_text}
+              </span>
+            </span>
+          )}
+        </label>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+          {attribute.options.map((option: string) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(option)}
+              className={`group relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl text-center transition-all text-sm md:text-base font-semibold overflow-hidden flex flex-col items-center justify-center gap-2 ${
+                value === option
+                  ? 'bg-[#FEC925]/20 border-[#FEC925] ring-2 ring-[#FEC925]/50 text-[#1C1C1B] shadow-sm'
+                  : 'bg-white border-gray-300 hover:border-[#FEC925] hover:shadow-sm text-gray-700'
+              }`}
+            >
+              <span className="relative z-10 block">{option}</span>
+              {getPriceImpactDisplay(option)}
+              
+              {value === option && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute top-1 right-1 w-4 h-4 md:w-5 md:h-5 bg-[#1B8A05] rounded-full flex items-center justify-center"
+                >
+                  <CheckCircle2 size={12} className="text-white" />
+                </motion.div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Fallback Text Input
+  return (
+    <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+      <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-2 md:mb-3 flex items-center gap-2">
+        {attribute.question_text || attribute.name}
+        {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+      </label>
+      {attribute.help_text && (
+        <p className="text-xs text-gray-500 mb-2">{attribute.help_text}</p>
+      )}
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={attribute.placeholder || `Enter ${attribute.name}`}
+        className="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg md:rounded-xl focus:border-[#FEC925] focus:outline-none transition"
+      />
+    </div>
+  );
+};
+
+
+// ============================================================================
+// DYNAMIC INSPECTION FORM COMPONENT (STEPPED DESIGN)
+// ============================================================================
+
 interface DynamicInspectionFormProps {
   data: DynamicInspectionData;
   onDataChange: (data: DynamicInspectionData) => void;
@@ -3648,6 +4401,25 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
   attributes,
   pricingConfig,
 }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Dynamically group attributes
+  const groupedAttributes = React.useMemo(() => {
+    if (!attributes) return {};
+    const sorted = [...attributes].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    return sorted.reduce((acc: Record<string, any[]>, attr) => {
+      const type = attr.attribute_type
+        ? attr.attribute_type.charAt(0).toUpperCase() + attr.attribute_type.slice(1)
+        : 'Other';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(attr);
+      return acc;
+    }, {});
+  }, [attributes]);
+
+  const groupKeys = Object.keys(groupedAttributes);
+  const totalSteps = groupKeys.length + 2; // Photos + Attribute Groups + Verification
+
   const updateField = <K extends keyof DynamicInspectionData>(
     key: K,
     value: DynamicInspectionData[K]
@@ -3686,536 +4458,296 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
     input.click();
   };
 
-  // Validation
-  const requiredImagesCaptured = Boolean(
-    data.front_image && data.back_image && data.imei_image
-  );
+  // Validation per step
+  const isCurrentStepValid = () => {
+    if (currentStep === 0) {
+      // Step 0: Photos Required
+      return Boolean(data.front_image && data.back_image && data.imei_image);
+    } else if (currentStep > 0 && currentStep <= groupKeys.length) {
+      // Step 1 to N: Attributes
+      const groupName = groupKeys[currentStep - 1];
+      const groupAttrs = groupedAttributes[groupName] || [];
+      return groupAttrs.filter(a => a.is_required).every(attr => {
+        const val = data.attribute_responses[attr.name];
+        return val !== undefined && val !== null && val !== '';
+      });
+    } else {
+      // Last Step: Verification & Notes
+      return Boolean(
+        data.verified_imei &&
+        data.verified_imei.length === 15 &&
+        data.inspection_notes &&
+        data.inspection_notes.trim().length > 0
+      );
+    }
+  };
 
-  const requiredAttributesFilled = attributes
-    .filter(attr => attr.is_required)
-    .every(attr => {
-      const value = data.attribute_responses[attr.name];
-      return value !== undefined && value !== null && value !== '';
-    });
+  const handleNext = () => {
+    if (isCurrentStepValid() && currentStep < totalSteps - 1) {
+      setCurrentStep(prev => prev + 1);
+      window.scrollTo(0, 0);
+    }
+  };
 
-  const isFormValid =
-    requiredImagesCaptured &&
-    data.verified_imei &&
-    data.verified_imei.length >= 15 &&
-    data.inspection_notes &&
-    data.inspection_notes.trim().length > 0 &&
-    requiredAttributesFilled;
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+      window.scrollTo(0, 0);
+    }
+  };
 
-  // Group attributes by type
-  const cosmeticAttributes = attributes.filter(a => a.attribute_type === 'cosmetic');
-  const functionalAttributes = attributes.filter(a => a.attribute_type === 'functional');
-  const batteryAttributes = attributes.filter(a => a.attribute_type === 'battery');
-  const accessoryAttributes = attributes.filter(a => a.attribute_type === 'accessory');
+  // Progress Bar Renderer
+  const renderProgressBar = () => {
+    const stepLabels = ['Photos', ...groupKeys, 'Verify'];
+    const progressPercent = (currentStep / (totalSteps - 1)) * 100;
+
+    return (
+      <div className="mb-6 md:mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-3 hidden md:flex">
+          {stepLabels.map((label, idx) => (
+            <div key={idx} className="flex-1 text-center last:flex-initial">
+              <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-sm transition-colors ${
+                currentStep > idx ? 'bg-[#1B8A05] text-white' :
+                currentStep === idx ? 'bg-[#FEC925] text-[#1C1C1B] ring-4 ring-[#FEC925]/20' : 'bg-gray-200 text-gray-500'
+              }`}>
+                {currentStep > idx ? <CheckCircle2 size={16} /> : idx + 1}
+              </div>
+              <p className={`text-xs font-semibold ${
+                currentStep >= idx ? 'text-[#1C1C1B]' : 'text-gray-400'
+              }`}>{label}</p>
+            </div>
+          ))}
+        </div>
+        
+        {/* Mobile Text Indicator */}
+        <p className="text-center text-sm font-bold text-[#1C1C1B] mb-3 md:hidden">
+          Step {currentStep + 1} of {totalSteps}: <span className="text-[#1B8A05]">{stepLabels[currentStep]}</span>
+        </p>
+
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-[#FEC925] to-[#1B8A05] rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ type: 'spring' }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#FEC925] to-[#e5b520] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={onCancel} className="p-2 hover:bg-white/20 rounded-lg transition">
-            <ArrowLeft size={24} className="text-[#1C1C1B]" />
+      <div className="bg-gradient-to-r from-[#1C1C1B] to-[#2d2d2c] p-6 shadow-md z-10">
+        <div className="max-w-2xl mx-auto flex items-center justify-between mb-4">
+          <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
+            <ArrowLeft size={24} className="text-white" />
           </button>
-          <span className="text-[#1C1C1B] font-bold">Device Inspection</span>
+          <span className="text-white font-bold tracking-wide">Device Inspection</span>
           <div className="w-10" />
         </div>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-            <Smartphone className="text-[#1C1C1B]" size={28} />
+        <div className="max-w-2xl mx-auto flex items-center gap-4">
+          <div className="w-14 h-14 bg-[#FEC925]/20 rounded-xl flex items-center justify-center border border-[#FEC925]/50">
+            <Smartphone className="text-[#FEC925]" size={28} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#1C1C1B]">
+            <h1 className="text-xl font-bold text-white">
               {deviceInfo.brand} {deviceInfo.model}
             </h1>
-            <p className="text-[#1C1C1B]/70">{deviceInfo.storage}</p>
-            <p className="text-[#1C1C1B]/60 text-sm">
-              Est. Price: ₹{parseFloat(deviceInfo.estimated_price || '0').toLocaleString('en-IN')}
+            <p className="text-gray-300 text-sm">
+              {deviceInfo.storage} • Est. ₹{parseFloat(deviceInfo.estimated_price || '0').toLocaleString('en-IN')}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Form Content */}
-      <div className="p-4 space-y-6 pb-24">
-        {/* Required Device Photos */}
-        <Section title="Device Photos (Required)">
-          <div className="grid grid-cols-2 gap-3">
-            <ImageCaptureButton
-              label="Front"
-              image={data.front_image}
-              onCapture={() => captureImage('front_image')}
-              required
-            />
-            <ImageCaptureButton
-              label="Back"
-              image={data.back_image}
-              onCapture={() => captureImage('back_image')}
-              required
-            />
-            <ImageCaptureButton
-              label="Screen On"
-              image={data.screen_image}
-              onCapture={() => captureImage('screen_image')}
-            />
-            <ImageCaptureButton
-              label="IMEI"
-              image={data.imei_image}
-              onCapture={() => captureImage('imei_image')}
-              required
-            />
-          </div>
-          {!requiredImagesCaptured && (
-            <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
-              <AlertCircle size={14} />
-              Front, Back, and IMEI photos are required
-            </p>
-          )}
-        </Section>
+      {/* Main Content Area */}
+      <div className="flex-1 p-4 pb-32 max-w-2xl mx-auto w-full">
+        {renderProgressBar()}
 
-        {/* Cosmetic Conditions */}
-        {cosmeticAttributes.length > 0 && (
-          <Section title="Physical Condition">
-            <div className="space-y-4">
-              {cosmeticAttributes.map(attr => (
-                <DynamicAttributeField
-                  key={attr.id}
-                  attribute={attr}
-                  value={data.attribute_responses[attr.name]}
-                  onChange={(value) => updateAttributeResponse(attr.name, value)}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Battery Health */}
-        {batteryAttributes.length > 0 && (
-          <Section title="Battery Health">
-            <div className="space-y-4">
-              {batteryAttributes.map(attr => (
-                <DynamicAttributeField
-                  key={attr.id}
-                  attribute={attr}
-                  value={data.attribute_responses[attr.name]}
-                  onChange={(value) => updateAttributeResponse(attr.name, value)}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Functional Tests */}
-        {functionalAttributes.length > 0 && (
-          <Section title="Functional Tests">
-            <div className="bg-gray-50 rounded-xl p-3 mb-3">
-              <p className="text-sm text-gray-600 flex items-center gap-2">
-                <AlertCircle size={14} />
-                Tap to select working features. All features should be tested.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {functionalAttributes.map(attr => (
-                <DynamicAttributeField
-                  key={attr.id}
-                  attribute={attr}
-                  value={data.attribute_responses[attr.name]}
-                  onChange={(value) => updateAttributeResponse(attr.name, value)}
-                  compact
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Accessories */}
-        {accessoryAttributes.length > 0 && (
-          <Section title="Accessories Included">
-            <div className="bg-gray-50 rounded-xl p-3 mb-3">
-              <p className="text-sm text-gray-600 flex items-center gap-2">
-                <Package size={14} />
-                Select all accessories that are available with the device.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {accessoryAttributes.map(attr => (
-                <DynamicAttributeField
-                  key={attr.id}
-                  attribute={attr}
-                  value={data.attribute_responses[attr.name]}
-                  onChange={(value) => updateAttributeResponse(attr.name, value)}
-                  compact
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* IMEI Verification */}
-        <Section title="Device Verification (Required)">
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                IMEI Number *
-              </label>
-              <input
-                type="text"
-                value={data.verified_imei}
-                onChange={(e) => updateField('verified_imei', e.target.value)}
-                placeholder="Enter 15-digit IMEI number"
-                maxLength={15}
-                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none font-mono"
-              />
-              {data.verified_imei && data.verified_imei.length !== 15 && (
-                <p className="text-sm text-red-600 mt-1">IMEI must be 15 digits</p>
+        <AnimatePresence mode="wait">
+          {/* STEP 0: PHOTOS */}
+          {currentStep === 0 && (
+            <motion.div
+              key="step-photos"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200"
+            >
+              <h2 className="text-xl font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+                <Camera className="text-[#FEC925]" /> Device Photos
+              </h2>
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <ImageCaptureButton label="Front" image={data.front_image} onCapture={() => captureImage('front_image')} required />
+                <ImageCaptureButton label="Back" image={data.back_image} onCapture={() => captureImage('back_image')} required />
+                <ImageCaptureButton label="Screen On" image={data.screen_image} onCapture={() => captureImage('screen_image')} />
+                <ImageCaptureButton label="IMEI" image={data.imei_image} onCapture={() => captureImage('imei_image')} required />
+              </div>
+              {!isCurrentStepValid() && (
+                <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm font-medium border border-red-100">
+                  <AlertCircle size={16} /> Required photos are missing.
+                </div>
               )}
-            </div>
-            <ToggleField
-              icon={CheckCircle2}
-              label="IMEI Verified & Matches"
-              value={data.imei_matches}
-              onChange={(v) => updateField('imei_matches', v)}
-            />
-            <ToggleField
-              icon={Zap}
-              label="Device Powers On"
-              value={data.device_powers_on}
-              onChange={(v) => updateField('device_powers_on', v)}
-            />
-          </div>
-        </Section>
-
-        {/* Inspection Notes */}
-        <Section title="Inspection Notes (Required)">
-          <textarea
-            value={data.inspection_notes}
-            onChange={(e) => updateField('inspection_notes', e.target.value)}
-            placeholder="Describe overall device condition, any defects, customer interaction notes..."
-            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-24"
-          />
-          {(!data.inspection_notes || data.inspection_notes.trim().length === 0) && (
-            <p className="text-sm text-red-600 mt-1">Inspection notes are required</p>
+            </motion.div>
           )}
-        </Section>
 
-        {/* Pricing Info */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-          <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
-            <BadgeCheck size={18} />
-            {pricingConfig.calculation_method === 'system_automated' 
-              ? 'System Will Calculate Final Price'
-              : 'Pricing Information'}
-          </h4>
-          <p className="text-sm text-blue-800 mb-2">
-            {pricingConfig.notes || 'Price will be calculated based on verified conditions'}
-          </p>
-          {pricingConfig.uses_condition_matrix && (
-            <div className="text-xs text-blue-700 bg-blue-100 rounded-lg p-2 mt-2">
-              <p className="font-semibold mb-1">Deduction Types:</p>
-              <div className="flex flex-wrap gap-1">
-                {pricingConfig.deduction_types?.map((type: string) => (
-                  <span key={type} className="px-2 py-0.5 bg-blue-200 rounded capitalize">
-                    {type}
-                  </span>
+          {/* STEP 1 TO N: ATTRIBUTE GROUPS */}
+          {currentStep > 0 && currentStep <= groupKeys.length && (
+            <motion.div
+              key={`step-${currentStep}`}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200"
+            >
+              <h2 className="text-xl md:text-2xl font-bold text-[#1C1C1B] pb-3 border-b-2 border-[#FEC925] mb-6">
+                {groupKeys[currentStep - 1]}
+              </h2>
+              <div className="space-y-6">
+                {groupedAttributes[groupKeys[currentStep - 1]].map(attr => (
+                  <DynamicAttributeField
+                    key={attr.id}
+                    attribute={attr}
+                    value={data.attribute_responses[attr.name]}
+                    onChange={(value) => updateAttributeResponse(attr.name, value)}
+                  />
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
 
-        {/* Validation Summary */}
-        {!isFormValid && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
-            <h4 className="font-bold text-red-700 mb-2 flex items-center gap-2">
-              <AlertCircle size={18} />
-              Complete Required Fields
-            </h4>
-            <ul className="text-sm text-red-600 space-y-1">
-              {!requiredImagesCaptured && (
-                <li>• Capture required photos (Front, Back, IMEI)</li>
-              )}
-              {(!data.verified_imei || data.verified_imei.length < 15) && (
-                <li>• Enter valid 15-digit IMEI number</li>
-              )}
-              {!requiredAttributesFilled && (
-                <li>• Complete all required condition checks</li>
-              )}
-              {(!data.inspection_notes || data.inspection_notes.trim().length === 0) && (
-                <li>• Add inspection notes</li>
-              )}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* Submit Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white">
-        <div className="max-w-2xl mx-auto">
-          <button
-            onClick={onSubmit}
-            disabled={isSubmitting || !isFormValid}
-            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
-              isFormValid
-                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isSubmitting ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                <CheckCircle2 size={20} />
-                Submit for System Pricing
-              </>
-            )}
-          </button>
-          {!isFormValid && (
-            <p className="text-center text-sm text-gray-500 mt-2">
-              Complete all required fields to submit
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Submit for System Pricing const impact
-
-
-// ============================================================================
-// HELPER COMPONENTS FOR DYNAMIC FORM
-// ============================================================================
-
-interface DynamicAttributeFieldProps {
-  attribute: any;
-  value: any;
-  onChange: (value: any) => void;
-  compact?: boolean;
-}
-
-const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
-  attribute,
-  value,
-  onChange,
-  compact = false,
-}) => {
-  const getPriceImpactDisplay = (selectedValue: any) => {
-    if (!attribute.price_impact || !selectedValue) return null;
-    const impact = attribute.price_impact[selectedValue];
-    if (!impact) return null;
-
-    const isNegative = impact.value < 0;
-    const displayValue = Math.abs(impact.value);
-
-    return (
-      <span className={`text-xs font-semibold ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
-        {isNegative ? '-' : '+'}
-        {impact.type === 'percentage' ? `${displayValue}%` : `₹${displayValue}`}
-      </span>
-    );
-  };
-
-  const getIconForAttribute = (attrName: string) => {
-    const iconMap: Record<string, any> = {
-      'wifi': Wifi,
-      'wifi_working': Wifi,
-      'bluetooth': Bluetooth,
-      'bluetooth_working': Bluetooth,
-      'camera': Camera,
-      'cameras_working': Camera,
-      'speaker': Volume2,
-      'speakers_working': Volume2,
-      'microphone': Mic,
-      'microphone_working': Mic,
-      'display': Eye,
-      'display_working': Eye,
-      'touch': Smartphone,
-      'touch_working': Smartphone,
-      'charging': Zap,
-      'charging_port_working': Zap,
-      'fingerprint': Fingerprint,
-      'fingerprint_working': Fingerprint,
-      'charger': Zap,
-      'has_charger': Zap,
-      'box': Package,
-      'has_box': Package,
-      'earphones': Volume2,
-      'has_earphones': Volume2,
-      'bill': FileText,
-      'has_bill': FileText,
-    };
-    
-    const normalizedName = attrName.toLowerCase().replace(/\s+/g, '_');
-    for (const key in iconMap) {
-      if (normalizedName.includes(key)) {
-        return iconMap[key];
-      }
-    }
-    return CheckCircle2;
-  };
-
-  // Boolean field as select/unselect button
-  if (attribute.is_boolean) {
-    const Icon = getIconForAttribute(attribute.name);
-    const isSelected = value === true || value === 'Yes';
-    
-    return (
-      <button
-        type="button"
-        onClick={() => onChange(!isSelected)}
-        className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
-          isSelected 
-            ? 'border-[#1B8A05] bg-gradient-to-br from-[#1B8A05]/10 to-[#1B8A05]/5 shadow-sm' 
-            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-        }`}
-      >
-        {/* Selection indicator in top-right corner */}
-        <div className="absolute top-2 right-2">
-          {isSelected ? (
-            <div className="w-6 h-6 rounded-full bg-[#1B8A05] flex items-center justify-center">
-              <CheckCircle2 size={16} className="text-white" />
-            </div>
-          ) : (
-            <div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-white" />
-          )}
-        </div>
-
-        {/* Required indicator */}
-        {attribute.is_required && (
-          <div className="absolute top-2 left-2">
-            <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
-          </div>
-        )}
-
-        {/* Icon and Label */}
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-            isSelected 
-              ? 'bg-[#1B8A05]/20' 
-              : 'bg-gray-100'
-          }`}>
-            <Icon 
-              size={24} 
-              className={isSelected ? 'text-[#1B8A05]' : 'text-gray-400'} 
-            />
-          </div>
-          
-          <div className="text-center">
-            <p className={`text-sm font-semibold transition-colors ${
-              isSelected ? 'text-[#1B8A05]' : 'text-gray-700'
-            }`}>
-              {attribute.question_text || attribute.name}
-            </p>
-            
-            {attribute.help_text && (
-              <p className="text-xs text-gray-500 mt-1">
-                {attribute.help_text}
-              </p>
-            )}
-          </div>
-
-          {/* Price Impact Badge */}
-          {isSelected && getPriceImpactDisplay('Yes') && (
-            <div className="mt-1">
-              {getPriceImpactDisplay('Yes')}
-            </div>
-          )}
-          {!isSelected && getPriceImpactDisplay('No') && (
-            <div className="mt-1 text-xs text-gray-500">
-              Impact: {getPriceImpactDisplay('No')}
-            </div>
-          )}
-        </div>
-
-        {/* Selection label at bottom */}
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <span className={`text-xs font-bold ${
-            isSelected ? 'text-[#1B8A05]' : 'text-gray-400'
-          }`}>
-            {isSelected ? '✓ Working' : 'Not Working'}
-          </span>
-        </div>
-      </button>
-    );
-  }
-
-  // Select field with options Customer Response Required
-  if (attribute.options && attribute.options.length > 0) {
-    return (
-      <div className={compact ? '' : 'mb-3'}>
-        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-          {attribute.is_required && (
-            <span className="w-2 h-2 bg-red-500 rounded-full" />
-          )}
-          {attribute.question_text || attribute.name}
-        </label>
-        {attribute.help_text && (
-          <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-            <AlertCircle size={12} />
-            {attribute.help_text}
-          </p>
-        )}
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full p-3 border-2 rounded-xl focus:border-[#FEC925] focus:outline-none bg-white transition-colors ${
-            value ? 'border-[#1B8A05] bg-[#1B8A05]/5' : 'border-gray-200'
-          }`}
-        >
-          <option value="">
-            {attribute.placeholder || `Select ${attribute.name}`}
-          </option>
-          {attribute.options.map((option: string) => {
-            // const impact = getPriceImpactDisplay(option);
-            return (
-              <option key={option} value={option}>
-                {option}
-              </option>
-
-            );
-          })}
-        </select>
-        {value && (
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-gray-600">Selected: <strong>{value}</strong></span>
-            {getPriceImpactDisplay(value) && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-500">Price Impact:</span>
-                {getPriceImpactDisplay(value)}
+          {/* FINAL STEP: VERIFICATION & NOTES */}
+          {currentStep === totalSteps - 1 && (
+            <motion.div
+              key="step-verification"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              {/* Verification Section */}
+              <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
+                <h2 className="text-xl font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+                  <CheckCircle2 className="text-[#FEC925]" /> Device Verification
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">IMEI Number *</label>
+                    <input
+                      type="text"
+                      value={data.verified_imei}
+                      onChange={(e) => updateField('verified_imei', e.target.value)}
+                      placeholder="Enter 15-digit IMEI number"
+                      maxLength={15}
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none font-mono text-lg bg-gray-50"
+                    />
+                    {data.verified_imei && data.verified_imei.length !== 15 && (
+                      <p className="text-sm text-red-600 mt-1 font-medium">IMEI must be exactly 15 digits</p>
+                    )}
+                  </div>
+                  <ToggleField
+                    icon={CheckCircle2}
+                    label="IMEI Verified & Matches"
+                    value={data.imei_matches}
+                    onChange={(v) => updateField('imei_matches', v)}
+                  />
+                  <ToggleField
+                    icon={Zap}
+                    label="Device Powers On"
+                    value={data.device_powers_on}
+                    onChange={(v) => updateField('device_powers_on', v)}
+                  />
+                </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
 
-  // Text input fallback
-  return (
-    <div className={compact ? '' : 'mb-3'}>
-      <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-        {attribute.is_required && (
-          <span className="w-2 h-2 bg-red-500 rounded-full" />
-        )}
-        {attribute.question_text || attribute.name}
-      </label>
-      {attribute.help_text && (
-        <p className="text-xs text-gray-500 mb-2">{attribute.help_text}</p>
-      )}
-      <input
-        type="text"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={attribute.placeholder || `Enter ${attribute.name}`}
-        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none"
-      />
+              {/* Notes Section */}
+              <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-200">
+                <h2 className="text-xl font-bold text-[#1C1C1B] mb-4 flex items-center gap-2">
+                  <FileText className="text-[#FEC925]" /> Inspection Notes *
+                </h2>
+                <textarea
+                  value={data.inspection_notes}
+                  onChange={(e) => updateField('inspection_notes', e.target.value)}
+                  placeholder="Describe overall device condition, defects, or any customer interaction notes..."
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FEC925] focus:outline-none resize-none h-32 bg-gray-50"
+                />
+              </div>
+
+              {/* Pricing Notice */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
+                <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                  <BadgeCheck size={20} />
+                  {pricingConfig.calculation_method === 'system_automated' 
+                    ? 'System Automated Pricing' 
+                    : 'Pricing Information'}
+                </h4>
+                <p className="text-sm text-blue-800">
+                  {pricingConfig.notes || 'The final offer price will be generated automatically based on your inputs.'}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Bottom Action Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
+        <div className="max-w-2xl mx-auto flex gap-3">
+          {currentStep > 0 && (
+            <button
+              onClick={handleBack}
+              disabled={isSubmitting}
+              className="flex items-center justify-center gap-2 px-5 py-4 border-2 border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 active:scale-95"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+
+          {currentStep < totalSteps - 1 ? (
+            <button
+              onClick={handleNext}
+              disabled={!isCurrentStepValid()}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${
+                isCurrentStepValid()
+                  ? 'bg-gradient-to-r from-[#FEC925] to-[#1B8A05] text-[#1C1C1B] shadow-lg'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Continue <ArrowRight size={20} />
+            </button>
+          ) : (
+            <button
+              onClick={onSubmit}
+              disabled={!isCurrentStepValid() || isSubmitting}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${
+                isCurrentStepValid() && !isSubmitting
+                  ? 'bg-[#1B8A05] text-white shadow-lg shadow-[#1B8A05]/30 hover:bg-[#157004]'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={24} /> Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={24} /> Submit Inspection
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+
+
+
+
+
 
 interface ImageCaptureButtonProps {
   label: string;
