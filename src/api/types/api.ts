@@ -23,7 +23,7 @@ export interface PartnerSignupSendOtpResponse {
   };
 }
 
-/**
+/** 
  * API 6.2: Partner Verify OTP (Registration)
  */
 export interface PartnerSignupVerifyOtpRequest {
@@ -274,6 +274,7 @@ export interface ServiceArea {
   state: string;
   postal_codes: string[];
   is_active: boolean;
+  priority: number;
 }
 
 export interface CreateServiceAreaRequest {
@@ -298,6 +299,7 @@ export interface UserKYC {
   document_back_image: string | null;
   selfie_image: string | null;
   verification_notes: string;
+  rejection_notes: string;
 }
 
 // === LEAD STATUS ===

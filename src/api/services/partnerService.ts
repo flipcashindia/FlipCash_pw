@@ -40,6 +40,8 @@ const signupVerifyOtp = async (
   return data;
 };
 
+
+
 const completeSignup = async (
   payload: PartnerSignupCompleteRequest
 ): Promise<PartnerSignupCompleteResponse> => {
@@ -101,6 +103,7 @@ const uploadDocument = async (formData: FormData): Promise<PartnerDocument> => {
   return data;
 };
 
+
 const deleteDocument = async (docId: string): Promise<void> => {
   await privateApiClient.delete(`/partners/documents/${docId}/`); 
 };
@@ -155,7 +158,13 @@ const deleteServiceArea = async (areaId: string): Promise<void> => {
   await privateApiClient.delete(`/partners/service-areas/${areaId}/`); 
 };
 
-
+// setAvailability: (is_available: boolean): Promise<PartnerToggleAvailabilityResponse> =>
+//   api.post('/partners/me/availability/', { is_available }).then(res => res.data),
+const setAvailability = async (is_available: boolean): Promise<PartnerToggleAvailabilityResponse> => {
+  const { data } = await privateApiClient.post('/partners/me/availability/', { is_available });
+  console.log('Set availability: ', data);
+  return data;
+};
 
 
 export const partnerService = {
@@ -180,5 +189,6 @@ export const partnerService = {
   verifyBankAccount,
   getServiceAreas,
   addServiceArea,
-  deleteServiceArea
+  deleteServiceArea,
+  setAvailability
 };
