@@ -104,7 +104,7 @@ const AgentActivityPage: React.FC = () => {
               {completedLeads.reduce((sum, l) => sum + parseFloat(l.final_price || l.estimated_price || '0'), 0).toLocaleString('en-IN')}
             </span>
           </div>
-          <p className="text-[#1C1C1B]/80 text-sm">Total Earnings</p>
+          <p className="text-[#1C1C1B]/80 text-sm">Total Spendings</p>
         </div>
       </div>
 
