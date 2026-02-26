@@ -84,15 +84,15 @@ const toggleAvailability = async (
 
 // --- 2. PARTNER DOCUMENTS ---
 // --- 2. PARTNER DOCUMENTS ---
-const getDocuments = async (): Promise<PartnerDocument[]> => {
-  const { data } = await privateApiClient.get('/partners/documents/'); 
-  console.log('Fetched partner documents: ', data);
+// const getDocuments = async (): Promise<PartnerDocument[]> => {
+//   const { data } = await privateApiClient.get('/partners/documents/'); 
+//   console.log('Fetched partner documents: ', data);
 
-  // --- THIS IS THE FIX ---
-  // Your log shows 'data' is an array, so return 'data' directly.
-  return data; 
-  // return data.results; // <-- THIS WAS THE BUG
-};
+//   // --- THIS IS THE FIX ---
+//   // Your log shows 'data' is an array, so return 'data' directly.
+//   return data; 
+//   // return data.results; // <-- THIS WAS THE BUG
+// };
 
 const uploadDocument = async (formData: FormData): Promise<PartnerDocument> => {
   // FormData must contain 'document_type' and 'document_file'
@@ -109,13 +109,13 @@ const deleteDocument = async (docId: string): Promise<void> => {
 };
 
 // --- 3. BANK ACCOUNTS ---
-const getBankAccounts = async (): Promise<PartnerBankAccount[]> => {
-  const { data } = await privateApiClient.get('/partners/bank-accounts/'); 
-  console.log('Fetched bank accounts: ', data);
+// const getBankAccounts = async (): Promise<PartnerBankAccount[]> => {
+//   const { data } = await privateApiClient.get('/partners/bank-accounts/'); 
+//   console.log('Fetched bank accounts: ', data);
   
-  // This one is now correct:
-  return data; 
-};
+//   // This one is now correct:
+//   return data; 
+// };
 
 const addBankAccount = async (payload: AddBankAccountRequest): Promise<PartnerBankAccount> => {
   const { data } = await privateApiClient.post('/partners/bank-accounts/', payload); 
@@ -138,15 +138,15 @@ const verifyBankAccount = async (accountId: string): Promise<any> => {
 };
 
 // --- 4. SERVICE AREAS ---
-const getServiceAreas = async (): Promise<ServiceArea[]> => {
-  const { data } = await privateApiClient.get('/partners/service-areas/');
-  console.log('Fetched service areas: ', data);
+// const getServiceAreas = async (): Promise<ServiceArea[]> => {
+//   const { data } = await privateApiClient.get('/partners/service-areas/');
+//   console.log('Fetched service areas: ', data);
 
-  // --- THIS IS THE FIX ---
-  // Your log shows 'data' is an array, so return 'data' directly.
-  return data; 
-  // return data.results; // <-- THIS WAS THE BUG
-};
+//   // --- THIS IS THE FIX ---
+//   // Your log shows 'data' is an array, so return 'data' directly.
+//   return data; 
+//   // return data.results; // <-- THIS WAS THE BUG
+// };
 
 const addServiceArea = async (payload: CreateServiceAreaRequest): Promise<ServiceArea> => {
   const { data } = await privateApiClient.post('/partners/service-areas/', payload); 
@@ -163,6 +163,33 @@ const deleteServiceArea = async (areaId: string): Promise<void> => {
 const setAvailability = async (is_available: boolean): Promise<PartnerToggleAvailabilityResponse> => {
   const { data } = await privateApiClient.post('/partners/me/availability/', { is_available });
   console.log('Set availability: ', data);
+  return data;
+};
+
+const getDocuments = async (): Promise<PartnerDocument[]> => {
+  const { data } = await privateApiClient.get('/partners/documents/');
+  return Array.isArray(data) ? data : data.results;
+};
+
+const getBankAccounts = async (): Promise<PartnerBankAccount[]> => {
+  const { data } = await privateApiClient.get('/partners/bank-accounts/');
+  return Array.isArray(data) ? data : data.results;
+};
+
+const getServiceAreas = async (): Promise<ServiceArea[]> => {
+  const { data } = await privateApiClient.get('/partners/service-areas/');
+  return Array.isArray(data) ? data : data.results;
+};
+
+const uploadAvatar = async (formData: FormData): Promise<{ detail: string; profile_image_url: string }> => {
+  const { data } = await privateApiClient.post('/partners/me/avatar/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};
+
+const deleteAvatar = async (): Promise<{ detail: string }> => {
+  const { data } = await privateApiClient.delete('/partners/me/avatar/');
   return data;
 };
 
@@ -190,5 +217,7 @@ export const partnerService = {
   getServiceAreas,
   addServiceArea,
   deleteServiceArea,
-  setAvailability
+  setAvailability,
+  uploadAvatar,   // ← add
+  deleteAvatar,
 };
