@@ -65,6 +65,14 @@ interface AssignedPartner {
   phone: string;
 }
 
+interface DetailedAssignedAgent {
+  id: string;
+  name: string;
+  phone: string;
+  employee_code?: string;
+  is_self?: boolean;
+}
+
 interface AssignedAgent {
   id: string;
   name: string;
@@ -186,6 +194,9 @@ export const PartnerLeadDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingOffers, setLoadingOffers] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Assignment tracking for unassign/reassign
+  const [assignedAgentData, setAssignedAgentData] = useState<DetailedAssignedAgent | null>(null); // NEW STATE
   
   // Modal states
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
@@ -271,6 +282,30 @@ export const PartnerLeadDetailPage: React.FC = () => {
       setLoading(false);
     }
   };
+  
+  const loadAssignmentId = async (leadId: string) => {
+    try {
+      const token = useAuthStore.getState().accessToken;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/partner-agents/leads/${leadId}/assigned-agent/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      console.log('Assigned agent response:', res);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.is_assigned) {
+          setAssignmentId(data.assignment_id);
+          setAssignedAgentData(data.agent); // Store the detailed agent info
+        } else {
+          setAssignmentId(null);
+          setAssignedAgentData(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load assignment info:', err);
+    }
+  };
 
   const loadOffers = async (id: string) => {
     try {
@@ -293,25 +328,25 @@ export const PartnerLeadDetailPage: React.FC = () => {
     }
   };
 
-  const loadAssignmentId = async (leadId: string) => {
-    try {
-      const token = useAuthStore.getState().accessToken;
-      if (!token) return;
+  // const loadAssignmentId = async (leadId: string) => {
+  //   try {
+  //     const token = useAuthStore.getState().accessToken;
+  //     if (!token) return;
 
-      const res = await fetch(`${API_BASE_URL}/partner-agents/leads/${leadId}/assigned-agent/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  //     const res = await fetch(`${API_BASE_URL}/partner-agents/leads/${leadId}/assigned-agent/`, {
+  //       headers: { 'Authorization': `Bearer ${token}` }
+  //     });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.assignment_id) {
-          setAssignmentId(data.assignment_id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load assignment id:', err);
-    }
-  };
+  //     if (res.ok) {
+  //       const data = await res.json();
+  //       if (data.assignment_id) {
+  //         setAssignmentId(data.assignment_id);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error('Failed to load assignment id:', err);
+  //   }
+  // };
 
   const loadVisitDetails = async (leadId: string) => {
     try {
@@ -795,10 +830,22 @@ export const PartnerLeadDetailPage: React.FC = () => {
               <div className="mt-6 p-4 bg-white border-2 border-gray-200 rounded-xl">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-gray-500">Assigned Agent:</p>
-                  {leadDetails.assigned_agent ? (
+                  {assignedAgentData || leadDetails.assigned_agent ? (
                     <div className="text-right">
-                      <p className="font-bold text-[#1B8A05]">{leadDetails.assigned_agent.name}</p>
-                      <p className="text-xs text-gray-500">{leadDetails.assigned_agent.phone}</p>
+                      <p className="font-bold text-[#1B8A05]">
+                        {assignedAgentData?.name || leadDetails.assigned_agent?.name}
+                        {assignedAgentData?.is_self && (
+                           <span className="text-sm font-semibold ml-1 text-gray-600">(You)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {assignedAgentData?.phone || leadDetails.assigned_agent?.phone}
+                      </p>
+                      {assignedAgentData?.employee_code && (
+                        <p className="text-xs text-gray-400 font-medium mt-0.5">
+                          ID: {assignedAgentData.employee_code}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="font-bold text-[#FF0000]">Unassigned</p>
