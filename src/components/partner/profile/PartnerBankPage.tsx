@@ -12,9 +12,6 @@ import { type PartnerBankAccount, type AddBankAccountRequest } from '../../../ap
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// const maskNumber = (num: string) =>
-//   num ? `**** **** ${num.slice(-4)}` : '****';
-
 const BANK_COLORS: Record<string, string> = {
   sbi: '#1a6fb4', hdfc: '#004c97', icici: '#f58220', axis: '#97144d',
   kotak: '#e31837', yes: '#0076bd', pnb: '#1d3e7a', bob: '#f68b1f',
@@ -28,7 +25,49 @@ const getBankColor = (bankName: string) => {
   return '#374151';
 };
 
-// ── Bank Account Card ─────────────────────────────────────────────────────────
+// ── Field — MUST be at module level, never inside another component ───────────
+// ✅ FIX: Defined here (outside AddBankAccountForm) so React never sees a new
+//         component type on re-render. Defining it inside caused unmount/remount
+//         on every keystroke, which made inputs lose focus after one character.
+
+const Field: React.FC<{
+  label: string;
+  name: string;
+  placeholder: string;
+  value: string;
+  type?: string;
+  icon?: React.ReactNode;
+  error?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}> = ({ label, name, placeholder, value, type = 'text', icon, error, onChange }) => (
+  <div>
+    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+    <div className="relative">
+      {icon && (
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
+      )}
+      <input
+        name={name}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={onChange}
+        className={`w-full p-3.5 ${icon ? 'pl-10' : ''} border-2 rounded-xl text-sm focus:outline-none transition-colors ${
+          error
+            ? 'border-red-300 focus:border-red-400 bg-red-50'
+            : 'border-gray-200 focus:border-[#FEC925]'
+        }`}
+      />
+    </div>
+    {error && (
+      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <AlertCircle size={11} />{error}
+      </p>
+    )}
+  </div>
+);
+
+// ── BankCard ──────────────────────────────────────────────────────────────────
 
 const BankCard: React.FC<{
   account: PartnerBankAccount;
@@ -38,7 +77,7 @@ const BankCard: React.FC<{
   isSettingPrimary: boolean;
   isDeletingId: string | null;
 }> = ({ account: acc, totalAccounts, onDelete, onSetPrimary, isSettingPrimary, isDeletingId }) => {
-  const bankColor = getBankColor(acc.bank_name);
+  const bankColor     = getBankColor(acc.bank_name);
   const isThisDeleting = isDeletingId === acc.id;
 
   return (
@@ -47,7 +86,6 @@ const BankCard: React.FC<{
         ? 'border-[#FEC925] bg-gradient-to-br from-[#FEC925]/8 to-white shadow-sm'
         : 'border-gray-200 bg-white'
     }`}>
-      {/* Primary indicator */}
       {acc.is_primary && (
         <div className="absolute top-3.5 right-3.5">
           <div className="flex items-center gap-1 bg-[#FEC925] text-[#1a1a1a] text-xs font-extrabold px-2.5 py-1 rounded-full shadow-sm">
@@ -127,7 +165,7 @@ const BankCard: React.FC<{
   );
 };
 
-// ── Add Account Form ──────────────────────────────────────────────────────────
+// ── AddBankAccountForm ────────────────────────────────────────────────────────
 
 const AddBankAccountForm: React.FC<{
   isLoading: boolean;
@@ -142,22 +180,26 @@ const AddBankAccountForm: React.FC<{
     account_type: 'savings',
   });
   const [confirmAccNo, setConfirmAccNo] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors]             = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'ifsc_code' ? value.toUpperCase() : value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'ifsc_code' ? value.toUpperCase() : value,
+    }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!formData.account_holder_name.trim()) errs.account_holder_name = 'Required';
-    if (!formData.bank_name.trim()) errs.bank_name = 'Required';
-    if (!formData.account_number.trim()) errs.account_number = 'Required';
-    else if (formData.account_number !== confirmAccNo) errs.confirm = 'Account numbers do not match';
-    if (!formData.ifsc_code.trim()) errs.ifsc_code = 'Required';
-    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifsc_code)) errs.ifsc_code = 'Invalid IFSC format';
+    if (!formData.bank_name.trim())           errs.bank_name           = 'Required';
+    if (!formData.account_number.trim())      errs.account_number      = 'Required';
+    else if (formData.account_number !== confirmAccNo) errs.confirm    = 'Account numbers do not match';
+    if (!formData.ifsc_code.trim())           errs.ifsc_code           = 'Required';
+    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifsc_code))
+                                              errs.ifsc_code           = 'Invalid IFSC format (e.g. SBIN0001234)';
     return errs;
   };
 
@@ -167,27 +209,6 @@ const AddBankAccountForm: React.FC<{
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onSubmit(formData);
   };
-
-  const Field: React.FC<{
-    label: string; name: string; placeholder: string;
-    value: string; type?: string; icon?: React.ReactNode; error?: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  }> = ({ label, name, placeholder, value, type = 'text', icon, error, onChange }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
-      <div className="relative">
-        {icon && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>}
-        <input
-          name={name} type={type} value={value} placeholder={placeholder}
-          onChange={onChange}
-          className={`w-full p-3.5 ${icon ? 'pl-10' : ''} border-2 rounded-xl text-sm focus:outline-none transition-colors ${
-            error ? 'border-red-300 focus:border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#FEC925]'
-          }`}
-        />
-      </div>
-      {error && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{error}</p>}
-    </div>
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -205,6 +226,7 @@ const AddBankAccountForm: React.FC<{
           onChange={handleChange}
         />
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field
           label="Account Number" name="account_number" type="password"
@@ -212,17 +234,31 @@ const AddBankAccountForm: React.FC<{
           error={errors.account_number} onChange={handleChange}
         />
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Confirm Account Number</label>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+            Confirm Account Number
+          </label>
           <input
-            type="text" value={confirmAccNo} placeholder="Re-enter account number"
-            onChange={e => setConfirmAccNo(e.target.value)}
+            type="text"
+            value={confirmAccNo}
+            placeholder="Re-enter account number"
+            onChange={e => {
+              setConfirmAccNo(e.target.value);
+              if (errors.confirm) setErrors(p => ({ ...p, confirm: '' }));
+            }}
             className={`w-full p-3.5 border-2 rounded-xl text-sm focus:outline-none transition-colors ${
-              errors.confirm ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-[#FEC925]'
+              errors.confirm
+                ? 'border-red-300 bg-red-50 focus:border-red-400'
+                : 'border-gray-200 focus:border-[#FEC925]'
             }`}
           />
-          {errors.confirm && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={11} />{errors.confirm}</p>}
+          {errors.confirm && (
+            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle size={11} />{errors.confirm}
+            </p>
+          )}
         </div>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field
           label="IFSC Code" name="ifsc_code"
@@ -232,7 +268,8 @@ const AddBankAccountForm: React.FC<{
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1.5">Account Type</label>
           <select
-            name="account_type" value={formData.account_type}
+            name="account_type"
+            value={formData.account_type}
             onChange={handleChange}
             className="w-full p-3.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#FEC925] bg-white"
           >
@@ -257,7 +294,8 @@ const AddBankAccountForm: React.FC<{
           Add Bank Account
         </button>
         <button
-          type="button" onClick={onCancel}
+          type="button"
+          onClick={onCancel}
           className="px-5 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors"
         >
           Cancel
@@ -270,14 +308,14 @@ const AddBankAccountForm: React.FC<{
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export const PartnerBankPage: React.FC = () => {
-  const toast = useToast();
+  const toast       = useToast();
   const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm]     = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['partnerBankAccounts'],
-    queryFn: partnerService.getBankAccounts,
+    queryFn:  partnerService.getBankAccounts,
   });
 
   const addMutation = useMutation({
@@ -331,11 +369,11 @@ export const PartnerBankPage: React.FC = () => {
   };
 
   const primaryAccount = accounts?.find(a => a.is_primary);
-  const verifiedCount = accounts?.filter(a => a.is_verified).length ?? 0;
+  const verifiedCount  = accounts?.filter(a => a.is_verified).length ?? 0;
 
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-extrabold text-gray-900">Bank Accounts</h2>
@@ -349,7 +387,7 @@ export const PartnerBankPage: React.FC = () => {
         </button>
       </div>
 
-      {/* ── Summary Cards ── */}
+      {/* Summary Cards */}
       {accounts && accounts.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -367,7 +405,7 @@ export const PartnerBankPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Add Form ── */}
+      {/* Add Form */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 md:px-8 py-5 border-b border-gray-100 flex items-center gap-3">
@@ -386,7 +424,7 @@ export const PartnerBankPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Accounts List ── */}
+      {/* Accounts List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 md:px-8 py-5 border-b border-gray-100 flex items-center gap-3">
           <div className="p-2 bg-[#FEC925]/10 rounded-xl">
@@ -437,11 +475,11 @@ export const PartnerBankPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Info banner ── */}
+      {/* Info banner */}
       <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
         <Shield size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-blue-700 leading-relaxed">
-          New accounts require verification before they can receive payouts. 
+          New accounts require verification before they can receive payouts.
           Our team verifies accounts within 1–2 business days.
         </p>
       </div>
