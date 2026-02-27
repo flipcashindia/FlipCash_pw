@@ -219,7 +219,7 @@ const KycForm: React.FC<{
   const [selfie, setSelfie]         = useState<File | null>(null);
   const [errors, setErrors]         = useState<Record<string, string>>({});
 
-  const selectedDoc = DOC_TYPES.find(d => d.value === docType)!;
+const selectedDoc = DOC_TYPES.find(d => d.value === docType) ?? DOC_TYPES[0];
 
   const validate = () => {
     const errs: Record<string, string> = {};
