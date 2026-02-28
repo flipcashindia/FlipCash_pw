@@ -90,6 +90,7 @@ import { useAuthStore } from '../../stores/authStore';
 
 import VerificationCodeEntry from '../../components/agent/VerificationCodeEntry';
 import DeviceImageCapture from '../../components/agent/DeviceImageCapture';
+import LeadRatingsDisplay from '../../components/leads/LeadRatingsDisplay';
 
 // Type definitions for timeline and displays
 interface StatusLog {
@@ -1108,130 +1109,6 @@ useEffect(() => {
   };
 
 
-// const handleSubmitInspection = async () => {
-//   if (!assignmentId) return;
-
-//   setActionError(null);
-//   try {
-//     let inspectionPayload: any;
-
-//     // Check if we're using dynamic form (has attribute_responses)
-//     if (dynamicInspectionData.attribute_responses && 
-//         Object.keys(dynamicInspectionData.attribute_responses).length > 0) {
-//       // DYNAMIC FORM
-//       console.log('=== DYNAMIC FORM SUBMISSION ===');
-//       console.log('Dynamic Inspection Data:', dynamicInspectionData);
-      
-//       inspectionPayload = {
-//         inspection_notes: dynamicInspectionData.inspection_notes,
-//         inspection_photos: [
-//           dynamicInspectionData.front_image,
-//           dynamicInspectionData.back_image,
-//           dynamicInspectionData.screen_image,
-//           dynamicInspectionData.imei_image,
-//           ...(dynamicInspectionData.defect_images || [])
-//         ].filter(Boolean),
-//         verified_imei: dynamicInspectionData.verified_imei,
-//         imei_matches: dynamicInspectionData.imei_matches,
-//         device_powers_on: dynamicInspectionData.device_powers_on,
-        
-//         partner_assessment: {
-//           ...dynamicInspectionData.attribute_responses,
-//           additional_notes: dynamicInspectionData.inspection_notes
-//         },
-        
-//         checklist_items: []
-//       };
-      
-//       console.log('Built Dynamic Payload:', JSON.stringify(inspectionPayload, null, 2));
-//     } else {
-//       // STATIC FORM
-//       console.log('=== STATIC FORM SUBMISSION ===');
-//       const rawData = transformInspectionData(inspectionData);
-//       inspectionPayload = {
-//         ...rawData,
-//         inspection_photos: (rawData.inspection_photos || []).filter((p): p is string => !!p)
-//       };
-      
-//       console.log('Built Static Payload:', JSON.stringify(inspectionPayload, null, 2));
-//     }
-
-//     console.log('🚀 Submitting to backend...');
-    
-//     const inspectionResult = await submitInspectionMutation.mutateAsync({
-//       assignmentId,
-//       data: inspectionPayload,
-//     });
-
-//     console.log('✅ Backend Response:', inspectionResult);
-    
-//     // Store system calculated price
-//     if (inspectionResult.calculated_price) {
-//       setSystemCalculatedPrice({
-//         final_price: inspectionResult.calculated_price,
-//         original_estimate: inspectionResult.original_price || 0,
-//         deductions: inspectionResult.deductions || [],
-//         is_final: true
-//       });
-//     }
-
-//     // Store submitted inspection for display
-//     if (dynamicInspectionData.attribute_responses && 
-//         Object.keys(dynamicInspectionData.attribute_responses).length > 0) {
-//       // From dynamic form
-//       setSubmittedInspection({
-//         screen_condition: dynamicInspectionData.attribute_responses.screen_condition || 'good',
-//         body_condition: dynamicInspectionData.attribute_responses.body_condition || 'good',
-//         battery_health: dynamicInspectionData.attribute_responses.battery_health || null,
-//         accessories: dynamicInspectionData.attribute_responses.accessories || {},
-//         functional_issues: dynamicInspectionData.attribute_responses.functional_issues || [],
-//         inspection_photos: inspectionPayload.inspection_photos,
-//         inspection_notes: dynamicInspectionData.inspection_notes,
-//         verified_imei: dynamicInspectionData.verified_imei,
-//         submitted_at: new Date().toISOString(),
-//       });
-//     } else {
-//       // From static form
-//       setSubmittedInspection({
-//         screen_condition: inspectionData.screen_condition || 'good',
-//         body_condition: inspectionData.body_condition || 'good',
-//         battery_health: inspectionData.battery_health || null,
-//         accessories: {
-//           charger_available: inspectionData.has_charger || false,
-//           box_available: inspectionData.has_box || false,
-//           earphones_available: inspectionData.has_earphones || false,
-//           bill_available: inspectionData.has_bill || false,
-//         },
-//         functional_issues: [
-//           ...(!inspectionData.touch_working ? ['Touch'] : []),
-//           ...(!inspectionData.display_working ? ['Display'] : []),
-//           ...(!inspectionData.speakers_working ? ['Speakers'] : []),
-//           ...(!inspectionData.microphone_working ? ['Microphone'] : []),
-//           ...(!inspectionData.cameras_working ? ['Cameras'] : []),
-//         ],
-//         inspection_photos: [
-//           inspectionData.front_image,
-//           inspectionData.back_image,
-//           inspectionData.screen_image,
-//           inspectionData.imei_image,
-//         ].filter((p): p is string => !!p),
-//         inspection_notes: inspectionData.notes || '',
-//         verified_imei: inspectionData.imei_number || '',
-//         submitted_at: new Date().toISOString(),
-//       });
-//     }
-    
-//     setShowInspectionForm(false);
-//     setShowCustomerAcceptance(true);
-//     refetch();
-//   } catch (err: any) {
-//     console.error('❌ Submission Error:', err);
-//     console.error('Error details:', err.response?.data || err.message);
-//     setActionError(err.message || 'Failed to submit inspection');
-//   }
-// };
-  
-
 const handleSubmitInspection = async () => {
   // console.log('=== HANDLE SUBMIT INSPECTION TRIGGERED ===');
   if (!assignmentId) return;
@@ -1247,12 +1124,7 @@ const handleSubmitInspection = async () => {
                         dynamicInspectionData.inspection_notes &&
                         Object.keys(dynamicInspectionData.attribute_responses || {}).length > 0;
   
-  // console.log('=== INSPECTION SUBMISSION DEBUG ===');
-  // console.log('Has Attributes:', hasAttributes);
-  // console.log('Has Dynamic Data:', hasDynamicData);
-  // console.log('Dynamic Inspection Data:', dynamicInspectionData);
-  // console.log('Static Inspection Data:', inspectionData);
-
+  
   // ✅ PRE-FLIGHT VALIDATION
   if (hasDynamicData) {
     console.log('✅ Using DYNAMIC form');

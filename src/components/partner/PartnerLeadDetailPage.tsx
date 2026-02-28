@@ -18,7 +18,7 @@ import PartnerRaiseDisputeModal from '../../components/dispute/PartnerRaiseDispu
 import PartnerLeadDisputesSection from '../../components/leads/PartnerLeadDisputesSection';
 import LeadStatusHistory from '../../components/leads/LeadStatusHistory';
 import { useAuthStore } from '../../stores/authStore';
-
+import LeadRatingsDisplay from '../leads/LeadRatingsDisplay';
 // Import Agent Assignment Modal
 import AssignAgentModal from '../../components/partner/agents/AssignAgentModal';
 // import LeadTransactionsView from '../../pages/partner/LeadTransactionsView';
@@ -294,6 +294,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
       console.log('Assigned agent response:', res);
       if (res.ok) {
         const data = await res.json();
+      console.log('Assigned agent data:', data);
         if (data.is_assigned) {
           setAssignmentId(data.assignment_id);
           setAssignedAgentData(data.agent); // Store the detailed agent info
@@ -328,26 +329,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
     }
   };
 
-  // const loadAssignmentId = async (leadId: string) => {
-  //   try {
-  //     const token = useAuthStore.getState().accessToken;
-  //     if (!token) return;
-
-  //     const res = await fetch(`${API_BASE_URL}/partner-agents/leads/${leadId}/assigned-agent/`, {
-  //       headers: { 'Authorization': `Bearer ${token}` }
-  //     });
-
-  //     if (res.ok) {
-  //       const data = await res.json();
-  //       if (data.assignment_id) {
-  //         setAssignmentId(data.assignment_id);
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.error('Failed to load assignment id:', err);
-  //   }
-  // };
-
+ 
   const loadVisitDetails = async (leadId: string) => {
     try {
       const token = useAuthStore.getState().accessToken;
@@ -444,76 +426,6 @@ export const PartnerLeadDetailPage: React.FC = () => {
 
 
 
-
-
-
-
-
-  // const handleCheckIn = async () => {
-  //   if (!leadDetails || !visitDetails) return;
-    
-  //   try {
-  //     setActionLoading(true);
-  //     setError(null);
-      
-  //     const token = useAuthStore.getState().accessToken;
-  //     if (!token) throw new Error('Authentication required');
-
-  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/check_in/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-
-  //     if (!res.ok) {
-  //       const err = await res.json().catch(() => ({}));
-  //       throw new Error(err.detail || err.error || 'Failed to check in');
-  //     }
-
-  //     loadLeadDetails(leadDetails.id);
-      
-  //   } catch (err: any) {
-  //     console.error('Check in error:', err);
-  //     setError(err.message);
-  //   } finally {
-  //     setActionLoading(false);
-  //   }
-  // };
-
-  // const handleStartInspection = async () => {
-  //   if (!leadDetails || !visitDetails) return;
-    
-  //   try {
-  //     setActionLoading(true);
-  //     setError(null);
-      
-  //     const token = useAuthStore.getState().accessToken;
-  //     if (!token) throw new Error('Authentication required');
-
-  //     const res = await fetch(`${API_BASE_URL}/visits/visits/${visitDetails.id}/start_inspection/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
-
-  //     if (!res.ok) {
-  //       const err = await res.json().catch(() => ({}));
-  //       throw new Error(err.detail || err.error || 'Failed to start inspection');
-  //     }
-  //     console.log('lead detials: ', leadDetails);
-  //     loadLeadDetails(leadDetails.id);
-      
-  //   } catch (err: any) {
-  //     console.error('Start inspection error:', err);
-  //     setError(err.message);
-  //   } finally {
-  //     setActionLoading(false);
-  //   }
-  // };
 
   const doUnassign = async (): Promise<boolean> => {
     if (!assignmentId || !leadDetails) return false;
@@ -765,52 +677,6 @@ export const PartnerLeadDetailPage: React.FC = () => {
                   </button>
                 )}
 
-                {/* Start Journey Button */}
-                {/* {leadDetails.status === LeadStatus.PARTNER_ASSIGNED && !leadDetails.assigned_agent && (
-                  <button 
-                    onClick={handleStartVisit}
-                    disabled={actionLoading}
-                    className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Navigation size={20} />}
-                    Start Journey
-                  </button>
-                )} */}
-
-                {/* Check In Button */}
-                {/* {leadDetails.status === LeadStatus.EN_ROUTE && (
-                  <button 
-                    onClick={handleCheckIn}
-                    disabled={actionLoading}
-                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <MapPin size={20} />}
-                    Check In
-                  </button>
-                )} */}
-
-                {/* Start Inspection Button */}
-                {/* {leadDetails.status === LeadStatus.CHECKED_IN && (
-                  <button 
-                    onClick={handleStartInspection}
-                    disabled={actionLoading}
-                    className="px-6 py-3 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-bold hover:bg-[#e5b520] transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {actionLoading ? <Loader2 className="animate-spin" size={20} /> : <Eye size={20} />}
-                    Start Inspection
-                  </button>
-                )} */}
-
-                {/* Make Offer Button */}
-                {/* {leadDetails.status === LeadStatus.INSPECTING && (
-                  <button 
-                    onClick={() => setIsOfferModalOpen(true)}
-                    className="px-6 py-3 bg-[#1B8A05] text-white rounded-xl font-bold hover:bg-[#156d04] transition flex items-center gap-2"
-                  >
-                    <DollarSign size={20} />
-                    Make Offer
-                  </button>
-                )} */}
 
                 {/* Report Issue Button */}
                 {isLeadClaimed && !['cancelled', 'completed'].includes(leadDetails.status) && (
@@ -826,7 +692,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
             </div>
 
             {/* ── Assigned Agent Row (always visible when lead is claimed) ── */}
-            {isLeadClaimed && (
+            {(
               <div className="mt-6 p-4 bg-white border-2 border-gray-200 rounded-xl">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-gray-500">Assigned Agent:</p>
@@ -851,6 +717,11 @@ export const PartnerLeadDetailPage: React.FC = () => {
                     <p className="font-bold text-[#FF0000]">Unassigned</p>
                   )}
                 </div>
+
+                {/* Inside your JSX, typically near the status or history section */}
+              {leadDetails.status === 'completed' && (
+                <LeadRatingsDisplay leadId={leadDetails.id} />
+              )}
 
                 {/* ── Action buttons — dedicated row, always visible ── */}
                 {!isTerminal && (
@@ -1050,7 +921,7 @@ export const PartnerLeadDetailPage: React.FC = () => {
           </motion.div>
         )}
 
-        {/* ============ Main Grid ============ */}
+        {/* ============ Main Grid ============  */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* ============ Left Column ============ */}
