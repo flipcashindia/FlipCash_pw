@@ -1956,6 +1956,10 @@ if (showInspectionForm) {
 
       {/* Status Badge */}
       <StatusBadge status={assignment.assignment_status} priority={assignment.assignment_priority} />
+      {/* ✅ NEW: Customer Feedback Section (for Completed Leads) */}
+      {assignment.assignment_status === 'completed' && (
+        <LeadRatingsDisplay leadId={assignment.lead} />
+      )}
 
       {/* System Final Price Display */}
       {systemCalculatedPrice && (
@@ -2010,6 +2014,8 @@ if (showInspectionForm) {
           </div>
         </div>
       </div>
+
+
 
       {/* Customer Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
