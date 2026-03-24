@@ -7,20 +7,6 @@ import { KycOnboardingModal } from './KycOnboardingModal';
 import DashboardPage from '../../pages/partner/DashboardPage';
 
 
-// function ProfilePage() {
-//   const partner = usePartnerStore((state) => state.partner);
-//   const isLoading = usePartnerStore((state) => state.isLoading);
-//   console.log('Partner data in dashboard : ', partner)
-
-//   // This will re-render and log the new value AFTER the state is set
-//   console.log('Partner from component:', partner); 
-
-//   if (isLoading) return <div>Loading partner...</div>;
-//   if (!partner) return <div>No partner data.</div>;
-
-//   return <h1>Hello, {partner.business_name} status {partner.status} is completed {partner.profile_completed} percentage {partner.profile_completion_percentage}</h1>;
-// }
-
 
 
 const PartnerDashboardPage: React.FC = () => {

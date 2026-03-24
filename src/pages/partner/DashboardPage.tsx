@@ -1,10 +1,3 @@
-// src/pages/partner/DashboardPage.tsx
-/**
- * Updated Partner Dashboard
- * Shows real-time stats, recent activity, quick actions, and Manage Agents section
- * With proper error handling for each section
- */
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -24,9 +17,13 @@ import {
   UserCheck,
   Activity,
   Star,
+  XCircle, // Icon for cancelled leads
 } from 'lucide-react';
 import { usePartnerStore } from '../../stores/usePartnerStore';
-import { useVisits } from '../../hooks/usePartnerVisitWorkflow';
+import { 
+  useVisits, 
+  useVisitStats 
+} from '../../hooks/usePartnerVisitWorkflow';
 import { useWallet } from '../../hooks/useWallet';
 import { useAgentStats, useAgents } from '../../hooks/useAgents';
 
@@ -34,45 +31,50 @@ const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { partner } = usePartnerStore();
   
-  // Fetch data with error handling
+  // Data Fetching
   const { data: visitsData, isLoading: visitsLoading, error: visitsError } = useVisits();
-  const { balance, stats: _walletStats, error: walletError } = useWallet();
+  const { data: visitStats, isLoading: statsLoading } = useVisitStats(); 
+  const { balance, error: walletError } = useWallet();
   const { data: agentStatsData, isLoading: agentStatsLoading } = useAgentStats();
   const { data: agentsData, isLoading: agentsLoading } = useAgents({ status: 'active' });
 
-  // ✅ SAFE EXTRACTION WITH TYPESCRIPT BYPASS
+  // Safe extraction for paginated results
   const visits: any[] = Array.isArray(visitsData) ? visitsData : ((visitsData as any)?.results || []);
   const agents: any[] = Array.isArray(agentsData) ? agentsData : ((agentsData as any)?.results || []);
 
-  // ✅ Explicitly typed variables as ': any' in the callbacks
-  const activeLeads = visits.filter((v: any) => 
-    ['scheduled', 'en_route', 'in_progress'].includes(v.status)
-  ).length;
-
-  const completedLeads = visits.filter((v: any) => v.status === 'completed').length;
-  const inProgressLeads = visits.filter((v: any) => v.status === 'in_progress').length;
-
+  /**
+   * ✅ STATS UPDATED:
+   * 1. Added 'Cancelled' card
+   * 2. Removed 'Avg Inspection' time
+   */
   const stats = [
     {
-      label: 'Active Leads',
-      value: activeLeads,
+      label: 'Total Leads',
+      value: visitStats?.total_visits || 0,
       icon: FileText,
       color: 'blue',
-      change: '+' + Math.round((activeLeads / Math.max(visits.length, 1)) * 100) + '%',
+      change: 'Lifetime',
     },
     {
       label: 'Completed',
-      value: completedLeads,
+      value: visitStats?.completed || 0,
       icon: CheckCircle2,
       color: 'green',
-      change: '+' + Math.round((completedLeads / Math.max(visits.length, 1)) * 100) + '%',
+      change: 'Successful',
     },
     {
       label: 'In Progress',
-      value: inProgressLeads,
+      value: visitStats?.in_progress || 0,
       icon: Clock,
       color: 'yellow',
-      change: inProgressLeads > 0 ? 'Active' : 'None',
+      change: 'Active Now',
+    },
+    {
+      label: 'Cancelled',
+      value: visitStats?.cancelled || 0,
+      icon: XCircle,
+      color: 'red',
+      change: 'Finalized',
     },
   ];
 
@@ -82,10 +84,11 @@ const DashboardPage: React.FC = () => {
     const colors: Record<string, string> = {
       scheduled: 'bg-gray-100 text-gray-700',
       en_route: 'bg-blue-100 text-blue-700',
-      arrived: 'bg-green-100 text-green-700',
+      arrived: 'bg-indigo-100 text-indigo-700',
       in_progress: 'bg-yellow-100 text-yellow-700',
       completed: 'bg-green-500 text-white',
       cancelled: 'bg-red-100 text-red-700',
+      kyc_verified: 'bg-purple-100 text-purple-700',
     };
     return colors[status] || 'bg-gray-100 text-gray-700';
   };
@@ -97,7 +100,7 @@ const DashboardPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900">
           Welcome back, {partner?.business_name || 'Partner'}!
         </h1>
-        <p className="text-gray-600 mt-1">Here's what's happening with your business today.</p>
+        <p className="text-gray-600 mt-1">Here's your real-time business performance.</p>
       </div>
 
       {/* Wallet Quick View */}
@@ -128,7 +131,7 @@ const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats Grid */}
       {visitsError ? (
         <ErrorSection 
           title="Statistics" 
@@ -153,7 +156,11 @@ const DashboardPage: React.FC = () => {
                     {stat.change}
                   </span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                {statsLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+                ) : (
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                )}
                 <div className="text-sm text-gray-600">{stat.label}</div>
               </div>
             );
@@ -163,7 +170,6 @@ const DashboardPage: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Browse Catalog */}
         <Link
           to="/partner/catalog"
           className="group bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl p-6 text-black hover:shadow-xl transition-all"
@@ -174,9 +180,7 @@ const DashboardPage: React.FC = () => {
                 <Package size={28} />
                 <h3 className="text-xl font-bold">Browse Catalog</h3>
               </div>
-              <p className="text-black/80 mb-3 text-sm">
-                Discover available leads and claim devices
-              </p>
+              <p className="text-black/80 mb-3 text-sm">Discover available leads and claim devices</p>
               <div className="flex items-center space-x-2 font-semibold group-hover:translate-x-1 transition-transform">
                 <span>Get Started</span>
                 <ArrowRight size={18} />
@@ -185,7 +189,6 @@ const DashboardPage: React.FC = () => {
           </div>
         </Link>
 
-        {/* My Leads */}
         <Link
           to="/partner/leads/all"
           className="group bg-white rounded-xl p-6 border-2 border-gray-200 hover:border-yellow-400 hover:shadow-lg transition-all"
@@ -196,9 +199,7 @@ const DashboardPage: React.FC = () => {
                 <FileText size={28} className="text-yellow-600" />
                 <h3 className="text-xl font-bold text-gray-900">My Leads</h3>
               </div>
-              <p className="text-gray-600 mb-3 text-sm">
-                Track and manage your active leads
-              </p>
+              <p className="text-gray-600 mb-3 text-sm">Track and manage your active leads</p>
               <div className="flex items-center space-x-2 font-semibold text-yellow-600 group-hover:translate-x-1 transition-transform">
                 <span>View Leads</span>
                 <ArrowRight size={18} />
@@ -207,7 +208,6 @@ const DashboardPage: React.FC = () => {
           </div>
         </Link>
 
-        {/* Manage Agents */}
         <Link
           to="/partner/agents"
           className="group bg-gradient-to-br from-[#1B8A05] to-[#156d04] rounded-xl p-6 text-white hover:shadow-xl transition-all"
@@ -218,9 +218,7 @@ const DashboardPage: React.FC = () => {
                 <Users size={28} />
                 <h3 className="text-xl font-bold">Manage Agents</h3>
               </div>
-              <p className="text-white/80 mb-3 text-sm">
-                Add, manage, and assign leads to agents
-              </p>
+              <p className="text-white/80 mb-3 text-sm">Add, manage, and assign leads to agents</p>
               <div className="flex items-center space-x-2 font-semibold group-hover:translate-x-1 transition-transform">
                 <span>View Agents</span>
                 <ArrowRight size={18} />
@@ -257,7 +255,6 @@ const DashboardPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Agent Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-[#FEC925]/10 p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-1">
@@ -272,7 +269,6 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <UserCheck className="text-[#1B8A05]" size={20} />
                   <span className="text-2xl font-bold text-[#1C1C1B]">
-                    {/* ✅ Added explicit ': any' typing */}
                     {agentStatsData?.active_agents || agents.filter((a: any) => a.status === 'active').length}
                   </span>
                 </div>
@@ -282,7 +278,6 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="text-blue-600" size={20} />
                   <span className="text-2xl font-bold text-[#1C1C1B]">
-                    {/* ✅ Added explicit ': any' typing */}
                     {agentStatsData?.available_agents || agents.filter((a: any) => a.is_available).length}
                   </span>
                 </div>
@@ -299,12 +294,10 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Top Agents */}
             {agents.length > 0 ? (
               <div>
                 <h3 className="font-semibold text-gray-700 mb-3">Your Team</h3>
                 <div className="space-y-2">
-                  {/* ✅ Added explicit ': any' typing */}
                   {agents.slice(0, 3).map((agent: any) => (
                     <div
                       key={agent.id}
@@ -333,9 +326,7 @@ const DashboardPage: React.FC = () => {
                           </div>
                         )}
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          agent.is_available 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-600'
+                          agent.is_available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                         }`}>
                           {agent.is_available ? 'Available' : 'Busy'}
                         </span>
@@ -343,27 +334,13 @@ const DashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                {agents.length > 3 && (
-                  <Link
-                    to="/partner/agents"
-                    className="mt-3 inline-flex items-center gap-2 text-[#FEC925] font-semibold hover:underline"
-                  >
-                    View all {agents.length} agents
-                    <ArrowRight size={18} />
-                  </Link>
-                )}
               </div>
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-xl">
                 <Users className="text-gray-300 mx-auto mb-3" size={48} />
                 <p className="text-gray-600 font-semibold">No agents yet</p>
-                <p className="text-gray-500 text-sm mb-4">Add agents to help manage your leads</p>
-                <Link
-                  to="/partner/agents"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B8A05] text-white rounded-lg font-semibold hover:bg-[#156d04] transition"
-                >
-                  <UserPlus size={18} />
-                  Add First Agent
+                <Link to="/partner/agents" className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#1B8A05] text-white rounded-lg">
+                  <UserPlus size={18} /> Add First Agent
                 </Link>
               </div>
             )}
@@ -375,27 +352,13 @@ const DashboardPage: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
-          <Link
-            to="/partner/leads/all"
-            className="text-sm text-[#FEC925] hover:underline font-semibold"
-          >
-            View All
-          </Link>
+          <Link to="/partner/leads/all" className="text-sm text-[#FEC925] hover:underline font-semibold">View All</Link>
         </div>
 
         {visitsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#FEC925]" />
-          </div>
-        ) : visitsError ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-500 mb-3" />
-            <p className="text-gray-500">Unable to load recent activity</p>
-            <p className="text-sm text-gray-400">Please try refreshing the page</p>
-          </div>
+          <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-[#FEC925]" /></div>
         ) : recentVisits.length > 0 ? (
           <div className="space-y-3">
-            {/* ✅ Added explicit ': any' typing */}
             {recentVisits.map((visit: any) => (
               <button
                 key={visit.id}
@@ -405,21 +368,13 @@ const DashboardPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`px-3 py-1 rounded-lg text-sm font-semibold ${getStatusColor(visit.status)}`}>
-                      {visit.status_display}
+                      {visit.status_display || visit.status.toUpperCase()}
                     </div>
                     <div className="text-left flex-1">
-                      <p className="font-semibold text-gray-900 group-hover:text-[#FEC925] transition-colors">
-                        {visit.device_name}
-                      </p>
+                      <p className="font-semibold text-gray-900 group-hover:text-[#FEC925]">{visit.device_name}</p>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {visit.scheduled_date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {visit.pickup_city || visit.city || 'N/A'}
-                        </span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{visit.scheduled_date}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{visit.pickup_city || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -429,7 +384,6 @@ const DashboardPage: React.FC = () => {
                         <IndianRupee className="w-4 h-4" />
                         <span>{parseFloat(visit.estimated_price || '0').toLocaleString('en-IN')}</span>
                       </div>
-                      <p className="text-xs text-gray-500">Est. Price</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-[#FEC925]" />
                   </div>
@@ -441,12 +395,11 @@ const DashboardPage: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-12">
             <FileText size={48} className="text-gray-300 mb-3" />
             <p className="text-gray-500">No recent activity</p>
-            <p className="text-sm text-gray-400">Start claiming leads to see your activity here</p>
           </div>
         )}
       </div>
 
-      {/* Partner Status */}
+      {/* Account Status Summary */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Account Status</h2>
         <div className="space-y-3">
@@ -456,22 +409,10 @@ const DashboardPage: React.FC = () => {
               {partner?.status || 'Active'}
             </span>
           </div>
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <span className="text-gray-600">Business Name</span>
-            <span className="font-medium text-gray-900">{partner?.business_name || 'N/A'}</span>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <span className="text-gray-600">Total Leads Claimed</span>
-            <span className="font-medium text-gray-900">{visits.length}</span>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <span className="text-gray-600">Total Agents</span>
-            <span className="font-medium text-gray-900">{agents.length}</span>
-          </div>
           <div className="flex items-center justify-between py-3">
             <span className="text-gray-600">Completion Rate</span>
             <span className="font-medium text-gray-900">
-              {visits.length > 0 ? Math.round((completedLeads / visits.length) * 100) : 0}%
+              {visitStats?.total_visits ? Math.round((visitStats.completed / visitStats.total_visits) * 100) : 0}%
             </span>
           </div>
         </div>
@@ -480,17 +421,15 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-// ✅ Error Section Component
-const ErrorSection: React.FC<{ title: string; message: string }> = ({ title, message }) => {
-  return (
-    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
-      <div className="flex items-center gap-3 mb-2">
-        <AlertCircle className="w-6 h-6 text-red-600" />
-        <h3 className="text-lg font-semibold text-red-900">{title}</h3>
-      </div>
-      <p className="text-red-700 text-sm">{message}</p>
+// Error Section component
+const ErrorSection: React.FC<{ title: string; message: string }> = ({ title, message }) => (
+  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+    <div className="flex items-center gap-3 mb-2">
+      <AlertCircle className="w-6 h-6 text-red-600" />
+      <h3 className="text-lg font-semibold text-red-900">{title}</h3>
     </div>
-  );
-};
+    <p className="text-red-700 text-sm">{message}</p>
+  </div>
+);
 
 export default DashboardPage;

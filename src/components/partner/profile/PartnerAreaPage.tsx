@@ -12,7 +12,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   partnerService,
   type AvailableCity,
-  type ServiceZone,
 } from '../../../api/services/partnerService';
 import { useToast } from '../../../contexts/ToastContext';
 import {
@@ -464,7 +463,7 @@ const PopularCityGrid: React.FC<{
   cities: AvailableCity[];
   onCityClick: (city: AvailableCity) => void;
   areas: ServiceArea[];
-}> = ({ cities, onCityClick, areas }) => {
+}> = ({ cities, onCityClick }) => {
   const popular = cities.filter(c => c.is_popular);
   if (!popular.length) return null;
 
@@ -514,7 +513,7 @@ const ZonePickerModal: React.FC<{
   onRemoveZone: (areaId: string) => void;
   loadingZoneId: string | null;
   initialCity?: AvailableCity | null;
-}> = ({ onClose, areas, onAddZone, onRemoveZone, loadingZoneId, initialCity }) => {
+}> = ({ onClose, areas, onAddZone, onRemoveZone, loadingZoneId }) => {
   const [search, setSearch]   = useState('');
   const [showAll, setShowAll] = useState(false);
 

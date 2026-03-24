@@ -103,7 +103,8 @@ const AppRoutes: React.FC = () => {
       
       {/* Blog */}
       <Route path="/blog" element={<BlogPage />} />
-      <Route path="/blog/:id" element={<BlogDetailPage />} />
+      <Route path="/blog/category/:categorySlug" element={<BlogPage />} /> {/* Add this! */}
+      <Route path="/blog/:slug" element={<BlogDetailPage />} />
       
       {/* Help & Info Pages */}
       <Route path="/faq" element={<FAQ />} />
