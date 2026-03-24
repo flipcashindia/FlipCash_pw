@@ -59,6 +59,7 @@ import {
   RefreshCw,
   ArrowRight,
   HelpCircle,
+  MessageSquare,
 } from 'lucide-react';
 
 // ✅ UPDATED IMPORTS - NEW 3-STEP WORKFLOW
@@ -91,6 +92,7 @@ import { useAuthStore } from '../../stores/authStore';
 import VerificationCodeEntry from '../../components/agent/VerificationCodeEntry';
 import DeviceImageCapture from '../../components/agent/DeviceImageCapture';
 import LeadRatingsDisplay from '../../components/leads/LeadRatingsDisplay';
+import LeadProgressPanel from '../../components/agent/LeadProgressPanel';
 
 // Type definitions for timeline and displays
 interface StatusLog {
@@ -2040,7 +2042,7 @@ if (showInspectionForm) {
       </div>
 
       {/* Location Card */}
-      {assignment.pickup_address && (
+      {/* {assignment.pickup_address && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
           <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
             <MapPin size={18} className="text-[#FEC925]" />
@@ -2064,10 +2066,10 @@ if (showInspectionForm) {
             </button>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Schedule Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
+      {/* <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4">
         <h3 className="font-bold text-[#1C1C1B] mb-3 flex items-center gap-2">
           <Calendar size={18} className="text-[#FEC925]" />
           Scheduled Time
@@ -2082,7 +2084,117 @@ if (showInspectionForm) {
             <span>{assignment.preferred_time_slot}</span>
           </div>
         </div>
+      </div> */}
+
+
+      {/* Pickup & Schedule Details */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-200 mt-4">
+        <div className="flex items-center gap-3 mb-6">
+          <MapPin className="text-[#FEC925]" size={24} />
+          <h3 className="text-xl md:text-2xl font-bold text-[#1C1C1B]">Pickup Details</h3>
+        </div>
+
+        <div className="space-y-5">
+          
+          {/* Complete Address Card */}
+          {assignment.pickup_address ? (
+            <div className="bg-gray-50 p-4 md:p-5 rounded-xl border border-gray-200 flex flex-col gap-3 transition-colors hover:bg-gray-100">
+              <div className="flex items-start gap-3">
+                <MapPin className="text-gray-400 shrink-0 mt-0.5" size={20} />
+                <div className="flex flex-col space-y-1.5 text-sm md:text-base w-full">
+                  {/* Line 1 & Line 2 */}
+                  <span className="font-bold text-gray-800 leading-tight">
+                    {[
+                      assignment.pickup_address.line1,
+                      assignment.pickup_address.line2
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                  
+                  {/* City, State, Postal Code */}
+                  <span className="text-gray-600">
+                    {[
+                      assignment.pickup_address.city,
+                      assignment.pickup_address.state,
+                      assignment.pickup_address.postal_code
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Navigation Button - Critical for Agent */}
+              <button
+                onClick={openGoogleMaps}
+                className="mt-2 w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-100 transition border border-blue-100"
+              >
+                <Navigation size={18} />
+                Open in Google Maps
+                <ExternalLink size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center text-gray-500">
+              Address details not available
+            </div>
+          )}
+
+          {/* Date & Time Grid - Responsive (1 col mobile, 2 col desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {/* Date Box */}
+            <div className="bg-[#F0F7F6] p-4 rounded-xl flex items-center gap-3 border border-[#1B8A05]/15">
+              <div className="bg-white p-2 rounded-lg shadow-sm">
+                <Calendar className="text-[#1B8A05]" size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">Scheduled Date</p>
+                <p className="font-bold text-[#1C1C1B] text-sm md:text-base">
+                  {assignment.preferred_date ? new Date(assignment.preferred_date).toLocaleDateString('en-IN', { 
+                    weekday: 'short', 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  }) : 'Pending'}
+                </p>
+              </div>
+            </div>
+
+            {/* Time Box */}
+            <div className="bg-[#F0F7F6] p-4 rounded-xl flex items-center gap-3 border border-[#1B8A05]/15">
+              <div className="bg-white p-2 rounded-lg shadow-sm">
+                <Clock className="text-[#1B8A05]" size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">Time Slot</p>
+                <p className="font-bold text-[#1C1C1B] text-sm md:text-base">
+                  {assignment.preferred_time_slot || 'Pending'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Notes (If applicable) */}
+          {(assignment as any).customer_notes && (
+            <div className="bg-[#FFF9E6] p-4 rounded-xl border border-[#FEC925]/30 mt-2 flex items-start gap-3">
+              <MessageSquare className="text-[#FEC925] shrink-0 mt-0.5" size={20} />
+              <div>
+                <p className="text-xs text-gray-600 font-bold uppercase tracking-wider mb-1">Customer Notes</p>
+                <p className="text-gray-800 font-medium italic">"{(assignment as any).customer_notes}"</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* LIVE PROGRESS PANEL — all stages + data in one view */}
+      <LeadProgressPanel
+        assignmentId={assignmentId || ''}
+        onStatusChange={() => {
+          // Sync the local stage state so action buttons update
+          refetch();
+          workflowStatusQuery.refetch();
+        }}
+      />
+
+
 
       {/* Workflow Progress */}
       <WorkflowProgress stage={stage} />
@@ -4102,6 +4214,9 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
 // HELPER COMPONENTS FOR DYNAMIC FORM (UPDATED TO MATCH STEPPER)
 // ============================================================================
 
+
+
+
 interface DynamicAttributeFieldProps {
   attribute: any;
   value: any;
@@ -4114,27 +4229,38 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
   value,
   onChange,
 }) => {
-  const getPriceImpactDisplay = (selectedValue: any) => {
-    if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
+  // const getPriceImpactDisplay = (selectedValue: any) => {
+  //   if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
     
-    // Map boolean to 'Yes'/'No' for price impact lookup if needed
-    const impactKey = typeof selectedValue === 'boolean' 
-      ? (selectedValue ? 'Yes' : 'No') 
-      : String(selectedValue);
+  //   // Map boolean to 'Yes'/'No' for price impact lookup if needed
+  //   const impactKey = typeof selectedValue === 'boolean' 
+  //     ? (selectedValue ? 'Yes' : 'No') 
+  //     : String(selectedValue);
       
-    const impact = attribute.price_impact[impactKey];
-    if (!impact) return null;
+  //   const impact = attribute.price_impact[impactKey];
+    
+  //   // Safety check: if impact doesn't exist or value is missing
+  //   if (!impact || impact.value === null || impact.value === undefined) return null;
 
-    const isNegative = impact.value < 0;
-    const displayValue = Math.abs(impact.value);
+  //   // Safely parse the value to a float, converting it to a string first just in case
+  //   const parsedValue = parseFloat(String(impact.value));
 
-    return (
-      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isNegative ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-        {isNegative ? '-' : '+'}
-        {impact.type === 'percentage' ? `${displayValue}%` : `₹${displayValue}`}
-      </span>
-    );
-  };
+  //   // If it's NaN or exactly 0, don't show the badge at all
+  //   if (isNaN(parsedValue) || parsedValue === 0) return null;
+
+  //   const isNegative = parsedValue < 0;
+  //   const displayValue = Math.abs(parsedValue);
+
+  //   return (
+  //     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isNegative ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+  //       {isNegative ? '-' : '+'}
+  //       {impact.type === 'percentage' 
+  //         ? `${displayValue}%` 
+  //         : `₹${displayValue.toLocaleString('en-IN')}`
+  //       }
+  //     </span>
+  //   );
+  // };
 
   // 1. Boolean field as Yes/No Grid Buttons
   if (attribute.is_boolean) {
@@ -4164,7 +4290,7 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
             }`}
           >
             <span>Yes</span>
-            {getPriceImpactDisplay(true)}
+            {/* {getPriceImpactDisplay(true)} */}
           </button>
           
           <button
@@ -4177,7 +4303,7 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
             }`}
           >
             <span>No</span>
-            {getPriceImpactDisplay(false)}
+            {/* {getPriceImpactDisplay(false)} */}
           </button>
         </div>
       </div>
@@ -4214,7 +4340,7 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
               }`}
             >
               <span className="relative z-10 block">{option}</span>
-              {getPriceImpactDisplay(option)}
+              {/* {getPriceImpactDisplay(option)} */}
               
               {value === option && (
                 <motion.div
@@ -4252,6 +4378,151 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
     </div>
   );
 };
+
+
+// const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
+//   attribute,
+//   value,
+//   onChange,
+// }) => {
+//   const getPriceImpactDisplay = (selectedValue: any) => {
+//     if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
+    
+//     // Map boolean to 'Yes'/'No' for price impact lookup if needed
+//     const impactKey = typeof selectedValue === 'boolean' 
+//       ? (selectedValue ? 'Yes' : 'No') 
+//       : String(selectedValue);
+      
+//     const impact = attribute.price_impact[impactKey];
+//     if (!impact) return null;
+
+//     const isNegative = impact.value < 0;
+//     const displayValue = Math.abs(impact.value);
+
+//     return (
+//       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isNegative ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+//         {isNegative ? '-' : '+'}
+//         {impact.type === 'percentage' ? `${displayValue}%` : `₹${displayValue}`}
+//       </span>
+//     );
+//   };
+
+//   // 1. Boolean field as Yes/No Grid Buttons
+//   if (attribute.is_boolean) {
+//     return (
+//       <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+//         <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-3 md:mb-4 flex items-center gap-2">
+//           {attribute.question_text || attribute.name}
+//           {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+//           {attribute.help_text && (
+//             <span className="group relative ml-1">
+//               <HelpCircle size={16} className="text-gray-400 cursor-help" />
+//               <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1C1C1B] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center shadow-lg">
+//                 {attribute.help_text}
+//               </span>
+//             </span>
+//           )}
+//         </label>
+        
+//         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+//           <button
+//             type="button"
+//             onClick={() => onChange(true)}
+//             className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
+//               value === true
+//                 ? 'bg-[#1B8A05]/10 border-[#1B8A05] ring-2 ring-[#1B8A05]/50 text-[#1B8A05] shadow-sm'
+//                 : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
+//             }`}
+//           >
+//             <span>Yes</span>
+//             {getPriceImpactDisplay(true)}
+//           </button>
+          
+//           <button
+//             type="button"
+//             onClick={() => onChange(false)}
+//             className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
+//               value === false
+//                 ? 'bg-[#FF0000]/10 border-[#FF0000] ring-2 ring-[#FF0000]/50 text-[#FF0000] shadow-sm'
+//                 : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
+//             }`}
+//           >
+//             <span>No</span>
+//             {getPriceImpactDisplay(false)}
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // 2. Options field as Grid Buttons
+//   if (attribute.options && attribute.options.length > 0) {
+//     return (
+//       <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+//         <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-3 md:mb-4 flex items-center gap-2">
+//           {attribute.question_text || attribute.name}
+//           {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+//           {attribute.help_text && (
+//             <span className="group relative ml-1">
+//               <HelpCircle size={16} className="text-gray-400 cursor-help" />
+//               <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1C1C1B] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center shadow-lg">
+//                 {attribute.help_text}
+//               </span>
+//             </span>
+//           )}
+//         </label>
+        
+//         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
+//           {attribute.options.map((option: string) => (
+//             <button
+//               key={option}
+//               type="button"
+//               onClick={() => onChange(option)}
+//               className={`group relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl text-center transition-all text-sm md:text-base font-semibold overflow-hidden flex flex-col items-center justify-center gap-2 ${
+//                 value === option
+//                   ? 'bg-[#FEC925]/20 border-[#FEC925] ring-2 ring-[#FEC925]/50 text-[#1C1C1B] shadow-sm'
+//                   : 'bg-white border-gray-300 hover:border-[#FEC925] hover:shadow-sm text-gray-700'
+//               }`}
+//             >
+//               <span className="relative z-10 block">{option}</span>
+//               {getPriceImpactDisplay(option)}
+              
+//               {value === option && (
+//                 <motion.div
+//                   initial={{ scale: 0 }}
+//                   animate={{ scale: 1 }}
+//                   className="absolute top-1 right-1 w-4 h-4 md:w-5 md:h-5 bg-[#1B8A05] rounded-full flex items-center justify-center"
+//                 >
+//                   <CheckCircle2 size={12} className="text-white" />
+//                 </motion.div>
+//               )}
+//             </button>
+//           ))}
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // 3. Fallback Text Input
+//   return (
+//     <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+//       <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-2 md:mb-3 flex items-center gap-2">
+//         {attribute.question_text || attribute.name}
+//         {attribute.is_required && <span className="text-[#FF0000]">*</span>}
+//       </label>
+//       {attribute.help_text && (
+//         <p className="text-xs text-gray-500 mb-2">{attribute.help_text}</p>
+//       )}
+//       <input
+//         type="text"
+//         value={value || ''}
+//         onChange={(e) => onChange(e.target.value)}
+//         placeholder={attribute.placeholder || `Enter ${attribute.name}`}
+//         className="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg md:rounded-xl focus:border-[#FEC925] focus:outline-none transition"
+//       />
+//     </div>
+//   );
+// };
 
 
 // ============================================================================

@@ -1,102 +1,156 @@
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { User, Calendar, ArrowLeft } from 'lucide-react';
-import BlogDefaultImg from "../assets/BlogDefault.png"; // Assuming same default image
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Facebook, Twitter, Link2, Mail, Calendar } from 'lucide-react';
+import type { BlogPost } from '../api/types/blog.types';
+import { blogApi } from '../api/services/blogService';
+import { resolveImageUrl } from '../api/utils/blogUtils';
+import { RecentBlogsSidebar, RelatedBlogsFooter } from './RecentAndReleted';
 
-// --- Mock Data (Copied from BlogSection) ---
-// In a real app, this would come from a shared file or API
-const blogData = [
-  {
-    id: 1,
-    title: "How to Sell Old Phones Easily",
-    description: "Learn how to get the best price for your used phones, laptops, and gadgets with our simple step-by-step process.",
-    image: BlogDefaultImg,
-    date: "Sep 5, 2025",
-    author: "Admin",
-    href: "/blog/1",
-    // Full content for the detail page
-    content: `
-      <p class="mb-6">Selling your old phone, laptop, or gadget shouldn't be a hassle. With Flipcash, we've streamlined the process to ensure you get the best possible price with minimal effort. This guide will walk you through our simple step-by-step process.</p>
-      <h3 class="text-2xl font-semibold mb-4">Step 1: Get an Instant Quote</h3>
-      <p class="mb-6">First, find your device on our website. Select the model, condition, and any accessories you have. Our system will provide you with an instant, fair-market quote. No games, no-lowballing—just a transparent price.</p>
-      <h3 class="text-2xl font-semibold mb-4">Step 2: Schedule a Pickup</h3>
-      <p class="mb-6">Once you accept the quote, you can schedule a free, convenient pickup from your doorstep. Choose a date and time slot that works for you, and our verified agent will arrive on time.</p>
-      <h3 class="text-2xl font-semibold mb-4">Step 3: Get Paid Instantly</h3>
-      <p class="mb-6">Our agent will quickly verify your device's condition at your location. As soon as the device is verified, we process your payment instantly to your preferred method—be it UPI or bank transfer. It's that simple, safe, and fast.</p>
-      <p>Ready to sell? <a href="/sell-old-product" class="text-teal-600 font-semibold hover:underline">Get your instant quote now</a>.</p>
-    `
-  },
-  { id: 2, title: "Top 5 Tips for Buying Refurbished Laptops", description: "...", image: BlogDefaultImg, date: "Aug 25, 2025", author: "Admin", href: "/blog/2", content: "<p>Content for Refurbished Laptops...</p>" },
-  { id: 3, title: "Why Recycling Electronics is Important", description: "...", image: BlogDefaultImg, date: "Aug 15, 2025", author: "Admin", href: "/blog/3", content: "<p>Content for Recycling Electronics...</p>" },
-  { id: 4, title: "The Ultimate Guide to Smart Home Devices", description: "...", image: BlogDefaultImg, date: "Jul 30, 2025", author: "Admin", href: "/blog/4", content: "<p>Content for Smart Home Devices...</p>" },
-  { id: 5, title: "Maximizing Your Device's Battery Life", description: "...", image: BlogDefaultImg, date: "Jul 21, 2025", author: "Admin", href: "/blog/5", content: "<p>Content for Battery Life...</p>" },
-  { id: 6, title: "What to Look for in a Gaming Phone", description: "...", image: BlogDefaultImg, date: "Jul 10, 2025", author: "Admin", href: "/blog/6", content: "<p>Content for Gaming Phones...</p>" },
-];
+
+
 
 const BlogDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const post = blogData.find(p => p.id.toString() === id);
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!post) {
+  useEffect(() => {
+    if (slug) {
+      setLoading(true);
+      blogApi.getPostDetail(slug).then(data => {
+        setPost(data);
+        setLoading(false);
+      }).catch(err => {
+        console.error("Failed to load post:", err);
+        setLoading(false);
+      });
+    }
+  }, [slug]);
+
+  if (loading) {
     return (
-      <div className="container mx-auto px-4 md:px-6 py-24 text-center">
-        <h1 className="text-4xl font-bold mb-4">Post not found</h1>
-        <Link to="/blog" className="text-teal-600 font-semibold hover:underline">
-          &larr; Back to all blogs
-        </Link>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-12 h-12 border-4 border-[#FEC925] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
+  
+  if (!post) return <div className="p-20 text-center font-black text-2xl">POST NOT FOUND</div>;
 
   return (
-    <section className="bg-white py-16">
-      {/* Page Header Banner */}
-      <div 
-        className="py-16 md:py-20" 
-        style={{ background: 'linear-gradient(to right, #fff7e0, #ffe8cc)' }}
-      >
-        <div className="container mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            {post.title}
-          </h1>
-          <div className="flex justify-center items-center text-sm text-gray-600 space-x-6">
-            <span className="flex items-center gap-2">
-              <Calendar size={16} /> {post.date}
-            </span>
-            <span className="flex items-center gap-2">
-              <User size={16} /> {post.author}
-            </span>
+    <div className="bg-white min-h-screen selection:bg-[#FEC925] selection:text-[#1C1C1B]">
+      {/* --- Header Section --- */}
+      <div className="max-w-4xl mx-auto px-6 pt-12">
+        <button 
+          onClick={() => navigate('/blog')} 
+          className="flex items-center gap-3 text-[#555555] hover:text-[#1C1C1B] font-black text-[10px] uppercase tracking-[0.2em] mb-12 group transition-all"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Hub
+        </button>
+
+        <div className="flex gap-3 mb-8">
+           <span className="px-4 py-1.5 bg-[#EAF6F4] text-[#1B8A05] text-[10px] font-black rounded-full uppercase tracking-widest">
+             {post.category?.name || "FINANCE"}
+           </span>
+        </div>
+
+        <h1 className="text-4xl md:text-6xl font-black text-[#1C1C1B] leading-[1.1] mb-10 tracking-tight">
+          {post.title}
+        </h1>
+
+        <div className="flex flex-wrap items-center justify-between gap-8 py-10 border-y border-[#F5F5F5] mb-16">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-[#FEC925] flex items-center justify-center text-[#1C1C1B] text-xl font-black border-4 border-white shadow-xl">
+              {post.author_name?.charAt(0) || 'A'}
+            </div>
+            <div>
+              <p className="text-sm font-black text-[#1C1C1B] uppercase tracking-widest">{post.author_name}</p>
+              <div className="flex items-center gap-2 text-xs text-[#9E9E9E] font-medium mt-1">
+                <Calendar size={12} className="text-[#FEC925]" />
+                {new Date(post.updated_at).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+             <button className="w-10 h-10 rounded-xl bg-[#F5F5F5] text-[#1C1C1B] flex items-center justify-center hover:bg-[#FEC925] transition-all"><Facebook size={18} /></button>
+             <button className="w-10 h-10 rounded-xl bg-[#F5F5F5] text-[#1C1C1B] flex items-center justify-center hover:bg-[#FEC925] transition-all"><Twitter size={18} /></button>
+             <button className="w-10 h-10 rounded-xl bg-[#F5F5F5] text-[#1C1C1B] flex items-center justify-center hover:bg-[#FEC925] transition-all"><Link2 size={18} /></button>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="container mx-auto px-4 md:px-6 max-w-4xl -mt-16">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+      {/* --- Main Featured Image (Uses resolveImageUrl) --- */}
+      <div className="max-w-6xl mx-auto px-6 mb-20">
+        <div className="rounded-[3rem] overflow-hidden shadow-2xl border border-[#F5F5F5]">
           <img 
-            src={post.image} 
-            alt={post.title}
-            className="w-full h-64 md:h-96 object-cover" 
+            src={resolveImageUrl(post.primary_image)} 
+            alt={post.primary_image_alt || post.title} 
+            className="w-full h-auto object-cover max-h-[600px]" 
           />
-          {/* Article Content */}
-          <article 
-            className="p-6 md:p-10 prose prose-lg max-w-none"
-            // We use dangerouslySetInnerHTML to render the mock HTML content
-            dangerouslySetInnerHTML={{ __html: post.content }}
-          />
-        </div>
-        
-        <div className="mt-12 text-center">
-          <Link 
-            to="/blog" 
-            className="inline-flex items-center gap-2 text-lg font-semibold text-teal-600 hover:text-teal-700 transition-colors group"
-          >
-            <ArrowLeft size={20} className="transition-transform group-hover:-translate-x-1" />
-            Back to All Blogs
-          </Link>
         </div>
       </div>
-    </section>
+
+      {/* --- Main Content Area --- */}
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 pb-20">
+        <main className="lg:col-span-8">
+          {post.sections?.map((section) => (
+            <section key={section.id} className="mb-16">
+              {section.heading && (
+                <h2 className="text-3xl font-black text-[#1C1C1B] mb-8 leading-tight tracking-tight">
+                  {section.heading}
+                </h2>
+              )}
+              {/* --- Section Image (Uses resolveImageUrl) --- */}
+              {section.image && (
+                <div className="mb-10 group rounded-[2rem] overflow-hidden shadow-lg border border-gray-100">
+                  <img 
+                    src={resolveImageUrl(section.image)} 
+                    alt={section.image_alt || "Section visual"} 
+                    className="w-full h-auto transition-transform duration-700 group-hover:scale-105" 
+                  />
+                </div>
+              )}
+              <div 
+                className="prose prose-lg md:prose-xl max-w-none 
+                  prose-headings:text-[#1C1C1B] prose-headings:font-black 
+                  prose-p:text-[#555555] prose-p:leading-relaxed
+                  prose-strong:text-[#1C1C1B] prose-strong:font-black
+                  prose-a:text-[#1B8A05] prose-a:no-underline hover:prose-a:text-[#FEC925]
+                  prose-li:text-[#555555] prose-blockquote:border-[#FEC925]
+                  prose-blockquote:bg-[#FAFAFA] prose-blockquote:p-6 prose-blockquote:rounded-2xl"
+                dangerouslySetInnerHTML={{ __html: section.content_html }}
+              />
+            </section>
+          ))}
+        </main>
+
+        {/* --- Sidebar --- */}
+        <aside className="lg:col-span-4">
+          <div className="sticky top-28 space-y-12">
+            <RecentBlogsSidebar />
+
+            <div className="bg-[#1C1C1B] p-10 rounded-[2.5rem] text-white shadow-2xl">
+              <Mail className="text-[#FEC925] mb-6" size={32} />
+              <h3 className="text-2xl font-black mb-4 leading-tight">Insight newsletter.</h3>
+              <p className="text-white/50 text-xs mb-8">Weekly financial strategies and growth tips delivered to your inbox.</p>
+              <input 
+                type="email" 
+                className="w-full p-4 bg-white/5 border border-white/10 rounded-xl mb-4 text-white outline-none focus:ring-1 focus:ring-[#FEC925]" 
+                placeholder="Email Address" 
+              />
+              <button className="w-full py-4 bg-[#FEC925] text-[#1C1C1B] font-black uppercase tracking-widest rounded-xl hover:bg-white transition-all">
+                Subscribe
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* --- Footer Related Section --- */}
+      {slug && <RelatedBlogsFooter slug={slug} />}
+    </div>
   );
 };
 
