@@ -43,7 +43,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
       <div className="mb-6">
         <p className="text-[#1C1C1B]/70 text-sm mb-1">Available Balance</p>
         <p className="text-4xl font-bold text-[#1C1C1B]">
-          ₹{parseFloat(wallet.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          ₹{parseFloat(wallet.available_balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
         </p>
       </div>
 
