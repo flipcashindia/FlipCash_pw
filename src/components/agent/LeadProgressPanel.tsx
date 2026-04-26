@@ -122,22 +122,57 @@ export function useLeadProgress(assignmentId: string, enabled = true) {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // const fetch = async () => {
+  //   if (!assignmentId) return;
+  //   setIsLoading(prev => data ? false : prev === false ? true : prev); // only show loader on first load
+  //   try {
+  //     const token = useAuthStore.getState().accessToken;
+  //     const res = await window.fetch(
+  //       `${import.meta.env.VITE_API_BASE_URL}/partner-agents/my-leads/${assignmentId}/progress/`,
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //     console.log('res in lead details: ', res.json());
+  //     console.log('Raw response status:', res.status);
+  //     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  //     const json: ProgressPayload = await res.json();
+  //     // LOG THE PARSED JSON INSTEAD:
+  //     console.log('Parsed JSON response:');
+  //     console.log('Data received:', json);
+  //     setData(json);
+  //     setError(null);
+  //   } catch (e: any) {
+  //     setError(e.message);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const fetch = async () => {
     if (!assignmentId) return;
-    setIsLoading(prev => data ? false : prev === false ? true : prev); // only show loader on first load
+    setIsLoading(prev => data ? false : prev === false ? true : prev);
     try {
       const token = useAuthStore.getState().accessToken;
       const res = await window.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/partner-agents/my-leads/${assignmentId}/progress/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log('res in lead details: ', res.json());
+      
+      // 1. Check the response status first
+      console.log('Raw response status:', res.status);
       
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // 2. Consume the stream ONLY ONCE here
       const json: ProgressPayload = await res.json();
+      
+      // 3. NOW you can log the data as many times as you want
+      console.log('Parsed JSON response:', json);
+      console.log('KYC Documents found:', json.kyc.documents);
+
       setData(json);
       setError(null);
     } catch (e: any) {
+      console.error('Fetch error:', e); // Log the actual error to see "body used already"
       setError(e.message);
     } finally {
       setIsLoading(false);
@@ -660,7 +695,7 @@ const KYCCard: React.FC<{ kyc: ProgressPayload['kyc'] }> = ({ kyc }) => {
   const photoUrls = kyc.documents
     .filter(d => d.file_url && d.file_url.match(/\.(jpg|jpeg|png|webp|gif)$/i))
     .map(d => `https://flend.flipcash.in/media/${d.file_url}`);
-    
+
   return (
     <Card
       title="KYC Documents"
