@@ -131,6 +131,8 @@ export function useLeadProgress(assignmentId: string, enabled = true) {
         `${import.meta.env.VITE_API_BASE_URL}/partner-agents/my-leads/${assignmentId}/progress/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      console.log('res in lead details: ', res.json());
+      
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: ProgressPayload = await res.json();
       setData(json);
@@ -657,8 +659,8 @@ const KYCCard: React.FC<{ kyc: ProgressPayload['kyc'] }> = ({ kyc }) => {
 
   const photoUrls = kyc.documents
     .filter(d => d.file_url && d.file_url.match(/\.(jpg|jpeg|png|webp|gif)$/i))
-    .map(d => d.file_url);
-
+    .map(d => `https://flend.flipcash.in/media/${d.file_url}`);
+    
   return (
     <Card
       title="KYC Documents"
@@ -684,6 +686,7 @@ const KYCCard: React.FC<{ kyc: ProgressPayload['kyc'] }> = ({ kyc }) => {
           </div>
         ))}
       </div>
+      {/*  add this string before photoUrls 'https://flend.flipcash.in/media/' */}
       <PhotoGrid photos={photoUrls} label="Captured Documents" />
       {kyc.notes && (
         <p className="text-xs text-gray-600 mt-2 bg-gray-50 rounded-lg p-2">{kyc.notes}</p>
