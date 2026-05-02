@@ -34,11 +34,30 @@ import { useAgentAssignments } from '../../hooks/useAgentApp';
 // };
 
 const STATUS_TABS = [
-  { key: '', label: 'All', icon: ClipboardList },
-  { key: 'assigned', label: 'New', icon: Clock },
-  { key: 'accepted,en_route', label: 'Active', icon: Navigation },
-  { key: 'checked_in,inspecting', label: 'In Progress', icon: Package },
-  { key: 'completed', label: 'Completed', icon: CheckCircle2 },
+  { 
+    // Explicitly listing ALL statuses bypasses the backend's default filter, 
+    // forcing it to return completed, cancelled, and rejected leads.
+    key: 'assigned,accepted,en_route,checked_in,code_verified,inspecting,inspection_submitted,awaiting_customer_response,customer_accepted,kyc_completed,payment_processed,completed,cancelled,rejected,customer_rejected', 
+    label: 'All', 
+    icon: ClipboardList 
+  },
+  { 
+    key: 'assigned,accepted', 
+    label: 'New', 
+    icon: Clock 
+  },
+  // "Active" tab has been removed entirely
+  { 
+    // From en_route up to payment_processed (excludes assigned, accepted, and terminal states)
+    key: 'en_route,checked_in,code_verified,inspecting,inspection_submitted,awaiting_customer_response,customer_accepted,kyc_completed,payment_processed', 
+    label: 'In Progress', 
+    icon: Package 
+  },
+  { 
+    key: 'completed', 
+    label: 'Completed', 
+    icon: CheckCircle2 
+  },
 ];
 
 const AgentLeadsPage: React.FC = () => {
