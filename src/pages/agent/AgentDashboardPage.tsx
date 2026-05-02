@@ -30,7 +30,8 @@ const AgentDashboardPage: React.FC = () => {
   // Data fetching using your custom hooks
   const { data: profile, isLoading: profileLoading } = useAgentProfile();
   const { data: stats, isLoading: statsLoading } = useAgentDashboardStats();
-  
+  console.log('[AgentAppService] Dashboard stats fallback - calculating from leads');
+  console.log(stats);
   // Expanded status filter to include the full backend workflow
   const { data: assignmentsData, isLoading: assignmentsLoading } = useAgentAssignments({
     status: 'assigned,accepted,en_route,checked_in,code_verified,inspecting,inspection_submitted,awaiting_customer_response,customer_accepted,kyc_completed,payment_processed',
@@ -325,7 +326,7 @@ const AgentDashboardPage: React.FC = () => {
       </div>
 
       {/* Today's Earning Summary - Gradient Footer */}
-      <div className="bg-gradient-to-br from-[#1B8A05] to-[#156d04] rounded-2xl p-6 text-white shadow-lg">
+      {/* <div className="bg-gradient-to-br from-[#1B8A05] to-[#156d04] rounded-2xl p-6 text-white shadow-lg">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
            <IndianRupee size={20} /> Shift Summary
         </h3>
@@ -345,7 +346,7 @@ const AgentDashboardPage: React.FC = () => {
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Earnings</p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

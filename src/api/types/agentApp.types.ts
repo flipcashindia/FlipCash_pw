@@ -74,6 +74,8 @@ export interface VerifiedConditions {
   physical_damage?: boolean;
 }
 
+
+
 /**
  * System pricing breakdown
  */
@@ -137,6 +139,16 @@ export interface SystemCalculatedPrice {
   }>;
   is_final: boolean;
 }
+
+export type inspection_comparison = Record<string, {
+  name: string;
+  label: string;
+  is_boolean: boolean;
+  options: string[];
+  customer_value: boolean | string | null;
+  agent_value: boolean | string | null;
+  matches: boolean | null;
+}[]> | null;
 
 /**
  * Inspection result for display
