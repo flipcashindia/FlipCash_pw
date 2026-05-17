@@ -3834,17 +3834,17 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
   value,
   onChange,
 }) => {
-  const getBooleanMapping = (attrName: string, isTrue: boolean) => {
-    switch (attrName) {
-      case 'wifi':
-      case 'bluetooth':
-        return isTrue ? 'Working' : 'Not Working';
-      case 'camera_glass':
-        return isTrue ? 'Broken' : 'Not Broken';
-      default:
-        return isTrue ? 'Yes' : 'No';
-    }
-  };
+  // const getBooleanMapping = (attrName: string, isTrue: boolean) => {
+  //   switch (attrName) {
+  //     case 'wifi':
+  //     case 'bluetooth':
+  //       return isTrue ? 'Working' : 'Not Working';
+  //     case 'camera_glass':
+  //       return isTrue ? 'Broken' : 'Not Broken';
+  //     default:
+  //       return isTrue ? 'Yes' : 'No';
+  //   }
+  // };
   // const getPriceImpactDisplay = (selectedValue: any) => {
   //   if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
 
