@@ -80,7 +80,7 @@ import {
   useCurrentLocation,
 } from '../../hooks/useAgentApp';
 
-import type { 
+import type {
   DeviceInspectionData,
   KYCDocumentUploadRequest,   // ✅ NEW
   PaymentProcessRequest,       // ✅ NEW
@@ -132,10 +132,10 @@ interface DynamicInspectionData {
   verified_imei: string;
   imei_matches: boolean;
   device_powers_on: boolean;
-  
+
   // Dynamic attribute responses - key-value pairs
   attribute_responses: Record<string, any>;
-  
+
   // Image fields
   front_image?: string;
   back_image?: string;
@@ -269,7 +269,7 @@ const ConditionComparisonTable: React.FC<ConditionComparisonProps> = ({
             const isDifferent = hasDifference(key);
             const customerValue = customerClaimed?.[key];
             const verifiedValue = agentVerified?.[key as keyof typeof agentVerified];
-            
+
             return (
               <tr key={key} className={isDifferent ? 'bg-yellow-50' : ''}>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
@@ -314,7 +314,7 @@ const FunctionalIssuesDisplay: React.FC<FunctionalIssuesProps> = ({
   verifiedIssues = []
 }) => {
   const allIssues = [...new Set([...customerIssues, ...verifiedIssues])];
-  
+
   const getIssueIcon = (issue: string) => {
     const icons: Record<string, any> = {
       wifi: Wifi,
@@ -336,7 +336,7 @@ const FunctionalIssuesDisplay: React.FC<FunctionalIssuesProps> = ({
         <AlertCircle className="w-4 h-4" />
         Functional Issues
       </h4>
-      
+
       {allIssues.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg">
           <CheckCircle2 className="w-4 h-4" />
@@ -347,17 +347,16 @@ const FunctionalIssuesDisplay: React.FC<FunctionalIssuesProps> = ({
           {allIssues.map((issue) => {
             const customerReported = customerIssues.includes(issue);
             const agentFound = verifiedIssues.includes(issue);
-            
+
             return (
               <div
                 key={issue}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
-                  customerReported && agentFound
+                className={`flex items-center justify-between p-3 rounded-lg border ${customerReported && agentFound
                     ? 'bg-green-50 border-green-200'
                     : !customerReported && agentFound
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-yellow-50 border-yellow-200'
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   {getIssueIcon(issue)}
@@ -405,23 +404,22 @@ const AccessoriesComparison: React.FC<AccessoriesComparisonProps> = ({
         <Boxes className="w-4 h-4" />
         Accessories Verification
       </h4>
-      
+
       <div className="grid grid-cols-2 gap-3">
         {accessories.map(({ key, label, icon }) => {
           const customerHas = customerAccessories[key] === true || customerAccessories[`${key}_available`] === true;
           const agentVerified = verifiedAccessories[key] === true || verifiedAccessories[`${key}_available`] === true;
           const matches = customerHas === agentVerified;
-          
+
           return (
             <div
               key={key}
-              className={`p-3 rounded-lg border-2 transition-all ${
-                matches
+              className={`p-3 rounded-lg border-2 transition-all ${matches
                   ? agentVerified
                     ? 'border-green-200 bg-green-50'
                     : 'border-gray-200 bg-gray-50'
                   : 'border-yellow-200 bg-yellow-50'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl">{icon}</span>
@@ -510,7 +508,7 @@ const PricingBreakdownDisplay: React.FC<PricingBreakdownDisplayProps> = ({
               Deductions Applied:
             </span>
           </div>
-          
+
           {breakdown.deductions.map((deduction, index) => (
             <div
               key={index}
@@ -529,7 +527,7 @@ const PricingBreakdownDisplay: React.FC<PricingBreakdownDisplayProps> = ({
               </span>
             </div>
           ))}
-          
+
           {/* Total Deductions */}
           <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
             <span className="text-sm font-semibold text-gray-700">
@@ -600,11 +598,11 @@ const base64ToFile = async (base64: string, filename: string): Promise<File> => 
 const AgentLeadDetailPage: React.FC = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const navigate = useNavigate();
-  
+
   const { data: assignment, isLoading, error, refetch } = useAgentAssignment(assignmentId || '');
-  
+
   // console.log('[AgentLeadDetailPage] Assignment data:', assignment);
-  
+
 
   // ✅ UPDATED MUTATIONS - NEW 3-STEP WORKFLOW
   const acceptMutation = useAcceptAssignment();
@@ -628,14 +626,14 @@ const AgentLeadDetailPage: React.FC = () => {
   const [showCustomerAcceptance, setShowCustomerAcceptance] = useState(false);
   const [showKYCForm, setShowKYCForm] = useState(false);
   const [showPaymentScreen, setShowPaymentScreen] = useState(false);
-  
+
   // NEW: Expandable sections
   const [showTimeline, setShowTimeline] = useState(false);
   const [showInspectionResults, setShowInspectionResults] = useState(false);
   const [showKYCDocuments, setShowKYCDocuments] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   const [rejectReason, setRejectReason] = useState('');
   const [_verificationCode, setVerificationCode] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -722,91 +720,91 @@ const AgentLeadDetailPage: React.FC = () => {
   const [completedPayment, setCompletedPayment] = useState<PaymentDetails | null>(null);
   const [statusLogs, setStatusLogs] = useState<StatusLog[]>([]);
 
-  
 
-// ============================================================================
-// REPLACE THE HOOKS SECTION (After other hooks, around line 450)
-// ============================================================================
+
+  // ============================================================================
+  // REPLACE THE HOOKS SECTION (After other hooks, around line 450)
+  // ============================================================================
 
   // Manual fetch for device attributes instead of using hook
   const [deviceAttributes, setDeviceAttributes] = useState<any>(null);
   const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
   const [attributesError, setAttributesError] = useState<string | null>(null);
 
-  
+
   // Fetch device attributes manually
-useEffect(() => {
-  // console.log('=== Device Attributes Effect Triggered ===');
-  // console.log('Assignment ID:', assignmentId);
-  // console.log('Assignment Status:', assignment?.assignment_status);
-  // console.log('Assignment Data:', assignment);
-  
-  const fetchDeviceAttributes = async () => {
-    if (!assignmentId) {
-      // console.log('❌ No assignmentId - skipping fetch');
-      return;
-    }
-    
-    if (!assignment) {
-      // console.log('❌ No assignment data yet - skipping fetch');
-      return;
-    }
-    
-    // console.log('✅ Conditions met - fetching device attributes...');
-    
-    setIsLoadingAttributes(true);
-    setAttributesError(null);
-    
-    try {
-      const token = useAuthStore.getState().accessToken;
-      
-      if (!token) {
-        throw new Error('Authentication token not found');
+  useEffect(() => {
+    // console.log('=== Device Attributes Effect Triggered ===');
+    // console.log('Assignment ID:', assignmentId);
+    // console.log('Assignment Status:', assignment?.assignment_status);
+    // console.log('Assignment Data:', assignment);
+
+    const fetchDeviceAttributes = async () => {
+      if (!assignmentId) {
+        // console.log('❌ No assignmentId - skipping fetch');
+        return;
       }
-      
-      // console.log('Fetching from URL:', `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`);
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+
+      if (!assignment) {
+        // console.log('❌ No assignment data yet - skipping fetch');
+        return;
+      }
+
+      // console.log('✅ Conditions met - fetching device attributes...');
+
+      setIsLoadingAttributes(true);
+      setAttributesError(null);
+
+      try {
+        const token = useAuthStore.getState().accessToken;
+
+        if (!token) {
+          throw new Error('Authentication token not found');
         }
-      );
-      
-      // console.log('[DeviceAttributes] Response status:', response.status);
-      // console.log('[DeviceAttributes] Response headers:', response.headers);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[DeviceAttributes] Error response:', errorData);
-        throw new Error(errorData.error || `Failed to fetch device attributes: ${response.status}`);
+
+        // console.log('Fetching from URL:', `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        // console.log('[DeviceAttributes] Response status:', response.status);
+        // console.log('[DeviceAttributes] Response headers:', response.headers);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('[DeviceAttributes] Error response:', errorData);
+          throw new Error(errorData.error || `Failed to fetch device attributes: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // console.log('[DeviceAttributes] ✅ Fetched successfully:', data);
+
+        setDeviceAttributes(data);
+      } catch (err: any) {
+        console.error('[DeviceAttributes] ❌ Fetch error:', err);
+        setAttributesError(err.message || 'Failed to load device attributes');
+      } finally {
+        setIsLoadingAttributes(false);
       }
-      
-      const data = await response.json();
-      // console.log('[DeviceAttributes] ✅ Fetched successfully:', data);
-      
-      setDeviceAttributes(data);
-    } catch (err: any) {
-      console.error('[DeviceAttributes] ❌ Fetch error:', err);
-      setAttributesError(err.message || 'Failed to load device attributes');
-    } finally {
-      setIsLoadingAttributes(false);
+    };
+
+    // ✅ FIXED: Fetch when assignment is loaded (not just when status is 'code_verified')
+    // This will attempt to fetch whenever we have an assignmentId and assignment data
+    if (assignmentId && assignment) {
+      // console.log('🚀 Starting fetch...');
+      fetchDeviceAttributes();
+    } else {
+      // console.log('⏳ Waiting for assignment data...');
     }
-  };
-  
-  // ✅ FIXED: Fetch when assignment is loaded (not just when status is 'code_verified')
-  // This will attempt to fetch whenever we have an assignmentId and assignment data
-  if (assignmentId && assignment) {
-    // console.log('🚀 Starting fetch...');
-    fetchDeviceAttributes();
-  } else {
-    // console.log('⏳ Waiting for assignment data...');
-  }
-}, [assignmentId, assignment]); // ✅ FIXED: Simplified dependencies
+  }, [assignmentId, assignment]); // ✅ FIXED: Simplified dependencies
 
 
 
@@ -827,7 +825,7 @@ useEffect(() => {
     defect_images: [],
   });
 
- // handleKYCSubmission
+  // handleKYCSubmission
   useEffect(() => {
     if (actionSuccess) {
       const timer = setTimeout(() => setActionSuccess(null), 3000);
@@ -864,11 +862,11 @@ useEffect(() => {
   // Load inspection results when assignment loads
   useEffect(() => {
     if (!assignment?.visit_data) return;
-    
+
     // console.log('[DataLoad] Loading visit data:', assignment.visit_data);
-    
+
     const visit = assignment.visit_data;
-    
+
     if (visit.verified_conditions) {
       setSubmittedInspection({
         screen_condition: visit.verified_conditions.screen_condition || 'good',
@@ -888,7 +886,7 @@ useEffect(() => {
       });
       setShowInspectionResults(true);
     }
-    
+
     if (visit.pricing_breakdown) {
       setSystemCalculatedPrice({
         final_price: parseFloat(visit.pricing_breakdown.final_price),
@@ -905,11 +903,11 @@ useEffect(() => {
   // Load customer response when assignment loads
   useEffect(() => {
     if (!assignment?.customer_response_data) return;
-    
+
     console.log('[DataLoad] Loading customer response:', assignment.customer_response_data);
-    
+
     const response = assignment.customer_response_data;
-    
+
     if (response.response === 'accepted') {
       setCustomerResponse('accept');
     } else if (response.response === 'rejected') {
@@ -923,20 +921,20 @@ useEffect(() => {
   // Load KYC data when assignment loads
   useEffect(() => {
     if (!assignment?.kyc_data?.kyc_completed) return;
-    
+
     console.log('[DataLoad] Loading KYC data:', assignment.kyc_data);
-    
+
     setShowKYCDocuments(true);
   }, [assignment]);
 
   // Load payment data when assignment loads  
   useEffect(() => {
     if (!assignment?.payment_data?.payment_completed) return;
-    
+
     console.log('[DataLoad] Loading payment data:', assignment.payment_data);
-    
+
     const payment = assignment.payment_data;
-    
+
     setCompletedPayment({
       payment_method: 'cash',
       amount: parseFloat(payment.amount || '0'),
@@ -994,7 +992,7 @@ useEffect(() => {
     setActionError(null);
     try {
       const position = await getCurrentLocation();
-      
+
       if (!position || !position.coords) {
         throw new Error("Unable to read GPS location. Please ensure location permissions are granted.");
       }
@@ -1013,13 +1011,13 @@ useEffect(() => {
         },
       });
       setActionSuccess('Checked in successfully! Now verify with customer code.');
-      
+
       // Refetch data before showing modal
       await Promise.all([
         refetch(),
         workflowStatusQuery.refetch()
       ]);
-      
+
       setShowVerifyCodeModal(true);
     } catch (err: any) {
       setActionError(err.message || 'Failed to check in. Make sure location is enabled.');
@@ -1034,13 +1032,13 @@ useEffect(() => {
       setActionSuccess('Code verified! You can now start inspection.');
       setShowVerifyCodeModal(false);
       setVerificationCode('');
-      
+
       // Critical: Refetch both queries to update workflow stage
       const [assignmentResult, workflowResult] = await Promise.all([
         refetch(),
         workflowStatusQuery.refetch()
       ]);
-      
+
       console.log('[VerifyCode] Refetch complete:', {
         assignmentStatus: assignmentResult.data?.assignment_status,
         workflowStage: workflowResult.data?.current_stage
@@ -1057,9 +1055,9 @@ useEffect(() => {
   // Add this function around line 600 (after handleFinalComplete)
   const handleRegenerateCode = async () => {
     if (!assignmentId) return;
-    
+
     setActionError(null);
-    
+
     try {
       // Get token from localStorage (adjust if you store it differently)
       // const token = localStorage.getItem('token'); // or sessionStorage.getItem('token')
@@ -1068,7 +1066,7 @@ useEffect(() => {
         setActionError('Authentication token not found');
         return;
       }
-      
+
       // Call API directly
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/regenerate-code/`,
@@ -1080,19 +1078,19 @@ useEffect(() => {
           },
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to regenerate code');
       }
-      
+
       // Show success message with new code
       setActionSuccess(`New code generated get from the customer`);
-      
+
       // Refetch assignment data
       refetch();
-      
+
     } catch (err: any) {
       setActionError(err.message || 'Failed to regenerate verification code');
     }
@@ -1111,236 +1109,236 @@ useEffect(() => {
   };
 
 
-const handleSubmitInspection = async () => {
-  // console.log('=== HANDLE SUBMIT INSPECTION TRIGGERED ===');
-  if (!assignmentId) return;
+  const handleSubmitInspection = async () => {
+    // console.log('=== HANDLE SUBMIT INSPECTION TRIGGERED ===');
+    if (!assignmentId) return;
 
-  setActionError(null);
-  
-  // ✅ CRITICAL: Properly determine which form we're using
-  const hasAttributes = deviceAttributes?.data?.attributes && 
-                       deviceAttributes.data.attributes.length > 0;
-  
-  const hasDynamicData = hasAttributes &&
-                        dynamicInspectionData.verified_imei && 
-                        dynamicInspectionData.inspection_notes &&
-                        Object.keys(dynamicInspectionData.attribute_responses || {}).length > 0;
-  
-  
-  // ✅ PRE-FLIGHT VALIDATION
-  if (hasDynamicData) {
-    console.log('✅ Using DYNAMIC form');
-    
-    if (!dynamicInspectionData.verified_imei || dynamicInspectionData.verified_imei.length !== 15) {
-      setActionError('❌ Please enter a valid 15-digit IMEI number');
-      return;
-    }
-    
-    if (!dynamicInspectionData.inspection_notes?.trim()) {
-      setActionError('❌ Please add inspection notes');
-      return;
-    }
-    
-    if (!dynamicInspectionData.front_image || !dynamicInspectionData.back_image || !dynamicInspectionData.imei_image) {
-      setActionError('❌ Please capture all required photos (Front, Back, IMEI)');
-      return;
-    }
-    
-    if (!dynamicInspectionData.attribute_responses || Object.keys(dynamicInspectionData.attribute_responses).length === 0) {
-      setActionError('❌ Please complete device inspection criteria');
-      return;
-    }
-  } else {
-    console.log('⚠️ Using STATIC form (fallback)');
-    
-    if (!inspectionData.imei_number || inspectionData.imei_number.length < 15) {
-      setActionError('❌ Please enter a valid IMEI number');
-      return;
-    }
-    
-    if (!inspectionData.notes?.trim()) {
-      setActionError('❌ Please add inspection notes');
-      return;
-    }
-    
-    if (!inspectionData.front_image || !inspectionData.back_image || !inspectionData.imei_image) {
-      setActionError('❌ Please capture all required photos');
-      return;
-    }
-  }
-  
-  // console.log('✅ Pre-flight validation passed');
+    setActionError(null);
 
-  try {
-    let inspectionPayload: any;
+    // ✅ CRITICAL: Properly determine which form we're using
+    const hasAttributes = deviceAttributes?.data?.attributes &&
+      deviceAttributes.data.attributes.length > 0;
 
+    const hasDynamicData = hasAttributes &&
+      dynamicInspectionData.verified_imei &&
+      dynamicInspectionData.inspection_notes &&
+      Object.keys(dynamicInspectionData.attribute_responses || {}).length > 0;
+
+
+    // ✅ PRE-FLIGHT VALIDATION
     if (hasDynamicData) {
-      // ========================================
-      // BUILD DYNAMIC FORM PAYLOAD
-      // ========================================
-      console.log('🔧 Building DYNAMIC form payload...');
-      // ✅ Convert all attribute values to strings
-      const stringifyAttributeResponses = (attrs: Record<string, any>): Record<string, string> => {
-        const result: Record<string, string> = {};
-        for (const [key, value] of Object.entries(attrs)) {
-          if (typeof value === 'boolean') {
-            result[key] = value ? 'true' : 'false';
-          } else if (value === null || value === undefined) {
-            result[key] = '';
-          } else {
-            result[key] = String(value);
+      console.log('✅ Using DYNAMIC form');
+
+      if (!dynamicInspectionData.verified_imei || dynamicInspectionData.verified_imei.length !== 15) {
+        setActionError('❌ Please enter a valid 15-digit IMEI number');
+        return;
+      }
+
+      if (!dynamicInspectionData.inspection_notes?.trim()) {
+        setActionError('❌ Please add inspection notes');
+        return;
+      }
+
+      if (!dynamicInspectionData.front_image || !dynamicInspectionData.back_image || !dynamicInspectionData.imei_image) {
+        setActionError('❌ Please capture all required photos (Front, Back, IMEI)');
+        return;
+      }
+
+      if (!dynamicInspectionData.attribute_responses || Object.keys(dynamicInspectionData.attribute_responses).length === 0) {
+        setActionError('❌ Please complete device inspection criteria');
+        return;
+      }
+    } else {
+      console.log('⚠️ Using STATIC form (fallback)');
+
+      if (!inspectionData.imei_number || inspectionData.imei_number.length < 15) {
+        setActionError('❌ Please enter a valid IMEI number');
+        return;
+      }
+
+      if (!inspectionData.notes?.trim()) {
+        setActionError('❌ Please add inspection notes');
+        return;
+      }
+
+      if (!inspectionData.front_image || !inspectionData.back_image || !inspectionData.imei_image) {
+        setActionError('❌ Please capture all required photos');
+        return;
+      }
+    }
+
+    // console.log('✅ Pre-flight validation passed');
+
+    try {
+      let inspectionPayload: any;
+
+      if (hasDynamicData) {
+        // ========================================
+        // BUILD DYNAMIC FORM PAYLOAD
+        // ========================================
+        console.log('🔧 Building DYNAMIC form payload...');
+        // ✅ Convert all attribute values to strings
+        const stringifyAttributeResponses = (attrs: Record<string, any>): Record<string, string> => {
+          const result: Record<string, string> = {};
+          for (const [key, value] of Object.entries(attrs)) {
+            if (typeof value === 'boolean') {
+              result[key] = value ? 'true' : 'false';
+            } else if (value === null || value === undefined) {
+              result[key] = '';
+            } else {
+              result[key] = String(value);
+            }
           }
-        }
-        return result;
-      };
-      
-      inspectionPayload = {
-        // Core fields from dynamicInspectionData
-        inspection_notes: dynamicInspectionData.inspection_notes,
-        inspection_photos: [
-          dynamicInspectionData.front_image,
-          dynamicInspectionData.back_image,
-          dynamicInspectionData.screen_image,
-          dynamicInspectionData.imei_image,
-          ...(dynamicInspectionData.defect_images || [])
-        ].filter(Boolean),  // Remove null/undefined
-        verified_imei: dynamicInspectionData.verified_imei,
-        imei_matches: dynamicInspectionData.imei_matches,
-        device_powers_on: dynamicInspectionData.device_powers_on,
-        
-        // Dynamic attribute responses
-        // ✅ Convert to strings
-        attribute_responses: stringifyAttributeResponses(
-          dynamicInspectionData.attribute_responses
-        ),
-        // Also send as partner_assessment for backward compatibility
-        partner_assessment: {
-          ...stringifyAttributeResponses(dynamicInspectionData.attribute_responses),
-          additional_notes: dynamicInspectionData.inspection_notes
-        },
-        
-        checklist_items: []
-      };
-      
-      // console.log('✅ Built DYNAMIC payload:', JSON.stringify(inspectionPayload, null, 2));
-    } else {
+          return result;
+        };
+
+        inspectionPayload = {
+          // Core fields from dynamicInspectionData
+          inspection_notes: dynamicInspectionData.inspection_notes,
+          inspection_photos: [
+            dynamicInspectionData.front_image,
+            dynamicInspectionData.back_image,
+            dynamicInspectionData.screen_image,
+            dynamicInspectionData.imei_image,
+            ...(dynamicInspectionData.defect_images || [])
+          ].filter(Boolean),  // Remove null/undefined
+          verified_imei: dynamicInspectionData.verified_imei,
+          imei_matches: dynamicInspectionData.imei_matches,
+          device_powers_on: dynamicInspectionData.device_powers_on,
+
+          // Dynamic attribute responses
+          // ✅ Convert to strings
+          attribute_responses: stringifyAttributeResponses(
+            dynamicInspectionData.attribute_responses
+          ),
+          // Also send as partner_assessment for backward compatibility
+          partner_assessment: {
+            ...stringifyAttributeResponses(dynamicInspectionData.attribute_responses),
+            additional_notes: dynamicInspectionData.inspection_notes
+          },
+
+          checklist_items: []
+        };
+
+        // console.log('✅ Built DYNAMIC payload:', JSON.stringify(inspectionPayload, null, 2));
+      } else {
+        // ========================================
+        // BUILD STATIC FORM PAYLOAD
+        // ========================================
+        // console.log('🔧 Building STATIC form payload...');
+
+        const rawData = transformInspectionData(inspectionData);
+        inspectionPayload = {
+          ...rawData,
+          inspection_photos: (rawData.inspection_photos || []).filter((p): p is string => !!p)
+        };
+
+        // console.log('✅ Built STATIC payload:', JSON.stringify(inspectionPayload, null, 2));
+      }
+
       // ========================================
-      // BUILD STATIC FORM PAYLOAD
+      // FINAL VALIDATION BEFORE SENDING
       // ========================================
-      // console.log('🔧 Building STATIC form payload...');
-      
-      const rawData = transformInspectionData(inspectionData);
-      inspectionPayload = {
-        ...rawData,
-        inspection_photos: (rawData.inspection_photos || []).filter((p): p is string => !!p)
-      };
-      
-      // console.log('✅ Built STATIC payload:', JSON.stringify(inspectionPayload, null, 2));
-    }
+      // console.log('🔍 Final validation check...');
+      // console.log('  verified_imei:', inspectionPayload.verified_imei);
+      // console.log('  inspection_notes:', inspectionPayload.inspection_notes);
+      // console.log('  inspection_photos length:', inspectionPayload.inspection_photos?.length);
 
-    // ========================================
-    // FINAL VALIDATION BEFORE SENDING
-    // ========================================
-    // console.log('🔍 Final validation check...');
-    // console.log('  verified_imei:', inspectionPayload.verified_imei);
-    // console.log('  inspection_notes:', inspectionPayload.inspection_notes);
-    // console.log('  inspection_photos length:', inspectionPayload.inspection_photos?.length);
-    
-    if (!inspectionPayload.verified_imei || inspectionPayload.verified_imei.length !== 15) {
-      // console.error('❌ IMEI validation failed:', inspectionPayload.verified_imei);
-      setActionError('IMEI must be exactly 15 digits');
-      return;
-    }
-    
-    if (!inspectionPayload.inspection_notes || inspectionPayload.inspection_notes.trim().length === 0) {
-      // console.error('❌ Notes validation failed');
-      setActionError('Inspection notes are required');
-      return;
-    }
-    
-    if (!inspectionPayload.inspection_photos || inspectionPayload.inspection_photos.length === 0) {
-      // console.error('❌ Photos validation failed:', inspectionPayload.inspection_photos);
-      setActionError('At least one inspection photo is required');
-      return;
-    }
+      if (!inspectionPayload.verified_imei || inspectionPayload.verified_imei.length !== 15) {
+        // console.error('❌ IMEI validation failed:', inspectionPayload.verified_imei);
+        setActionError('IMEI must be exactly 15 digits');
+        return;
+      }
 
-    // console.log('✅ Final validation passed');
-    // console.log('📤 Submitting to backend...');
-    // console.log('📦 Final Payload:', inspectionPayload);
-    
-    // ========================================
-    // SUBMIT TO BACKEND
-    // ========================================
-    const inspectionResult = await submitInspectionMutation.mutateAsync({
-      assignmentId,
-      data: inspectionPayload,
-    });
+      if (!inspectionPayload.inspection_notes || inspectionPayload.inspection_notes.trim().length === 0) {
+        // console.error('❌ Notes validation failed');
+        setActionError('Inspection notes are required');
+        return;
+      }
 
-    // console.log('✅ Backend Response:', inspectionResult);
-    
-    // Store system calculated price
-    if (inspectionResult.calculated_price || inspectionResult.system_final_price) {
-      setSystemCalculatedPrice({
-        final_price: inspectionResult.calculated_price || inspectionResult.system_final_price || 0,
-        original_estimate: inspectionResult.original_price || inspectionResult.original_estimate || 0,
-        deductions: inspectionResult.deductions || [],
-        is_final: true
+      if (!inspectionPayload.inspection_photos || inspectionPayload.inspection_photos.length === 0) {
+        // console.error('❌ Photos validation failed:', inspectionPayload.inspection_photos);
+        setActionError('At least one inspection photo is required');
+        return;
+      }
+
+      // console.log('✅ Final validation passed');
+      // console.log('📤 Submitting to backend...');
+      // console.log('📦 Final Payload:', inspectionPayload);
+
+      // ========================================
+      // SUBMIT TO BACKEND
+      // ========================================
+      const inspectionResult = await submitInspectionMutation.mutateAsync({
+        assignmentId,
+        data: inspectionPayload,
       });
-    }
 
-    // Store submitted inspection for display
-    if (hasDynamicData) {
-      console.log('Has dynamic data submittion doing')
-      setSubmittedInspection({
-        screen_condition: dynamicInspectionData.attribute_responses.screen_condition || 'good',
-        body_condition: dynamicInspectionData.attribute_responses.body_condition || 'good',
-        battery_health: dynamicInspectionData.attribute_responses.battery_health || null,
-        accessories: dynamicInspectionData.attribute_responses.accessories || {},
-        functional_issues: dynamicInspectionData.attribute_responses.functional_issues || [],
-        inspection_photos: inspectionPayload.inspection_photos,
-        inspection_notes: inspectionPayload.inspection_notes,
-        verified_imei: inspectionPayload.verified_imei,
-        submitted_at: new Date().toISOString(),
-      });
-    } else {
-      setSubmittedInspection({
-        screen_condition: inspectionData.screen_condition || 'good',
-        body_condition: inspectionData.body_condition || 'good',
-        battery_health: inspectionData.battery_health || null,
-        accessories: {
-          charger_available: inspectionData.has_charger || false,
-          box_available: inspectionData.has_box || false,
-          earphones_available: inspectionData.has_earphones || false,
-          bill_available: inspectionData.has_bill || false,
-        },
-        functional_issues: [
-          ...(!inspectionData.touch_working ? ['Touch'] : []),
-          ...(!inspectionData.display_working ? ['Display'] : []),
-          ...(!inspectionData.speakers_working ? ['Speakers'] : []),
-          ...(!inspectionData.microphone_working ? ['Microphone'] : []),
-          ...(!inspectionData.cameras_working ? ['Cameras'] : []),
-        ],
-        inspection_photos: [
-          inspectionData.front_image,
-          inspectionData.back_image,
-          inspectionData.screen_image,
-          inspectionData.imei_image,
-        ].filter((p): p is string => !!p),
-        inspection_notes: inspectionData.notes || '',
-        verified_imei: inspectionData.imei_number || '',
-        submitted_at: new Date().toISOString(),
-      });
+      // console.log('✅ Backend Response:', inspectionResult);
+
+      // Store system calculated price
+      if (inspectionResult.calculated_price || inspectionResult.system_final_price) {
+        setSystemCalculatedPrice({
+          final_price: inspectionResult.calculated_price || inspectionResult.system_final_price || 0,
+          original_estimate: inspectionResult.original_price || inspectionResult.original_estimate || 0,
+          deductions: inspectionResult.deductions || [],
+          is_final: true
+        });
+      }
+
+      // Store submitted inspection for display
+      if (hasDynamicData) {
+        console.log('Has dynamic data submittion doing')
+        setSubmittedInspection({
+          screen_condition: dynamicInspectionData.attribute_responses.screen_condition || 'good',
+          body_condition: dynamicInspectionData.attribute_responses.body_condition || 'good',
+          battery_health: dynamicInspectionData.attribute_responses.battery_health || null,
+          accessories: dynamicInspectionData.attribute_responses.accessories || {},
+          functional_issues: dynamicInspectionData.attribute_responses.functional_issues || [],
+          inspection_photos: inspectionPayload.inspection_photos,
+          inspection_notes: inspectionPayload.inspection_notes,
+          verified_imei: inspectionPayload.verified_imei,
+          submitted_at: new Date().toISOString(),
+        });
+      } else {
+        setSubmittedInspection({
+          screen_condition: inspectionData.screen_condition || 'good',
+          body_condition: inspectionData.body_condition || 'good',
+          battery_health: inspectionData.battery_health || null,
+          accessories: {
+            charger_available: inspectionData.has_charger || false,
+            box_available: inspectionData.has_box || false,
+            earphones_available: inspectionData.has_earphones || false,
+            bill_available: inspectionData.has_bill || false,
+          },
+          functional_issues: [
+            ...(!inspectionData.touch_working ? ['Touch'] : []),
+            ...(!inspectionData.display_working ? ['Display'] : []),
+            ...(!inspectionData.speakers_working ? ['Speakers'] : []),
+            ...(!inspectionData.microphone_working ? ['Microphone'] : []),
+            ...(!inspectionData.cameras_working ? ['Cameras'] : []),
+          ],
+          inspection_photos: [
+            inspectionData.front_image,
+            inspectionData.back_image,
+            inspectionData.screen_image,
+            inspectionData.imei_image,
+          ].filter((p): p is string => !!p),
+          inspection_notes: inspectionData.notes || '',
+          verified_imei: inspectionData.imei_number || '',
+          submitted_at: new Date().toISOString(),
+        });
+      }
+
+      setShowInspectionForm(false);
+      setShowCustomerAcceptance(true);
+      refetch();
+    } catch (err: any) {
+      // console.error('❌ Submission Error:', err);
+      // console.error('Error details:', err.response?.data || err.message);
+      setActionError(err.message || 'Failed to submit inspection');
     }
-    
-    setShowInspectionForm(false);
-    setShowCustomerAcceptance(true);
-    refetch();
-  } catch (err: any) {
-    // console.error('❌ Submission Error:', err);
-    // console.error('Error details:', err.response?.data || err.message);
-    setActionError(err.message || 'Failed to submit inspection');
-  }
-};
+  };
 
 
 
@@ -1351,7 +1349,7 @@ const handleSubmitInspection = async () => {
   const handleKYCSubmission = async () => {
     if (!assignmentId) return;
     setActionError(null);
-    
+
     try {
       // Convert base64 strings to File objects
       const idProofFrontFile = await base64ToFile(capturedImages.id_proof_front!, 'id-proof-front.jpg');
@@ -1385,7 +1383,7 @@ const handleSubmitInspection = async () => {
         const billFile = await base64ToFile(capturedImages.device_bill, 'device-bill.jpg');
         kycRequest.device_bill = billFile;
       }
-      
+
       if (capturedImages.device_warranty) {
         const warrantyFile = await base64ToFile(capturedImages.device_warranty, 'device-warranty.jpg');
         kycRequest.device_warranty = warrantyFile;
@@ -1408,22 +1406,22 @@ const handleSubmitInspection = async () => {
 
       setActionSuccess('KYC documents uploaded successfully! Processing payment...');
       setShowKYCForm(false);
-      
+
       // Wait a moment then show payment screen
       setTimeout(() => {
         setShowPaymentScreen(true);
       }, 1500);
-      
+
       refetch();
     } catch (err: any) {
       setActionError(err.message || 'Failed to upload KYC documents');
     }
-  };   
+  };
   // ✅ UPDATED: Payment Handler for NEW 3-step workflow
   const handlePaymentCompletion = async () => {
     if (!assignmentId || !selectedPaymentMethod) return;
     setActionError(null);
-    
+
     try {
       // Build payment request matching backend structure
       const paymentRequest: PaymentProcessRequest = {
@@ -1454,12 +1452,12 @@ const handleSubmitInspection = async () => {
 
       setActionSuccess(`Payment processed successfully! Completing deal...`);
       setShowPaymentScreen(false);
-      
+
       // Automatically call final completion
       setTimeout(async () => {
         await handleFinalComplete();
       }, 1500);
-      
+
     } catch (err: any) {
       setActionError(err.message || 'Failed to process payment');
     }
@@ -1470,7 +1468,7 @@ const handleSubmitInspection = async () => {
   const handleFinalComplete = async () => {
     if (!assignmentId) return;
     setActionError(null);
-    
+
     try {
       await finalCompleteMutation.mutateAsync({
         assignmentId,
@@ -1481,7 +1479,7 @@ const handleSubmitInspection = async () => {
 
       setActionSuccess('Deal completed successfully!');
       refetch();
-      
+
       setTimeout(() => navigate('/agent/activity'), 2000);
     } catch (err: any) {
       setActionError(err.message || 'Failed to complete deal');
@@ -1501,7 +1499,7 @@ const handleSubmitInspection = async () => {
       verified_imei: frontendData.imei_number || '',
       imei_matches: frontendData.imei_verified || false,
       device_powers_on: frontendData.power_on || false,
-      
+
       partner_assessment: {
         screen_condition: frontendData.screen_condition || 'good',
         body_condition: frontendData.body_condition || 'good',
@@ -1527,7 +1525,7 @@ const handleSubmitInspection = async () => {
         ],
         additional_notes: frontendData.notes || ''
       },
-      
+
       checklist_items: []
     };
   };
@@ -1553,11 +1551,11 @@ const handleSubmitInspection = async () => {
   // ✅ UPDATED: Complete workflow stage logic with ALL statuses
   const getWorkflowStage = () => {
     if (!assignment) return 'loading';
-    
+
     // Use workflow status if available (most accurate)
     if (workflowStatusQuery.data?.current_stage) {
       const stage = workflowStatusQuery.data.current_stage;
-      
+
       // Map backend workflow stages to UI stages
       switch (stage) {
         case 'assigned': return 'pending';
@@ -1576,52 +1574,52 @@ const handleSubmitInspection = async () => {
         default: return 'unknown';
       }
     }
-    
+
     // Fallback to assignment status (from assignment object)
     switch (assignment.assignment_status) {
-      case 'assigned': 
+      case 'assigned':
         return 'pending';
-      case 'accepted': 
+      case 'accepted':
         return 'accepted';
-      case 'en_route': 
+      case 'en_route':
         return 'en_route';
-      case 'checked_in': 
+      case 'checked_in':
         return 'checked_in';
-      case 'code_verified': 
+      case 'code_verified':
         return 'code_verified';
-      case 'inspecting': 
+      case 'inspecting':
         return 'inspecting';
-      case 'inspection_submitted': 
+      case 'inspection_submitted':
         return 'awaiting_customer';
-      case 'customer_accepted': 
+      case 'customer_accepted':
         return 'kyc_verification';
-      case 'customer_rejected': 
+      case 'customer_rejected':
         return 'rejected';
-      case 'kyc_completed': 
+      case 'kyc_completed':
         return 'payment_selection';
-      case 'payment_processed': 
+      case 'payment_processed':
         return 'final_completion';
-      case 'completed': 
+      case 'completed':
         return 'completed';
-      case 'cancelled': 
+      case 'cancelled':
         return 'cancelled';
-      case 'rejected': 
+      case 'rejected':
         return 'rejected';
-      default: 
+      default:
         return 'unknown';
     }
   };
-// Waiting for Customer
+  // Waiting for Customer
   const stage = getWorkflowStage();
 
-   // Add after existing useEffect blocks showInspectionForm
+  // Add after existing useEffect blocks showInspectionForm
 
   // Fetch customer response status
   // Update the polling useEffect to handle auto-progression
   useEffect(() => {
     const checkCustomerResponse = async () => {
       if (!assignmentId || stage !== 'awaiting_customer') return;
-      
+
       try {
         const token = useAuthStore.getState().accessToken;
         const response = await fetch(
@@ -1632,7 +1630,7 @@ const handleSubmitInspection = async () => {
         );
         const data = await response.json();
         console.log('[CustomerResponse] Fetched data:', data);
-        
+
         if (data.has_responded) {
           if (data.response === 'accepted') {
             setCustomerResponse('accept');
@@ -1656,7 +1654,7 @@ const handleSubmitInspection = async () => {
         console.error('Failed to check customer response:', err);
       }
     };
-    
+
     // Check immediately and then every 5 seconds
     checkCustomerResponse();
     const interval = setInterval(checkCustomerResponse, 5000);
@@ -1665,7 +1663,7 @@ const handleSubmitInspection = async () => {
 
 
 
-  if (isLoading) { 
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-12 h-12 animate-spin text-[#FEC925]" />
@@ -1691,183 +1689,183 @@ const handleSubmitInspection = async () => {
 
 
 
-  
-// Show inspection form - with fallback to old form if dynamic attributes fail
-if (showInspectionForm) {
-  // ✅ CRITICAL FIX: Add validation check before showing form
-  const hasAttributes = deviceAttributes?.data?.attributes && 
-                       deviceAttributes.data.attributes.length > 0;
-  
-  const hasDynamicData = dynamicInspectionData.verified_imei && 
-                        dynamicInspectionData.inspection_notes &&
-                        (dynamicInspectionData.front_image || 
-                         dynamicInspectionData.back_image ||
-                         dynamicInspectionData.imei_image);
-  
-  const hasStaticData = inspectionData.imei_number && 
-                       inspectionData.notes &&
-                       (inspectionData.front_image || 
-                        inspectionData.back_image ||
-                        inspectionData.imei_image);
 
-  console.log('[InspectionForm] Form validation check:', {
-    hasAttributes,
-    hasDynamicData,
-    hasStaticData,
-    dynamicInspectionData,
-    inspectionData
-  });
-  
-  // Try dynamic form first if attributes are being loaded
-  if (isLoadingAttributes) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <Loader2 className="w-12 h-12 animate-spin text-[#FEC925] mb-4" />
-        <p className="text-gray-600 font-medium">Loading device inspection form...</p>
-        <p className="text-gray-500 text-sm mt-2">Fetching inspection criteria...</p>
-      </div>
-    );
-  }
+  // Show inspection form - with fallback to old form if dynamic attributes fail
+  if (showInspectionForm) {
+    // ✅ CRITICAL FIX: Add validation check before showing form
+    const hasAttributes = deviceAttributes?.data?.attributes &&
+      deviceAttributes.data.attributes.length > 0;
 
-  if (attributesError) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-md mx-auto mt-20">
-          <div className="bg-white rounded-2xl border-2 border-red-200 p-6 text-center">
-            <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Failed to Load Inspection Form
-            </h3>
-            <p className="text-gray-600 mb-4">{attributesError}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowInspectionForm(false)}
-                className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={async () => {
-                  setAttributesError(null);
-                  setIsLoadingAttributes(true);
-                  try {
-                    const token = useAuthStore.getState().accessToken;
-                    const response = await fetch(
-                      `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
-                      {
-                        method: 'GET',
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                          'Content-Type': 'application/json',
-                        },
+    const hasDynamicData = dynamicInspectionData.verified_imei &&
+      dynamicInspectionData.inspection_notes &&
+      (dynamicInspectionData.front_image ||
+        dynamicInspectionData.back_image ||
+        dynamicInspectionData.imei_image);
+
+    const hasStaticData = inspectionData.imei_number &&
+      inspectionData.notes &&
+      (inspectionData.front_image ||
+        inspectionData.back_image ||
+        inspectionData.imei_image);
+
+    console.log('[InspectionForm] Form validation check:', {
+      hasAttributes,
+      hasDynamicData,
+      hasStaticData,
+      dynamicInspectionData,
+      inspectionData
+    });
+
+    // Try dynamic form first if attributes are being loaded
+    if (isLoadingAttributes) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+          <Loader2 className="w-12 h-12 animate-spin text-[#FEC925] mb-4" />
+          <p className="text-gray-600 font-medium">Loading device inspection form...</p>
+          <p className="text-gray-500 text-sm mt-2">Fetching inspection criteria...</p>
+        </div>
+      );
+    }
+
+    if (attributesError) {
+      return (
+        <div className="min-h-screen bg-gray-50 p-6">
+          <div className="max-w-md mx-auto mt-20">
+            <div className="bg-white rounded-2xl border-2 border-red-200 p-6 text-center">
+              <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Failed to Load Inspection Form
+              </h3>
+              <p className="text-gray-600 mb-4">{attributesError}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowInspectionForm(false)}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={async () => {
+                    setAttributesError(null);
+                    setIsLoadingAttributes(true);
+                    try {
+                      const token = useAuthStore.getState().accessToken;
+                      const response = await fetch(
+                        `${import.meta.env.VITE_API_BASE_URL}/partner-agents/assignments/${assignmentId}/device-attributes/`,
+                        {
+                          method: 'GET',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                          },
+                        }
+                      );
+
+                      if (!response.ok) {
+                        throw new Error('Failed to fetch device attributes');
                       }
-                    );
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to fetch device attributes');
+
+                      const data = await response.json();
+                      setDeviceAttributes(data);
+                    } catch (err: any) {
+                      setAttributesError(err.message);
+                    } finally {
+                      setIsLoadingAttributes(false);
                     }
-                    
-                    const data = await response.json();
-                    setDeviceAttributes(data);
-                  } catch (err: any) {
-                    setAttributesError(err.message);
-                  } finally {
-                    setIsLoadingAttributes(false);
-                  }
-                }}
-                className="flex-1 px-4 py-2 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-semibold hover:bg-[#e5b520] transition"
-              >
-                Retry
-              </button>
+                  }}
+                  className="flex-1 px-4 py-2 bg-[#FEC925] text-[#1C1C1B] rounded-xl font-semibold hover:bg-[#e5b520] transition"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  // ✅ If we have valid dynamic attributes, use dynamic form
-  if (hasAttributes) {
-    console.log('[InspectionForm] Using dynamic inspection form');
+    // ✅ If we have valid dynamic attributes, use dynamic form
+    if (hasAttributes) {
+      console.log('[InspectionForm] Using dynamic inspection form');
+      return (
+        <DynamicInspectionForm
+          data={dynamicInspectionData}
+          onDataChange={setDynamicInspectionData}
+          onSubmit={handleSubmitInspection}
+          onCancel={() => setShowInspectionForm(false)}
+          isSubmitting={submitInspectionMutation.isPending}
+          deviceInfo={deviceAttributes.data.device_info}
+          attributes={deviceAttributes.data.attributes}
+          pricingConfig={deviceAttributes.data.pricing_config}
+        />
+      );
+    }
+
+    // ✅ FALLBACK: Use static form - BUT THIS IS THE PROBLEM
+    // The static form state (inspectionData) is empty!
+    // console.warn('[InspectionForm] ⚠️ Falling back to static form - this may cause issues');
+    // console.warn('[InspectionForm] Static form data:', inspectionData);
+
+    // Show warning that we're using fallback
     return (
-      <DynamicInspectionForm
-        data={dynamicInspectionData}
-        onDataChange={setDynamicInspectionData}
-        onSubmit={handleSubmitInspection}
-        onCancel={() => setShowInspectionForm(false)}
-        isSubmitting={submitInspectionMutation.isPending}
-        deviceInfo={deviceAttributes.data.device_info}
-        attributes={deviceAttributes.data.attributes}
-        pricingConfig={deviceAttributes.data.pricing_config}
-      />
-    );
-  }
-
-  // ✅ FALLBACK: Use static form - BUT THIS IS THE PROBLEM
-  // The static form state (inspectionData) is empty!
-  // console.warn('[InspectionForm] ⚠️ Falling back to static form - this may cause issues');
-  // console.warn('[InspectionForm] Static form data:', inspectionData);
-  
-  // Show warning that we're using fallback
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Warning banner */}
-      <div className="bg-amber-50 border-b-2 border-amber-300 p-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <AlertCircle className="text-amber-600 flex-shrink-0" size={24} />
-          <div>
-            <p className="font-semibold text-amber-900">Using Fallback Form</p>
-            <p className="text-sm text-amber-700">
-              Dynamic inspection attributes unavailable. Using basic form.
-            </p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Warning banner */}
+        <div className="bg-amber-50 border-b-2 border-amber-300 p-4">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <AlertCircle className="text-amber-600 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-semibold text-amber-900">Using Fallback Form</p>
+              <p className="text-sm text-amber-700">
+                Dynamic inspection attributes unavailable. Using basic form.
+              </p>
+            </div>
           </div>
         </div>
+
+        <InspectionForm
+          data={inspectionData}
+          onDataChange={setInspectionData}
+          onSubmit={handleSubmitInspection}
+          onCancel={() => setShowInspectionForm(false)}
+          isSubmitting={submitInspectionMutation.isPending}
+          deviceInfo={{
+            brand: assignment.device_brand,
+            model: assignment.device_model,
+            storage: assignment.device_storage,
+          }}
+          onImageUpload={async (_key: string, file: File): Promise<string> => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = () => reject(new Error('Failed to read file'));
+              reader.readAsDataURL(file);
+            });
+          }}
+        />
       </div>
-      
-      <InspectionForm
-        data={inspectionData}
-        onDataChange={setInspectionData}
-        onSubmit={handleSubmitInspection}
-        onCancel={() => setShowInspectionForm(false)}
-        isSubmitting={submitInspectionMutation.isPending}
+    );
+  }
+
+
+
+  // Show customer acceptance UI
+  if (showCustomerAcceptance && systemCalculatedPrice) {
+    return (
+      <CustomerAcceptanceScreen
         deviceInfo={{
           brand: assignment.device_brand,
           model: assignment.device_model,
           storage: assignment.device_storage,
         }}
-        onImageUpload={async (_key: string, file: File): Promise<string> => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsDataURL(file);
-          });
+        customerInfo={{
+          name: assignment.customer_name,
+          phone: assignment.customer_phone,
         }}
-      />
-    </div>
-  );
-}
-
-
-
-  // Show customer acceptance UI
-  if (showCustomerAcceptance && systemCalculatedPrice ){
-    return(
-    <CustomerAcceptanceScreen
-      deviceInfo={{
-        brand: assignment.device_brand,
-        model: assignment.device_model,
-        storage: assignment.device_storage,
-      }}
-      customerInfo={{
-        name: assignment.customer_name,
-        phone: assignment.customer_phone,
-      }}
-      pricing={systemCalculatedPrice}
-      customerResponse={customerResponse}
-      rejectionReason={rejectionReason}
-      onCancel={() => setShowCustomerAcceptance(false)}
-    />)
+        pricing={systemCalculatedPrice}
+        customerResponse={customerResponse}
+        rejectionReason={rejectionReason}
+        onCancel={() => setShowCustomerAcceptance(false)}
+      />)
   }
 
   // Show KYC verification form 
@@ -1910,7 +1908,7 @@ if (showInspectionForm) {
     );
   }
 
-  
+
 
 
 
@@ -2095,7 +2093,7 @@ if (showInspectionForm) {
         </div>
 
         <div className="space-y-5">
-          
+
           {/* Complete Address Card */}
           {assignment.pickup_address ? (
             <div className="bg-gray-50 p-4 md:p-5 rounded-xl border border-gray-200 flex flex-col gap-3 transition-colors hover:bg-gray-100">
@@ -2109,7 +2107,7 @@ if (showInspectionForm) {
                       assignment.pickup_address.line2
                     ].filter(Boolean).join(', ')}
                   </span>
-                  
+
                   {/* City, State, Postal Code */}
                   <span className="text-gray-600">
                     {[
@@ -2147,11 +2145,11 @@ if (showInspectionForm) {
               <div>
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">Scheduled Date</p>
                 <p className="font-bold text-[#1C1C1B] text-sm md:text-base">
-                  {assignment.preferred_date ? new Date(assignment.preferred_date).toLocaleDateString('en-IN', { 
-                    weekday: 'short', 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
+                  {assignment.preferred_date ? new Date(assignment.preferred_date).toLocaleDateString('en-IN', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                   }) : 'Pending'}
                 </p>
               </div>
@@ -2221,7 +2219,7 @@ if (showInspectionForm) {
           systemCalculatedPrice={systemCalculatedPrice}  // ✨ NEW
           customerResponse={customerResponse}  // ✨ NEW
           rejectionReason={rejectionReason}  // ✨ NEW
-          inspectionComparison={(assignment as any)?.inspection_comparison ?? null}        />
+          inspectionComparison={(assignment as any)?.inspection_comparison ?? null} />
       )}
 
       {/* NEW: KYC Documents Display (Expandable) */}
@@ -2459,7 +2457,7 @@ if (showInspectionForm) {
               error={verifyCodeMutation.error?.message || null}
               customerName={assignment.customer_name}
             />
-            
+
             {/* Regenerate Code Button */}
             <button
               type="button"
@@ -2642,11 +2640,11 @@ const VisitTimelineDisplay: React.FC<VisitTimelineDisplayProps> = ({
 // Add before the InspectionResultsDisplay component definition
 
 const ATTR_TYPE_META: Record<string, { label: string; emoji: string }> = {
-  cosmetic:   { label: 'Cosmetic / Physical', emoji: '🎨' },
-  functional: { label: 'Functionality',       emoji: '⚡' },
-  battery:    { label: 'Battery',             emoji: '🔋' },
-  accessory:  { label: 'Accessories',         emoji: '📦' },
-  other:      { label: 'Other',               emoji: '🔍' },
+  cosmetic: { label: 'Cosmetic / Physical', emoji: '🎨' },
+  functional: { label: 'Functionality', emoji: '⚡' },
+  battery: { label: 'Battery', emoji: '🔋' },
+  accessory: { label: 'Accessories', emoji: '📦' },
+  other: { label: 'Other', emoji: '🔍' },
 };
 
 interface ComparisonRow {
@@ -2694,9 +2692,9 @@ const AttributeTypeComparisonTable: React.FC<{
         {rows.map((row) => {
           const hasBoth = row.customer_value !== null && row.agent_value !== null;
           const rowBg =
-            !hasBoth         ? ''
-            : row.matches    ? 'bg-green-50/60'
-                             : 'bg-amber-50/60';
+            !hasBoth ? ''
+              : row.matches ? 'bg-green-50/60'
+                : 'bg-amber-50/60';
 
           return (
             <div
@@ -2713,12 +2711,11 @@ const AttributeTypeComparisonTable: React.FC<{
               </div>
 
               {/* Agent value */}
-              <div className={`px-3 py-2.5 text-sm font-semibold ${
-                row.agent_value === null ? 'text-gray-400'
-                : row.is_boolean
-                  ? row.agent_value ? 'text-[#1B8A05]' : 'text-red-600'
-                : 'text-gray-800'
-              }`}>
+              <div className={`px-3 py-2.5 text-sm font-semibold ${row.agent_value === null ? 'text-gray-400'
+                  : row.is_boolean
+                    ? row.agent_value ? 'text-[#1B8A05]' : 'text-red-600'
+                    : 'text-gray-800'
+                }`}>
                 {formatVal(row.agent_value, row.is_boolean)}
               </div>
 
@@ -2934,8 +2931,8 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                   <div className="h-px flex-1 bg-gray-300" />
                 </div> */}
 
-                {/* Condition Comparison Table */}
-                {/* <div>
+            {/* Condition Comparison Table */}
+            {/* <div>
                   <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <RefreshCw size={14} />
                     Condition Verification
@@ -2946,14 +2943,14 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                   />
                 </div> */}
 
-                {/* Functional Issues Comparison */}
-                {/* <FunctionalIssuesDisplay
+            {/* Functional Issues Comparison */}
+            {/* <FunctionalIssuesDisplay
                   customerIssues={assignment.customer_condition_responses?.functional_issues || []}
                   verifiedIssues={assignment.visit_data.verified_conditions?.functional_issues || []}
                 /> */}
 
-                {/* Accessories Comparison */}
-                {/* <AccessoriesComparison
+            {/* Accessories Comparison */}
+            {/* <AccessoriesComparison
                   customerAccessories={assignment.customer_condition_responses?.accessories || {}}
                   verifiedAccessories={assignment.visit_data.verified_conditions?.accessories || {}}
                 />
@@ -3024,26 +3021,26 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
             {!inspectionComparison &&
               assignment?.customer_condition_responses &&
               assignment?.visit_data?.verified_conditions && (
-              <div className="space-y-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-gray-300" />
-                  <h4 className="font-bold text-[#1C1C1B] text-sm">VERIFICATION DETAILS</h4>
-                  <div className="h-px flex-1 bg-gray-300" />
+                <div className="space-y-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-gray-300" />
+                    <h4 className="font-bold text-[#1C1C1B] text-sm">VERIFICATION DETAILS</h4>
+                    <div className="h-px flex-1 bg-gray-300" />
+                  </div>
+                  <ConditionComparisonTable
+                    customerClaimed={assignment.customer_condition_responses}
+                    agentVerified={assignment.visit_data.verified_conditions}
+                  />
+                  <FunctionalIssuesDisplay
+                    customerIssues={assignment.customer_condition_responses?.functional_issues || []}
+                    verifiedIssues={assignment.visit_data.verified_conditions?.functional_issues || []}
+                  />
+                  <AccessoriesComparison
+                    customerAccessories={assignment.customer_condition_responses?.accessories || {}}
+                    verifiedAccessories={assignment.visit_data.verified_conditions?.accessories || {}}
+                  />
                 </div>
-                <ConditionComparisonTable
-                  customerClaimed={assignment.customer_condition_responses}
-                  agentVerified={assignment.visit_data.verified_conditions}
-                />
-                <FunctionalIssuesDisplay
-                  customerIssues={assignment.customer_condition_responses?.functional_issues || []}
-                  verifiedIssues={assignment.visit_data.verified_conditions?.functional_issues || []}
-                />
-                <AccessoriesComparison
-                  customerAccessories={assignment.customer_condition_responses?.accessories || {}}
-                  verifiedAccessories={assignment.visit_data.verified_conditions?.accessories || {}}
-                />
-              </div>
-            )}
+              )}
             {/* ── END COMPARISON ────────────────────────────────────────────────── */}
 
             {/* System Calculated Price with Breakdown */}
@@ -3056,7 +3053,7 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                   </h4>
                   <div className="h-px flex-1 bg-gray-300" />
                 </div>
-                
+
                 <PricingBreakdownDisplay
                   breakdown={assignment.visit_data.pricing_breakdown}
                   originalEstimate={assignment.estimated_price}
@@ -3074,21 +3071,19 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                   </h4>
                   <div className="h-px flex-1 bg-gray-300" />
                 </div>
-                
-                <div className={`p-4 rounded-xl border-2 ${
-                  customerResponse === 'accept'
+
+                <div className={`p-4 rounded-xl border-2 ${customerResponse === 'accept'
                     ? 'bg-green-50 border-green-200'
                     : 'bg-red-50 border-red-200'
-                }`}>
+                  }`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-gray-700">
                       Customer Response:
                     </span>
-                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
-                      customerResponse === 'accept'
+                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${customerResponse === 'accept'
                         ? 'bg-green-600 text-white'
                         : 'bg-red-600 text-white'
-                    }`}>
+                      }`}>
                       {customerResponse === 'accept' ? (
                         <>
                           <ThumbsUp className="w-4 h-4 mr-2" />
@@ -3102,7 +3097,7 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                       )}
                     </div>
                   </div>
-                  
+
                   {customerResponse === 'accept' && systemCalculatedPrice && (
                     <div className="mt-3 pt-3 border-t border-green-200">
                       <div className="flex items-center justify-between">
@@ -3115,7 +3110,7 @@ const InspectionResultsDisplay: React.FC<InspectionResultsDisplayProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {customerResponse === 'reject' && rejectionReason && (
                     <div className="mt-3 pt-3 border-t border-red-200">
                       <span className="text-xs text-red-600 font-medium">
@@ -3371,11 +3366,10 @@ const PaymentDetailsDisplay: React.FC<PaymentDetailsDisplayProps> = ({
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="text-sm font-bold text-gray-900">Change:</span>
-                    <span className={`text-sm font-bold ${
-                      payment.wallet_balance_after > payment.wallet_balance_before
+                    <span className={`text-sm font-bold ${payment.wallet_balance_after > payment.wallet_balance_before
                         ? 'text-[#1B8A05]'
                         : 'text-red-600'
-                    }`}>
+                      }`}>
                       {payment.wallet_balance_after > payment.wallet_balance_before ? '+' : ''}
                       ₹{Math.abs(payment.wallet_balance_after - payment.wallet_balance_before).toLocaleString('en-IN')}
                     </span>
@@ -3455,11 +3449,10 @@ const StatusBadge: React.FC<{ status: string; priority: string }> = ({ status, p
         {getStatusLabel()}
       </span>
       {priority !== 'normal' && (
-        <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${
-          priority === 'urgent' ? 'bg-red-500 text-white' :
-          priority === 'high' ? 'bg-orange-500 text-white' :
-          'bg-gray-200 text-gray-600'
-        }`}>
+        <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${priority === 'urgent' ? 'bg-red-500 text-white' :
+            priority === 'high' ? 'bg-orange-500 text-white' :
+              'bg-gray-200 text-gray-600'
+          }`}>
           {priority}
         </span>
       )}
@@ -3482,7 +3475,7 @@ const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
     'final_completion',  // 10. Payment → Final Complete ✅
     'completed'          // 11. Done
   ];
-  
+
   const currentIndex = stages.indexOf(stage);
 
   const stageLabels: Record<string, string> = {
@@ -3510,21 +3503,20 @@ const WorkflowProgress: React.FC<{ stage: string }> = ({ stage }) => {
             style={{ width: `${(currentIndex / (stages.length - 1)) * 100}%` }}
           />
         </div>
-        
+
         {stages.map((s, i) => {
           const isCompleted = i < currentIndex;
           const isCurrent = i === currentIndex;
-          
+
           return (
             <div key={s} className="flex flex-col items-center z-10 min-w-[60px]">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  isCompleted
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isCompleted
                     ? 'bg-[#1B8A05] text-white'
                     : isCurrent
-                    ? 'bg-[#FEC925] text-[#1C1C1B]'
-                    : 'bg-gray-200 text-gray-500'
-                }`}
+                      ? 'bg-[#FEC925] text-[#1C1C1B]'
+                      : 'bg-gray-200 text-gray-500'
+                  }`}
               >
                 {isCompleted ? <CheckCircle2 size={16} /> : i + 1}
               </div>
@@ -3602,11 +3594,11 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
   };
 
   const requiredImagesCaptured = Boolean(images.front && images.back && images.imei);
-  
-  const isFormValid = requiredImagesCaptured && 
-    data.imei_number && 
+
+  const isFormValid = requiredImagesCaptured &&
+    data.imei_number &&
     data.imei_number.length >= 15 &&
-    data.notes && 
+    data.notes &&
     data.notes.trim().length > 0;
 
   return (
@@ -3802,11 +3794,10 @@ const InspectionForm: React.FC<InspectionFormProps> = ({
           <button
             onClick={onSubmit}
             disabled={isSubmitting || !isFormValid}
-            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${
-              isFormValid 
-                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]' 
+            className={`w-full px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ${isFormValid
+                ? 'bg-[#1B8A05] text-white hover:bg-[#157004]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+              }`}
           >
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={20} />
@@ -3843,16 +3834,27 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
   value,
   onChange,
 }) => {
+  const getBooleanMapping = (attrName: string, isTrue: boolean) => {
+    switch (attrName) {
+      case 'wifi':
+      case 'bluetooth':
+        return isTrue ? 'Working' : 'Not Working';
+      case 'camera_glass':
+        return isTrue ? 'Broken' : 'Not Broken';
+      default:
+        return isTrue ? 'Yes' : 'No';
+    }
+  };
   // const getPriceImpactDisplay = (selectedValue: any) => {
   //   if (!attribute.price_impact || selectedValue === undefined || selectedValue === null) return null;
-    
+
   //   // Map boolean to 'Yes'/'No' for price impact lookup if needed
   //   const impactKey = typeof selectedValue === 'boolean' 
   //     ? (selectedValue ? 'Yes' : 'No') 
   //     : String(selectedValue);
-      
+
   //   const impact = attribute.price_impact[impactKey];
-    
+
   //   // Safety check: if impact doesn't exist or value is missing
   //   if (!impact || impact.value === null || impact.value === undefined) return null;
 
@@ -3876,6 +3878,8 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
   //   );
   // };
 
+  // OLD CODE (COMMENTED OUT):
+  /*
   // 1. Boolean field as Yes/No Grid Buttons
   if (attribute.is_boolean) {
     return (
@@ -3892,32 +3896,28 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
             </span>
           )}
         </label>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <button
             type="button"
-            onClick={() => onChange(true)}
-            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
-              value === true
+            onClick={() => onChange(getBooleanMapping(attribute.name, true))}
+            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${value === getBooleanMapping(attribute.name, true) || value === true
                 ? 'bg-[#1B8A05]/10 border-[#1B8A05] ring-2 ring-[#1B8A05]/50 text-[#1B8A05] shadow-sm'
                 : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
-            }`}
+              }`}
           >
             <span>Yes</span>
-            {/* {getPriceImpactDisplay(true)} */}
           </button>
-          
+
           <button
             type="button"
-            onClick={() => onChange(false)}
-            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${
-              value === false
+            onClick={() => onChange(getBooleanMapping(attribute.name, false))}
+            className={`relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl font-bold transition-all text-sm md:text-base flex flex-col items-center justify-center gap-2 ${value === getBooleanMapping(attribute.name, false) || value === false
                 ? 'bg-[#FF0000]/10 border-[#FF0000] ring-2 ring-[#FF0000]/50 text-[#FF0000] shadow-sm'
                 : 'border-gray-300 hover:border-[#FEC925] text-gray-700 bg-white'
-            }`}
+              }`}
           >
             <span>No</span>
-            {/* {getPriceImpactDisplay(false)} */}
           </button>
         </div>
       </div>
@@ -3926,6 +3926,25 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
 
   // 2. Options field as Grid Buttons
   if (attribute.options && attribute.options.length > 0) {
+    return (
+      <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
+        ...
+    );
+  }
+  */
+
+  // NEW CODE: Use price_impact keys as options dynamically
+  const priceImpactObj = (attribute as any).price_impact;
+  let optionsList: string[] = [];
+  if (priceImpactObj && Object.keys(priceImpactObj).length > 0) {
+    optionsList = Object.keys(priceImpactObj);
+  } else {
+    optionsList = (attribute.options && attribute.options.length > 0)
+      ? attribute.options
+      : (attribute.is_boolean ? ['Yes', 'No'] : []);
+  }
+
+  if (optionsList.length > 0) {
     return (
       <div className="border-b border-gray-100 pb-4 md:pb-6 last:border-0 last:pb-0">
         <label className="block font-semibold text-base md:text-lg text-[#1C1C1B] mb-3 md:mb-4 flex items-center gap-2">
@@ -3940,22 +3959,21 @@ const DynamicAttributeField: React.FC<DynamicAttributeFieldProps> = ({
             </span>
           )}
         </label>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-3">
-          {attribute.options.map((option: string) => (
+          {optionsList.map((option: string) => (
             <button
               key={option}
               type="button"
               onClick={() => onChange(option)}
-              className={`group relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl text-center transition-all text-sm md:text-base font-semibold overflow-hidden flex flex-col items-center justify-center gap-2 ${
-                value === option
+              className={`group relative p-3 md:p-4 border-2 rounded-lg md:rounded-xl text-center transition-all text-sm md:text-base font-semibold overflow-hidden flex flex-col items-center justify-center gap-2 ${value === option
                   ? 'bg-[#FEC925]/20 border-[#FEC925] ring-2 ring-[#FEC925]/50 text-[#1C1C1B] shadow-sm'
                   : 'bg-white border-gray-300 hover:border-[#FEC925] hover:shadow-sm text-gray-700'
-              }`}
+                }`}
             >
               <span className="relative z-10 block">{option}</span>
               {/* {getPriceImpactDisplay(option)} */}
-              
+
               {value === option && (
                 <motion.div
                   initial={{ scale: 0 }}
@@ -4061,7 +4079,7 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
     input.type = 'file';
     input.accept = 'image/*';
     input.capture = 'environment';
-    
+
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -4073,7 +4091,7 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
         reader.readAsDataURL(file);
       }
     };
-    
+
     input.click();
   };
 
@@ -4125,19 +4143,17 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
         <div className="flex items-center justify-between mb-3 hidden md:flex">
           {stepLabels.map((label, idx) => (
             <div key={idx} className="flex-1 text-center last:flex-initial">
-              <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-sm transition-colors ${
-                currentStep > idx ? 'bg-[#1B8A05] text-white' :
-                currentStep === idx ? 'bg-[#FEC925] text-[#1C1C1B] ring-4 ring-[#FEC925]/20' : 'bg-gray-200 text-gray-500'
-              }`}>
+              <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-sm transition-colors ${currentStep > idx ? 'bg-[#1B8A05] text-white' :
+                  currentStep === idx ? 'bg-[#FEC925] text-[#1C1C1B] ring-4 ring-[#FEC925]/20' : 'bg-gray-200 text-gray-500'
+                }`}>
                 {currentStep > idx ? <CheckCircle2 size={16} /> : idx + 1}
               </div>
-              <p className={`text-xs font-semibold ${
-                currentStep >= idx ? 'text-[#1C1C1B]' : 'text-gray-400'
-              }`}>{label}</p>
+              <p className={`text-xs font-semibold ${currentStep >= idx ? 'text-[#1C1C1B]' : 'text-gray-400'
+                }`}>{label}</p>
             </div>
           ))}
         </div>
-        
+
         {/* Mobile Text Indicator */}
         <p className="text-center text-sm font-bold text-[#1C1C1B] mb-3 md:hidden">
           Step {currentStep + 1} of {totalSteps}: <span className="text-[#1B8A05]">{stepLabels[currentStep]}</span>
@@ -4298,8 +4314,8 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
               <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5">
                 <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
                   <BadgeCheck size={20} />
-                  {pricingConfig.calculation_method === 'system_automated' 
-                    ? 'System Automated Pricing' 
+                  {pricingConfig.calculation_method === 'system_automated'
+                    ? 'System Automated Pricing'
                     : 'Pricing Information'}
                 </h4>
                 <p className="text-sm text-blue-800">
@@ -4328,11 +4344,10 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
             <button
               onClick={handleNext}
               disabled={!isCurrentStepValid()}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${
-                isCurrentStepValid()
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${isCurrentStepValid()
                   ? 'bg-gradient-to-r from-[#FEC925] to-[#1B8A05] text-[#1C1C1B] shadow-lg'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+                }`}
             >
               Continue <ArrowRight size={20} />
             </button>
@@ -4340,11 +4355,10 @@ const DynamicInspectionForm: React.FC<DynamicInspectionFormProps> = ({
             <button
               onClick={onSubmit}
               disabled={!isCurrentStepValid() || isSubmitting}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${
-                isCurrentStepValid() && !isSubmitting
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] ${isCurrentStepValid() && !isSubmitting
                   ? 'bg-[#1B8A05] text-white shadow-lg shadow-[#1B8A05]/30 hover:bg-[#157004]'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+                }`}
             >
               {isSubmitting ? (
                 <>
@@ -4384,9 +4398,8 @@ const ImageCaptureButton: React.FC<ImageCaptureButtonProps> = ({
   <button
     type="button"
     onClick={onCapture}
-    className={`p-4 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 transition ${
-      image ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-    }`}
+    className={`p-4 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 transition ${image ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+      }`}
   >
     {image ? (
       <>
@@ -4452,23 +4465,22 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - Dynamic based on response */}
-      <div className={`p-6 ${
-        customerResponse === 'accept' 
+      <div className={`p-6 ${customerResponse === 'accept'
           ? 'bg-gradient-to-r from-[#1B8A05] to-[#16a34a]'
           : customerResponse === 'reject'
-          ? 'bg-gradient-to-r from-red-500 to-red-600'
-          : 'bg-gradient-to-r from-blue-500 to-blue-600'
-      }`}>
+            ? 'bg-gradient-to-r from-red-500 to-red-600'
+            : 'bg-gradient-to-r from-blue-500 to-blue-600'
+        }`}>
         <div className="flex items-center gap-4 mb-4">
           <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition">
             <ArrowLeft size={24} className="text-white" />
           </button>
           <span className="text-white font-bold">
-            {customerResponse === 'accept' 
-              ? 'Customer Accepted!' 
+            {customerResponse === 'accept'
+              ? 'Customer Accepted!'
               : customerResponse === 'reject'
-              ? 'Customer Rejected'
-              : 'Waiting for Customer'}
+                ? 'Customer Rejected'
+                : 'Waiting for Customer'}
           </span>
         </div>
       </div>
@@ -4493,20 +4505,18 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
         </div>
 
         {/* Price Display */}
-        <div className={`border rounded-xl p-6 text-center ${
-          customerResponse === 'accept'
+        <div className={`border rounded-xl p-6 text-center ${customerResponse === 'accept'
             ? 'bg-gradient-to-r from-[#1B8A05]/20 to-[#16a34a]/20 border-[#1B8A05]'
             : customerResponse === 'reject'
-            ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
-            : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300'
-        }`}>
-          <h2 className={`text-lg font-bold mb-2 ${
-            customerResponse === 'accept'
+              ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
+              : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300'
+          }`}>
+          <h2 className={`text-lg font-bold mb-2 ${customerResponse === 'accept'
               ? 'text-[#1B8A05]'
               : customerResponse === 'reject'
-              ? 'text-red-600'
-              : 'text-blue-600'
-          }`}>
+                ? 'text-red-600'
+                : 'text-blue-600'
+            }`}>
             Offered Price
           </h2>
           <div className="flex items-center justify-center gap-2">
@@ -4514,16 +4524,15 @@ const CustomerAcceptanceScreen: React.FC<CustomerAcceptanceScreenProps> = ({
               customerResponse === 'accept'
                 ? 'text-[#1B8A05]'
                 : customerResponse === 'reject'
-                ? 'text-red-600'
-                : 'text-blue-600'
+                  ? 'text-red-600'
+                  : 'text-blue-600'
             } />
-            <span className={`text-4xl font-bold ${
-              customerResponse === 'accept'
+            <span className={`text-4xl font-bold ${customerResponse === 'accept'
                 ? 'text-[#1B8A05]'
                 : customerResponse === 'reject'
-                ? 'text-red-600'
-                : 'text-blue-600'
-            }`}>
+                  ? 'text-red-600'
+                  : 'text-blue-600'
+              }`}>
               {pricing.final_price.toLocaleString('en-IN')}
             </span>
           </div>
@@ -4656,16 +4665,16 @@ interface AgentKYCVerificationScreenProps {
     address_proof_type?: 'utility_bill' | 'bank_statement' | 'rental_agreement';  // ✅ FIXED
     verification_notes: string;
   }>>;
-  capturedImages: { 
-    id_proof_front: string | null; 
+  capturedImages: {
+    id_proof_front: string | null;
     id_proof_back: string | null;
     signature: string | null;
     address_proof: string | null;
     device_bill: string | null;
     device_warranty: string | null;
   };
-  setCapturedImages: React.Dispatch<React.SetStateAction<{ 
-    id_proof_front: string | null; 
+  setCapturedImages: React.Dispatch<React.SetStateAction<{
+    id_proof_front: string | null;
     id_proof_back: string | null;
     signature: string | null;
     address_proof: string | null;
@@ -4701,7 +4710,7 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
     input.type = 'file';
     input.accept = 'image/*';
     input.capture = 'environment';
-    
+
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -4713,12 +4722,12 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
         reader.readAsDataURL(file);
       }
     };
-    
+
     input.click();
   };
 
   const isFormValid = () => {
-    const requiredFields = 
+    const requiredFields =
       kycData.id_proof_type &&
       kycData.id_number &&
       capturedImages.id_proof_front &&
@@ -4791,9 +4800,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
               <button
                 type="button"
                 onClick={() => captureImage('id_proof_front')}
-                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                  capturedImages.id_proof_front ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-                }`}
+                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${capturedImages.id_proof_front ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                  }`}
               >
                 {capturedImages.id_proof_front ? (
                   <>
@@ -4808,7 +4816,7 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
                 )}
               </button>
             </div>
-            
+
             {/* ID Proof Back - Only for Aadhaar */}
             {kycData.id_proof_type === 'aadhaar' && (
               <div>
@@ -4818,9 +4826,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => captureImage('id_proof_back')}
-                  className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                    capturedImages.id_proof_back ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-                  }`}
+                  className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${capturedImages.id_proof_back ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                    }`}
                 >
                   {capturedImages.id_proof_back ? (
                     <>
@@ -4848,9 +4855,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
           <button
             type="button"
             onClick={() => captureImage('signature')}
-            className={`w-full p-6 border-2 border-dashed rounded-xl flex flex-col items-center gap-3 transition ${
-              capturedImages.signature ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-            }`}
+            className={`w-full p-6 border-2 border-dashed rounded-xl flex flex-col items-center gap-3 transition ${capturedImages.signature ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+              }`}
           >
             {capturedImages.signature ? (
               <>
@@ -4895,9 +4901,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
               <button
                 type="button"
                 onClick={() => captureImage('address_proof')}
-                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                  capturedImages.address_proof ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-                }`}
+                className={`w-full p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${capturedImages.address_proof ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                  }`}
               >
                 {capturedImages.address_proof ? (
                   <>
@@ -4926,9 +4931,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
             <button
               type="button"
               onClick={() => captureImage('device_bill')}
-              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                capturedImages.device_bill ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-              }`}
+              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${capturedImages.device_bill ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                }`}
             >
               {capturedImages.device_bill ? (
                 <>
@@ -4947,9 +4951,8 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
             <button
               type="button"
               onClick={() => captureImage('device_warranty')}
-              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${
-                capturedImages.device_warranty ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
-              }`}
+              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center gap-2 transition ${capturedImages.device_warranty ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-300 hover:border-[#FEC925]'
+                }`}
             >
               {capturedImages.device_warranty ? (
                 <>
@@ -5023,11 +5026,10 @@ const AgentKYCVerificationScreen: React.FC<AgentKYCVerificationScreenProps> = ({
           <button
             onClick={onSubmit}
             disabled={!isFormValid() || isSubmitting}
-            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-              isFormValid() && !isSubmitting
+            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${isFormValid() && !isSubmitting
                 ? 'bg-[#1B8A05] text-white hover:bg-[#157004] shadow-lg'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+              }`}
           >
             {isSubmitting ? (
               <>
@@ -5127,17 +5129,16 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
         {/* Payment Methods */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <h3 className="font-bold text-[#1C1C1B] mb-4">Select Payment Method</h3>
-          
+
           <div className="space-y-3">
             {/* Cash Payment */}
             <button
               type="button"
               onClick={() => setSelectedPaymentMethod('cash')}
-              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${
-                selectedPaymentMethod === 'cash'
+              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${selectedPaymentMethod === 'cash'
                   ? 'border-[#1B8A05] bg-[#1B8A05]/10'
                   : 'border-gray-200 hover:border-[#1B8A05]'
-              }`}
+                }`}
             >
               <div className="w-14 h-14 bg-[#FEC925]/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <IndianRupee className="text-[#FEC925]" size={28} />
@@ -5155,11 +5156,10 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
             <button
               type="button"
               onClick={() => setSelectedPaymentMethod('partner_wallet')}
-              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${
-                selectedPaymentMethod === 'partner_wallet'
+              className={`w-full p-5 rounded-xl border-2 transition flex items-center gap-4 ${selectedPaymentMethod === 'partner_wallet'
                   ? 'border-[#1B8A05] bg-[#1B8A05]/10'
                   : 'border-gray-200 hover:border-[#1B8A05]'
-              }`}
+                }`}
             >
               <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Wallet className="text-blue-600" size={28} />
@@ -5228,11 +5228,10 @@ const AgentPaymentProcessingScreen: React.FC<AgentPaymentProcessingScreenProps> 
           <button
             onClick={onComplete}
             disabled={!selectedPaymentMethod || isProcessing}
-            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-              selectedPaymentMethod && !isProcessing
+            className={`w-full px-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${selectedPaymentMethod && !isProcessing
                 ? 'bg-[#1B8A05] text-white hover:bg-[#157004] shadow-lg'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+              }`}
           >
             {isProcessing ? (
               <>
@@ -5300,9 +5299,8 @@ const ToggleField: React.FC<{
   <button
     type="button"
     onClick={() => onChange(!value)}
-    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${
-      value ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-200 bg-white'
-    }`}
+    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${value ? 'border-[#1B8A05] bg-[#1B8A05]/10' : 'border-gray-200 bg-white'
+      }`}
   >
     <Icon size={18} className={value ? 'text-[#1B8A05]' : 'text-gray-400'} />
     <span className={`text-sm font-semibold ${value ? 'text-[#1B8A05]' : 'text-gray-600'}`}>{label}</span>
